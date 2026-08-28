@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Promociones - Cotton Candy Clothing Store</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="promo-wrapper">
+    <h2 class="promo-title">Promociones</h2>
+
+    <div class="promo-cards">
+      <div class="promo-card">
+        <div>
+          <h3>2 x 1 en Blusas</h3>
+          <p>Llévate dos piezas al precio de una</p>
+        </div>
+        <div class="promo-bottom">
+          <span class="promo-code">CUTECANDY50</span>
+          <span class="promo-value">50%</span>
+        </div>
+      </div>
+
+      <div class="promo-card">
+        <div>
+          <h3>10% en tu tercer prenda</h3>
+          <p>Descuento en toda la línea de productos al llevar la tercer prenda</p>
+        </div>
+        <div class="promo-bottom">
+          <span class="promo-code">CUTECANDY10</span>
+          <span class="promo-value">10%</span>
+        </div>
+      </div>
+
+      <div class="promo-card">
+        <div>
+          <h3>Envío Gratis</h3>
+          <p>En compras mayores a $2000</p>
+        </div>
+        <div class="promo-bottom">
+          <span class="promo-code">CUTENVIO1</span>
+          <span class="promo-value" style="font-size:16px; letter-spacing:4px;">ENVÍO</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="coupon-box">
+      <div class="coupon-percent">%</div>
+      <div class="coupon-text">¿Tienes un descuento?</div>
+      <div class="coupon-form">
+        <input type="text" id="codigoPromo" placeholder="INGRESA TU CODIGO" />
+        <button type="button" onclick="aplicarCodigo()">Aplicar</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script>
+    const codigos = {
+      "CUTECANDY50": {
+        codigo: "CUTECANDY50",
+        tipo: "porcentaje",
+        valor: 50
+      },
+      "CUTECANDY10": {
+        codigo: "CUTECANDY10",
+        tipo: "tercera_prenda",
+        valor: 10
+      },
+      "CUTENVIO1": {
+        codigo: "CUTENVIO1",
+        tipo: "envio_gratis",
+        valor: 0
+      }
+    };
+
+    function aplicarCodigo() {
+      const codigo = document.getElementById("codigoPromo").value.trim().toUpperCase();
+
+      if (!codigo) {
+        alert("Ingresa un código.");
+        return;
+      }
+
+      const cupon = codigos[codigo];
+
+      if (!cupon) {
+        alert("Código inválido.");
+        return;
+      }
+
+      localStorage.setItem("cuponAplicado", JSON.stringify(cupon));
+      alert("Cupón aplicado correctamente.");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cotton Candy Clothing Store - Detalle del Producto</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <main class="product-page">
+    <div id="toast-container"></div>
+
+    <section class="producto-detalle">
+      <div class="product-image">
+        <img id="imagen-producto" src="" alt="Producto" />
+      </div>
+      <div class="product-details">
+        <h1 id="nombre-producto"></h1>
+        <div class="price" id="precio-producto"></div>
+        <p id="descripcion-producto"></p>
+
+        <div class="quantity-control">
+          <label for="cantidad">Cantidad:</label>
+          <button class="qty-btn" type="button" onclick="cambiarCantidad(-1)">−</button>
+          <input type="number" id="cantidad" value="1" min="1" />
+          <button class="qty-btn" type="button" onclick="cambiarCantidad(1)">+</button>
+        </div>
+
+        <div class="actions">
+          <button class="add-to-cart" type="button" onclick="agregarAlCarrito()">AGREGAR AL CARRITO</button>
+          <button class="buy-now" type="button" onclick="comprarAhora()">COMPRAR AHORA</button>
+        </div>
+        <div class="actions">
+          <button class="regresar" type="button" onclick="window.location.href='shop.html'">← Regresar al catálogo</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="similares">
+      <h2>Artículos similares</h2>
+      <div id="articulos-similares" class="grid"></div>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script src="producto.js"></script>
+  <script>
+    function mostrarToast(mensaje, tipo = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${tipo}`;
+      toast.textContent = mensaje;
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 100);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 500);
+      }, 2800);
+    }
+
+    function obtenerCarrito() { return JSON.parse(localStorage.getItem("carrito") || "[]"); }
+    function guardarCarrito(c) { localStorage.setItem("carrito", JSON.stringify(c)); }
+
+    function cambiarCantidad(delta) {
+      const input = document.getElementById("cantidad");
+      if (!input) return;
+      input.value = Math.max(1, (parseInt(input.value) || 1) + delta);
+    }
+
+    function agregarAlCarrito() {
+      if (typeof producto === 'undefined' || !producto) {
+        mostrarToast("No se pudo agregar el producto", "error");
+        return;
+      }
+      const cantidad = parseInt(document.getElementById("cantidad")?.value) || 1;
+      let carrito = obtenerCarrito();
+      const existe = carrito.find(i => i.id === producto.id);
+      if (existe) { existe.cantidad += cantidad; }
+      else {
+        carrito.push({
+          id: producto.id,
+          nombre: producto.nombre,
+          precio: producto.precio,
+          precioFormatted: producto.precioFormatted || producto.precio,
+          imagen: producto.imagen,
+          cantidad
+        });
+      }
+      guardarCarrito(carrito);
+      mostrarToast(`¡Agregado! ${cantidad} × ${producto.nombre}`, "success");
+    }
+
+    function comprarAhora() {
+      agregarAlCarrito();
+      window.location.href = "carrito.html";
+    }
+  </script>
+</body>
+</html>

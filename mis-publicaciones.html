@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mis publicaciones</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="header"></div>
+
+<section class="container">
+  <h2>Mis publicaciones</h2>
+
+  <div id="listaProductos" class="products-grid"></div>
+
+  <p id="mensajeVacio" style="text-align:center; margin-top:20px; color:#888;">
+    Aún no has publicado productos 🥺
+  </p>
+</section>
+
+<div id="footer"></div>
+
+<script src="components.js"></script>
+
+<script>
+function cargarProductos(){
+  const contenedor = document.getElementById("listaProductos");
+  const mensaje = document.getElementById("mensajeVacio");
+
+  contenedor.innerHTML = "";
+
+  let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
+
+  if(productos.length === 0){
+    mensaje.style.display = "block";
+    return;
+  } else {
+    mensaje.style.display = "none";
+  }
+
+  productos.forEach(producto => {
+    contenedor.innerHTML += `
+      <div class="product-card">
+
+        <img src="${producto.foto}" alt="producto">
+
+        <div class="product-info">
+          <h3>${producto.nombre}</h3>
+          <p>${producto.descripcion}</p>
+        </div>
+
+        <div class="product-price">$${producto.precio}</div>
+
+        <div class="action-buttons">
+          <button class="btn-editar" onclick="editar(${producto.id})">
+            Editar
+          </button>
+
+          <button class="btn-eliminar" onclick="eliminar(${producto.id})">
+            Eliminar
+          </button>
+        </div>
+
+      </div>
+    `;
+  });
+}
+
+function eliminar(id){
+  if(confirm("¿Seguro que quieres eliminar este producto? 🗑️")){
+    let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
+    productos = productos.filter(p => p.id !== id);
+    localStorage.setItem("misProductos", JSON.stringify(productos));
+    cargarProductos();
+  }
+}
+
+function editar(id){
+  localStorage.setItem("productoEditar", id);
+  window.location.href = "editar-producto-publicaciones.html";
+}
+
+cargarProductos();
+</script>
+
+</body>
+</html>

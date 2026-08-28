@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cotton Candy Clothing Store</title>
+
+  <!-- Google Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Playfair+Display:wght@600&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --pink-fuerte: #b62694;
+      --pink-medio: #b3488f;
+      --bg: #f0d8e8;
+    }
+
+    /* RESET */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'DM Sans', Arial, sans-serif;
+      display: grid;
+      grid-template-columns: 55% 45%;
+      grid-template-rows: auto 1fr auto;
+      background: var(--bg);
+    }
+
+    /* NAV */
+    .landing-nav {
+      grid-column: 1;
+      grid-row: 1;
+      padding: 30px 40px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* BOTONES (GLOBAL) */
+    .btn {
+      padding: 12px 26px;
+      background: linear-gradient(135deg, var(--pink-fuerte), var(--pink-medio));
+      border: none;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all .25s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+    }
+
+    /* IMAGEN */
+    .landing-img {
+      grid-column: 2;
+      grid-row: 1 / 3;
+      background: url("Imagenes/fondo1.png") no-repeat right center;
+      background-size: cover;
+      /* vuelve a llenar */
+      min-height: 80vh;
+      position: relative;
+    }
+
+    /* MAIN */
+    .landing-main {
+      grid-column: 1;
+      grid-row: 2;
+      padding: 0 50px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+      max-width: 520px;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      color: var(--pink-fuerte);
+      margin: 0;
+    }
+
+    h2 {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      color: #222;
+      margin: 0;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #555;
+      margin: 0;
+    }
+
+    /* FORM */
+    .landing-form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .landing-form input {
+      padding: 12px 16px;
+      flex: 1;
+      min-width: 200px;
+      border: 1px solid #ddd;
+      border-radius: 999px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .landing-form input:focus {
+      border-color: var(--pink-fuerte);
+    }
+
+    /* ADMIN BUTTON CENTER */
+    .admin-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    /* FOOTER */
+    .landing-footer {
+      grid-column: 1 / -1;
+      grid-row: 3;
+      background: var(--pink-medio);
+      color: white;
+      padding: 15px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .lf-left,
+    .lf-center,
+    .lf-right {
+      flex: 1;
+    }
+
+    .lf-center {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .lf-center img {
+      width: 22px;
+      height: 22px;
+      transition: transform .2s;
+    }
+
+    .lf-center img:hover {
+      transform: scale(1.2);
+    }
+
+    .lf-bottom {
+      width: 100%;
+      text-align: center;
+      font-size: 11px;
+      margin-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, .3);
+      padding-top: 8px;
+      color: rgba(255, 255, 255, .8);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+      }
+
+      .landing-img {
+        grid-column: 1;
+        grid-row: 1;
+        min-height: 280px;
+        background-position: center;
+        background-size: cover;
+      }
+
+      .landing-nav {
+        grid-row: 2;
+        justify-content: center;
+      }
+
+      .landing-main {
+        grid-row: 3;
+        padding: 20px;
+        align-items: center;
+        text-align: center;
+      }
+
+      .landing-footer {
+        grid-row: 4;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAV -->
+  <nav class="landing-nav">
+    <button class="btn" onclick="window.location.href='login.html'">
+      Iniciar sesión
+    </button>
+  </nav>
+
+  <!-- IMAGEN -->
+  <div class="landing-img"></div>
+
+  <!-- MAIN -->
+  <main class="landing-main">
+    <h1>Cotton Candy Clothing Store</h1>
+    <h2>Ropa que amas, sin límites</h2>
+    <p>Outfits para cada mood. Moda que se adapta a tu estilo.</p>
+
+    <div class="landing-form">
+      <input type="email" placeholder="Ingresa tu email" />
+      <button class="btn" onclick="window.location.href='Interfaz Usuario - Registro .html'">
+        Comenzar ahora
+      </button>
+    </div>
+
+    <div class="admin-container">
+      <button class="btn" onclick="window.location.href='admin.html'">
+        Panel de administración
+      </button>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="landing-footer">
+    <div class="lf-left">
+      <p><strong>Cotton Candy Clothing Store</strong></p>
+      <p>www.cottoncandy.com</p>
+    </div>
+
+    <div class="lf-center">
+      <a href="#"><img src="Imagenes/Iconos/Facebook.png" alt="Facebook"></a>
+      <a href="#"><img src="Imagenes/Iconos/Twitter.png" alt="Twitter"></a>
+      <a href="#"><img src="Imagenes/Iconos/Instagram.png" alt="Instagram"></a>
+    </div>
+
+    <div class="lf-right">
+      <p>CottonCandyCS@gmail.com</p>
+      <p>📞 (449) 311 6529</p>
+    </div>
+
+    <div class="lf-bottom">
+      Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.<br>
+      © 2026 Cotton Candy Clothing Store
+    </div>
+  </footer>
+
+</body>
+
+</html>

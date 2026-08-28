@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cotton Candy Clothing Store - Login</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="client-interface login">
+    <h2>Iniciar Sesión</h2>
+    <form class="login-form" onsubmit="entrarPerfil(event)">
+      <input type="email" placeholder="Correo electrónico" />
+      <input type="password" placeholder="Contraseña" />
+      <button type="submit">Entrar</button>
+    </form>
+    <p style="margin-top:1rem; font-size:.9rem;">
+      ¿No tienes cuenta? 
+      <a href="Interfaz Usuario - Registro .html" style="color:var(--pink-medio); font-weight:600;">Regístrate aquí</a>
+    </p>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script>
+    function entrarPerfil(e) {
+      e.preventDefault();
+      window.location.href = "Interfaz Cliente - Perfil.html";
+    }
+  </script>
+</body>
+</html>

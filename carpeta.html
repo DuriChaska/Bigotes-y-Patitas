@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cotton Candy Clothing Store - Catálogo</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .hero-carpeta {
+      background: linear-gradient(135deg, #ec4899 0%, #14b8a6 100%);
+      color: #fff;
+      padding: 5rem 3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-top: 64px;
+    }
+    .hero-carpeta::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .hero-carpeta h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900; line-height: 1.1; margin-bottom: 1rem;
+    }
+    .hero-carpeta p {
+      font-size: 1.1rem; opacity: .9;
+      max-width: 520px; margin: 0 auto 2rem;
+    }
+    .hero-btn {
+      display: inline-block; background: #fff; color: #c0476e;
+      font-weight: 700; padding: .85rem 2.2rem; border-radius: 50px;
+      font-size: .95rem; box-shadow: 0 4px 20px rgba(0,0,0,.15);
+      border: none; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .hero-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.2); }
+
+    /* Sección featured */
+    .featured-section { max-width: 860px; margin: 1rem auto 3.5rem; padding: 0 2rem; }
+  </style>
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <!-- HERO — gradiente rosa-teal, intacto como lo tenías -->
+  <section class="hero-carpeta">
+    <h1>Colección Exclusiva<br>Cotton Candy 🍬</h1>
+    <p>Prendas únicas con estilo fresco y femenino.<br>Edición limitada.</p>
+  </section>
+
+  <div id="toast-container"></div>
+
+  <!-- PRODUCTO DESTACADO -->
+  <div class="featured-section">
+    <div class="breadcrumb" style="margin-bottom:1rem">
+      <a href="shop.html">← Catálogo</a> / Top vino acampanado
+    </div>
+    <p class="featured-label">Producto destacado</p>
+    <div class="featured-card">
+      <div class="featured-img">
+        <img src="Imagenes/SUDADERA ESTAMPADA.png" alt="Top vino manga larga acampanada" />
+      </div>
+      <div class="featured-body">
+        <h2>Top vino manga larga acampanada</h2>
+        <p>Top ajustado en tono vino con mangas acampanadas que aportan un toque elegante y moderno. Ideal para salidas casuales o nocturnas.</p>
+        <span class="featured-price">$389 MXN</span>
+        <button class="btn-comprar" id="btn-comprar">Comprar Ahora</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESEÑAS -->
+  <section class="reviews-section">
+    <h2 class="section-title">Lo que dicen nuestras clientas</h2>
+    <p class="section-subtitle">Opiniones reales de nuestra comunidad</p>
+    <div class="reviews-grid">
+      <div class="review-card">
+        <div class="stars">★★★★★</div>
+        <p class="review-text">"La prenda fue increíble, la calidad supera lo que esperaba. ¡Totalmente recomendado!"</p>
+        <span class="comment-author">— María García</span>
+      </div>
+      <div class="review-card">
+        <div class="stars">★★★★★</div>
+        <p class="review-text">"Compré un top y quedé fascinada. El ajuste y la textura son únicos."</p>
+        <span class="comment-author">— Carla López</span>
+      </div>
+      <div class="review-card">
+        <div class="stars">★★★★☆</div>
+        <p class="review-text">"La blusa que compré es una obra de arte. Llegó perfectamente empacada."</p>
+        <span class="comment-author">— Ana Martínez</span>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script>
+    function obtenerCarrito() { return JSON.parse(localStorage.getItem("carrito") || "[]"); }
+    function guardarCarrito(c) { localStorage.setItem("carrito", JSON.stringify(c)); }
+
+    function mostrarToast(msg, tipo = 'success') {
+      const c = document.getElementById('toast-container');
+      const t = document.createElement('div');
+      t.className = `toast ${tipo}`; t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.classList.add('show'), 80);
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 2800);
+    }
+
+    document.getElementById('btn-comprar').addEventListener('click', () => {
+      let carrito = obtenerCarrito();
+      const existe = carrito.find(i => i.id === "top-vino-acampanado");
+      if (existe) { existe.cantidad += 1; }
+      else {
+        carrito.push({
+          id: "top-vino-acampanado",
+          nombre: "Top vino manga larga acampanada",
+          precio: 389, precioFormatted: "$389 MXN",
+          imagen: "Imagenes/SUDADERA ESTAMPADA.png",
+          cantidad: 1
+        });
+      }
+      guardarCarrito(carrito);
+      mostrarToast("¡Agregado! 1 × Top vino manga larga acampanada", "success");
+    });
+  </script>
+</body>
+</html>
