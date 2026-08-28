@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pedidos - Cotton Candy Clothing Store</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <div class="container" style="padding-top: 64px;">
+
+    <aside class="sidebar">
+      <ul>
+        <li><a href="editarproducto.html">Productos</a></li>
+        <li><a href="pedidos.html">Pedidos</a></li>
+        <li><a href="promociones.html">Promociones</a></li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Detalles</th>
+            <th>Método de pago</th>
+            <th>Total</th>
+            <th>Eliminar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Producto: T-Shirt<br>Características: Color rojo<br>Indicaciones especiales: N/A</td>
+            <td>Tarjeta de crédito/débito</td>
+            <td>$500.00 MXN</td>
+            <td><button class="btn-eliminar" onclick="this.closest('tr').remove()">×</button></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Producto: Blusa<br>Características: Color amarillo<br>Indicaciones especiales: N/A</td>
+            <td>PayPal</td>
+            <td>$450.00 MXN</td>
+            <td><button class="btn-eliminar" onclick="this.closest('tr').remove()">×</button></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Producto: Top<br>Características: Manga corta<br>Indicaciones especiales: N/A</td>
+            <td>Tarjeta de crédito/débito</td>
+            <td>$600.00 MXN</td>
+            <td><button class="btn-eliminar" onclick="this.closest('tr').remove()">×</button></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Producto: Blusa con tirantes<br>Características: Estampado floral<br>Indicaciones especiales: N/A</td>
+            <td>PayPal</td>
+            <td>$550.00 MXN</td>
+            <td><button class="btn-eliminar" onclick="this.closest('tr').remove()">×</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+
+  </div>
+
+  <script src="components.js"></script>
+</body>
+</html>

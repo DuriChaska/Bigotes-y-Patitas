@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Publicar producto</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="header"></div>
+
+<section class="seller-interface">
+
+  <!-- PREVIEW -->
+  <label>Subir foto:</label>
+<input id="fotoFile" type="file" accept="image/*">
+
+  <!-- FORM -->
+  <form id="formProducto" class="product-form">
+    <h2>PUBLICA TU PRODUCTO</h2>
+
+    <label>Nombre del producto:</label>
+    <input id="nombre" type="text" required placeholder="Playera aesthetic..." />
+
+    <label>Precio:</label>
+    <input id="precio" type="number" required placeholder="$" />
+
+    <label>Descripción:</label>
+    <textarea id="descripcion" required placeholder="Describe tu producto..."></textarea>
+
+    <button type="submit" class="submit-product btn-pro">
+      Publicar producto
+    </button>
+
+  </form>
+
+</section>
+
+<div id="footer"></div>
+
+<script src="components.js"></script>
+
+<script>
+let imagenBase64 = "";
+
+const inputFile = document.getElementById("fotoFile");
+const preview = document.getElementById("previewImg");
+const mini = document.getElementById("miniPreview");
+
+// Convertir imagen a base64
+inputFile.addEventListener("change", function () {
+  const file = this.files[0];
+
+  if (file) {
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      imagenBase64 = e.target.result;
+
+      // preview en pantalla
+      preview.src = imagenBase64;
+      mini.src = imagenBase64;
+    };
+
+    reader.readAsDataURL(file);
+  }
+});
+
+// Guardar producto
+document.getElementById("formProducto").addEventListener("submit", function(e){
+  e.preventDefault();
+
+  const producto = {
+    id: Date.now(),
+    nombre: nombre.value,
+    precio: precio.value,
+    descripcion: descripcion.value,
+    foto: imagenBase64 || "Imagenes/Colecciones.png"
+  };
+
+  let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
+  productos.push(producto);
+
+  localStorage.setItem("misProductos", JSON.stringify(productos));
+
+  alert("✨ Producto publicado con imagen");
+
+  window.location.href = "mis-publicaciones.html";
+});
+</script>
+
+</body>
+</html>

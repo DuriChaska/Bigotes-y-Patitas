@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Perfil Cliente</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── MODAL COMPRAS ──────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(58, 37, 53, .45);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 24px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 420px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(58, 37, 53, .25);
+      animation: slideUp .3s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-header h2 {
+      font-size: 1.2rem;
+      color: #e07fa0;
+    }
+    .modal-close {
+      background: #fce8f0;
+      border: none;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #9a7d8a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+    }
+    .modal-close:hover { background: #f7a8c4; color: #fff; }
+
+    /* ── COMPRA ITEM ────────────────────── */
+    .compra-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 14px 0;
+      border-bottom: 1px solid #f0e0e8;
+    }
+    .compra-item:last-child { border-bottom: none; }
+
+    .compra-img {
+      width: 52px; height: 52px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f7a8c4, #e07fa0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .compra-info { flex: 1; }
+    .compra-nombre { font-weight: 500; font-size: .92rem; margin-bottom: 3px; }
+    .compra-meta   { font-size: .78rem; color: #9a7d8a; }
+    .compra-precio { font-weight: 600; color: #e07fa0; font-size: .95rem; white-space: nowrap; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    .badge-entregado { background: #d4f4e2; color: #1a7a45; }
+    .badge-enviado   { background: #fff0d4; color: #9a6400; }
+    .badge-proceso   { background: #ddeeff; color: #1a4f8a; }
+  </style>
+</head>
+
+<body>
+
+  <div id="header"></div>
+
+  <section class="client-interface profile">
+
+    <!-- HEADER PERFIL -->
+    <div class="profile-header">
+      <img src="Imagenes/Andy.jpeg" alt="Foto de perfil" class="profile-pic" />
+      <div class="profile-info">
+        <h2>Andrea Guadalupe</h2>
+        <p>@andreagdl</p>
+      </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="profile-sections">
+
+      <div class="profile-item">
+        <h3>Mis datos</h3>
+        <p>
+          Correo: andreamascorro136@gmail.com<br />
+          Teléfono: 449 311 6529<br />
+          Dirección: Aguascalientes, Ags.
+        </p>
+      </div>
+
+      <div class="profile-item">
+        <h3>Mis compras</h3>
+        <p>Tienes <strong id="numCompras">0</strong> compras registradas.</p>
+      </div>
+
+      <!-- ACCIONES -->
+      <div class="profile-actions">
+
+        <button class="btn-pro"
+          onclick="window.location.href='publicar.html'">
+          ➕ Publicar producto
+        </button>
+
+        <button class="btn-outline"
+          onclick="window.location.href='mis-publicaciones.html'">
+          📦 Ver mis publicaciones
+        </button>
+
+        <button class="btn-outline"
+          onclick="abrirCompras()">
+          🛍️ Ver mis compras
+        </button>
+
+      </div>
+
+      <!-- RESUMEN C2C -->
+      <div class="profile-item">
+        <h3>Resumen de ventas</h3>
+        <p id="totalProductos">Productos publicados: 0</p>
+      </div>
+
+      <button class="logout-btn" onclick="cerrarSesion()">
+        Cerrar sesión
+      </button>
+
+    </div>
+  </section>
+
+  <!-- MODAL COMPRAS -->
+  <div class="modal-overlay" id="modalCompras">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🛍️ Mis compras</h2>
+        <button class="modal-close" onclick="cerrarCompras()">✕</button>
+      </div>
+      <div id="listaCompras"></div>
+    </div>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+
+  <script>
+
+    /* ── DATOS BASE ─────────────────────────────── */
+    const comprasBase = [
+      {
+        id: "C001",
+        nombre: "Blusa Floral Romántica",
+        talla: "M",
+        color: "Rosa palo",
+        precio: 320,
+        fecha: "2025-03-15",
+        estado: "entregado",
+        emoji: "🌸"
+      },
+      {
+        id: "C002",
+        nombre: "Jeans Mom Fit Vintage",
+        talla: "28",
+        color: "Azul desgastado",
+        precio: 580,
+        fecha: "2025-04-01",
+        estado: "enviado",
+        emoji: "👖"
+      },
+      {
+        id: "C003",
+        nombre: "Vestido Verano Lino",
+        talla: "S",
+        color: "Blanco roto",
+        precio: 450,
+        fecha: "2025-04-07",
+        estado: "proceso",
+        emoji: "👗"
+      }
+    ];
+
+    const publicacionesBase = [
+      {
+        id: "P001",
+        nombre: "Crop Top Encaje",
+        precio: 210,
+        talla: "S",
+        categoria: "Tops",
+        estado: "disponible",
+        fecha: "2025-03-20"
+      },
+      {
+        id: "P002",
+        nombre: "Falda Plisada Rosa",
+        precio: 390,
+        talla: "M",
+        categoria: "Faldas",
+        estado: "disponible",
+        fecha: "2025-03-28"
+      },
+      {
+        id: "P003",
+        nombre: "Sudadera Oversize Minimal",
+        precio: 490,
+        talla: "L",
+        categoria: "Sudaderas",
+        estado: "vendido",
+        fecha: "2025-04-02"
+      }
+    ];
+
+    /* ── INICIALIZAR STORAGE ─────────────────────── */
+    function inicializarDatos() {
+      if (!localStorage.getItem("misCompras")) {
+        localStorage.setItem("misCompras", JSON.stringify(comprasBase));
+      }
+      if (!localStorage.getItem("misProductos")) {
+        localStorage.setItem("misProductos", JSON.stringify(publicacionesBase));
+      }
+    }
+
+    /* ── ACTUALIZAR CONTADORES ───────────────────── */
+    function actualizarUI() {
+      const compras   = JSON.parse(localStorage.getItem("misCompras"))   || [];
+      const productos = JSON.parse(localStorage.getItem("misProductos")) || [];
+
+      document.getElementById("numCompras").textContent    = compras.length;
+      document.getElementById("totalProductos").textContent =
+        "Productos publicados: " + productos.length;
+    }
+
+    /* ── MODAL ───────────────────────────────────── */
+    const badgeMap = {
+      entregado: ["badge-entregado", "Entregado ✓"],
+      enviado:   ["badge-enviado",   "En camino 🚚"],
+      proceso:   ["badge-proceso",   "En proceso ⏳"]
+    };
+
+    function abrirCompras() {
+  const compras = JSON.parse(localStorage.getItem("misCompras")) || [];
+  const lista = document.getElementById("listaCompras");
+
+  if (compras.length === 0) {
+    lista.innerHTML = `<p style="text-align:center;color:#9a7d8a;padding:20px 0">Aún no tienes compras 🛒</p>`;
+  } else {
+    lista.innerHTML = compras.map((c, index) => {
+      const [cls, label] = badgeMap[c.estado] || ["badge-proceso", c.estado];
+      return `
+        <div class="compra-item" style="cursor:pointer;" onclick="verTicketDetalle(${index})">
+          <div class="compra-img">${c.emoji}</div>
+          <div class="compra-info">
+            <div class="compra-nombre">${c.nombre}</div>
+            <div class="compra-meta">ID: ${c.id} · ${formatFecha(c.fecha)}</div>
+            <span class="badge ${cls}">${label}</span>
+          </div>
+          <div style="text-align:right">
+            <div class="compra-precio">$${c.precio}</div>
+            <small style="color:#b34a8e; font-size:10px;">Ver ticket</small>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  document.getElementById("modalCompras").classList.add("open");
+}
+
+// Función para abrir la página de factura con los datos de esa compra específica
+function verTicketDetalle(index) {
+  const compras = JSON.parse(localStorage.getItem("misCompras"));
+  const compraSeleccionada = compras[index];
+  
+  // Si la compra tiene el detalle guardado, lo cargamos en 'ultimaCompra' 
+  // para que factura.html lo lea
+  if (compraSeleccionada.detalleCompleto) {
+    localStorage.setItem("ultimaCompra", JSON.stringify(compraSeleccionada.detalleCompleto));
+  } else {
+    // Para las compras de "base" que no tienen detalle completo
+    localStorage.setItem("ultimaCompra", JSON.stringify({
+      pedido: compraSeleccionada.id,
+      cliente: "Andrea Guadalupe",
+      total: compraSeleccionada.precio,
+      productos: [{nombre: compraSeleccionada.nombre, precio: compraSeleccionada.precio, cantidad: 1}]
+    }));
+  }
+  
+  window.location.href = 'factura.html';
+}
+    function cerrarCompras() {
+      document.getElementById("modalCompras").classList.remove("open");
+    }
+
+    // Cerrar al hacer click fuera del modal
+    document.getElementById("modalCompras").addEventListener("click", function(e) {
+      if (e.target === this) cerrarCompras();
+    });
+
+    function formatFecha(iso) {
+      const [y, m, d] = iso.split("-");
+      const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+      return `${d} ${meses[+m - 1]} ${y}`;
+    }
+
+    /* ── CERRAR SESIÓN ───────────────────────────── */
+    function cerrarSesion() {
+      window.location.href = "login.html";
+    }
+
+    /* ── INIT ────────────────────────────────────── */
+    inicializarDatos();
+    actualizarUI();
+
+  </script>
+
+</body>
+</html>

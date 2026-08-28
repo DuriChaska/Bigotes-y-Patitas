@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comunidad - Cotton Candy Clothing Store</title>
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    /* ⭐ estrellas */
+    .rating {
+      margin: 10px 0;
+    }
+
+    .star {
+      font-size: 25px;
+      cursor: pointer;
+      color: #ccc;
+    }
+
+    .star.active {
+      color: #f7c948;
+    }
+
+    .comment-stars {
+      margin-top: 5px;
+      color: #f7c948;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <div class="container">
+    <h1 class="section-title">Comunidad</h1>
+    <p class="section-subtitle">Comparte tu experiencia con la comunidad de Cotton Candy Clothing Store</p>
+
+    <div class="comment-form">
+      <textarea id="commentInput" class="comment-input" placeholder="Escribe tu comentario"></textarea>
+
+      <!-- ⭐ CALIFICACIÓN -->
+      <div class="rating">
+        <span class="star" onclick="calificar(1)">★</span>
+        <span class="star" onclick="calificar(2)">★</span>
+        <span class="star" onclick="calificar(3)">★</span>
+        <span class="star" onclick="calificar(4)">★</span>
+        <span class="star" onclick="calificar(5)">★</span>
+      </div>
+
+      <button class="comment-button" onclick="publicarComentario()">Publicar</button>
+    </div>
+
+    <!-- Comentarios -->
+    <div class="comments-section" id="commentsSection">
+      <div class="comment-box">
+        <div class="comment-author">ANÓNIMO</div>
+        <div class="comment-text">Buena calidad de ropa</div>
+        <div class="comment-stars">⭐⭐⭐⭐⭐</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script>
+    let calificacionSeleccionada = 0;
+
+    function calificar(valor) {
+      calificacionSeleccionada = valor;
+
+      const estrellas = document.querySelectorAll(".star");
+
+      estrellas.forEach((estrella, index) => {
+        if (index < valor) {
+          estrella.classList.add("active");
+        } else {
+          estrella.classList.remove("active");
+        }
+      });
+    }
+
+    function publicarComentario() {
+      const input = document.getElementById("commentInput");
+      const texto = input.value.trim();
+
+      if (!texto) {
+        alert("Por favor, escribe un comentario.");
+        return;
+      }
+
+      if (calificacionSeleccionada === 0) {
+        alert("Selecciona una calificación.");
+        return;
+      }
+
+      const section = document.getElementById("commentsSection");
+
+      const estrellasTexto = "★".repeat(calificacionSeleccionada);
+
+      const box = document.createElement("div");
+      box.classList.add("comment-box");
+      box.innerHTML = `
+        <div class="comment-author">ANÓNIMO</div>
+        <div class="comment-text">${texto}</div>
+        <div class="comment-stars">${estrellasTexto}</div>
+      `;
+
+      section.appendChild(box);
+
+      // Reset
+      input.value = "";
+      calificacionSeleccionada = 0;
+      document.querySelectorAll(".star").forEach(s => s.classList.remove("active"));
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cotton Candy Clothing Store - Checkout</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .hidden { display: none !important; }
+
+    .checkout-container {
+      display: flex;
+      gap: 24px;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+      font-family: sans-serif;
+      align-items: flex-start;
+    }
+
+    .form-column { flex: 2; }
+    .summary-column { flex: 1; position: sticky; top: 20px; }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+
+    .continue-btn {
+      background-color: #b34a8e;
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      float: right;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .continue-btn:hover { background-color: #96387a; }
+
+    .back-link {
+      text-decoration: none;
+      color: #666;
+      font-size: 14px;
+      line-height: 40px;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    .summary-box {
+      background-color: #b34a8e;
+      color: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .summary-box h3 {
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+      padding-bottom: 10px;
+      margin: 0 0 16px;
+      font-size: 16px;
+    }
+
+    .order-products {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 16px;
+    }
+
+    .order-products li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 14px;
+      gap: 8px;
+    }
+
+    .order-products li .item-name { flex: 1; }
+
+    .order-products li .item-qty {
+      font-size: 12px;
+      opacity: 0.8;
+      white-space: nowrap;
+    }
+
+    .order-totals div {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .order-total-final {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.3em;
+      margin-top: 12px;
+      border-top: 1px solid white;
+      padding-top: 10px;
+      font-weight: bold;
+    }
+
+    .empty-cart-msg {
+      background: #f8d7ea;
+      color: #7a1a50;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .payment-methods {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .payment-option {
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .payment-option.active { border-color: #b34a8e; }
+
+    .payment-option-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      cursor: pointer;
+      background: #fdfdfd;
+    }
+
+    .payment-option-header input[type="radio"] { accent-color: #b34a8e; }
+
+    .payment-option-header .method-label {
+      font-weight: bold;
+      font-size: 15px;
+      flex: 1;
+    }
+
+    .payment-option-header img {
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .payment-option-body {
+      padding: 0 16px 16px;
+      background: #fdfdfd;
+      border-top: 1px solid #eee;
+    }
+
+    .card-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .card-icons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .card-icons img { height: 24px; }
+
+    .btn-paypal {
+      background: #003087;
+      color: white;
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .transfer-info {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      color: #333;
+      line-height: 1.7;
+    }
+
+    .transfer-info strong { color: #b34a8e; }
+
+    .transfer-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+    }
+
+    .transfer-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: bold;
+      border: 1px solid #ddd;
+      background: #f0f0f0;
+      color: #666;
+    }
+
+    .transfer-tab:first-child { border-radius: 6px 0 0 6px; }
+    .transfer-tab:last-child { border-radius: 0 6px 6px 0; }
+
+    .transfer-tab.active {
+      background: #b34a8e;
+      color: white;
+      border-color: #b34a8e;
+    }
+
+    .checkout-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    .breadcrumb {
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
+      font-size: 14px;
+    }
+
+    .breadcrumb a {
+      color: #b34a8e;
+      text-decoration: none;
+    }
+
+    .confirm-box {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .confirm-icon {
+      width: 70px;
+      height: 70px;
+      background: #b34a8e;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 36px;
+      color: white;
+    }
+
+    .confirm-box h2 {
+      color: #b34a8e;
+      margin-bottom: 10px;
+    }
+
+    .confirm-box p {
+      color: #555;
+      font-size: 15px;
+    }
+
+    .btn-home {
+      background: #b34a8e;
+      color: white;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 20px;
+      font-size: 15px;
+    }
+
+    .confirm-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .checkout-container { flex-direction: column; }
+      .summary-column { position: static; width: 100%; }
+    }
+
+    @media (max-width: 600px) {
+      .input-group, .card-row, .checkout-nav { flex-direction: column; }
+      .continue-btn, .back-link, .btn-home { width: 100%; text-align: center; }
+      .continue-btn { float: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="checkout-section">
+    <nav class="breadcrumb">
+      <a href="carrito.html">Carrito</a> / <span id="step-title" style="font-weight: bold;">Envío</span>
+    </nav>
+
+    <div class="checkout-container">
+
+      <div class="form-column">
+
+        <div id="step-shipping">
+          <h2>Dirección de Envío</h2>
+
+          <div class="input-group">
+            <input type="text" id="fname" placeholder="Primer Nombre" />
+            <input type="text" id="lname" placeholder="Apellido" />
+          </div>
+
+          <input type="text" id="country" placeholder="País" />
+          <input type="text" id="street" placeholder="Calle" />
+
+          <div class="input-group">
+            <input type="text" id="city" placeholder="Ciudad" />
+            <input type="text" id="state" placeholder="Estado" />
+          </div>
+
+          <div class="input-group">
+            <input type="text" id="zip" placeholder="Código Postal" />
+            <input type="tel" id="phone" placeholder="Celular" />
+          </div>
+
+          <input type="email" id="email" placeholder="Email" />
+          <textarea id="notes" placeholder="Referencias" rows="3"></textarea>
+
+          <div class="checkout-nav">
+            <a href="carrito.html" class="back-link">← REGRESAR AL CARRITO</a>
+            <button class="continue-btn" onclick="validateAndShowPayment()">CONTINUAR A PAGAR →</button>
+          </div>
+        </div>
+
+        <div id="step-payment" class="hidden">
+          <h2>Método de Pago</h2>
+          <p style="font-size:14px; color:#666; margin-bottom:16px;">Selecciona cómo prefieres pagar:</p>
+
+          <div class="payment-methods">
+
+            <div class="payment-option active" id="opt-paypal">
+              <div class="payment-option-header" onclick="selectMethod('paypal')">
+                <input type="radio" name="pay-method" value="paypal" checked />
+                <img src="https://www.paypalobjects.com/webstatic/icon/pp258.png" alt="PayPal" />
+                <span class="method-label">PayPal</span>
+              </div>
+              <div class="payment-option-body" id="body-paypal">
+                <p style="font-size:13px; color:#555; margin:12px 0 8px;">Serás redirigido a PayPal de forma segura.</p>
+                <input type="email" placeholder="Correo de PayPal" />
+                <button class="btn-paypal" onclick="simulateOrder()">PAGAR CON PAYPAL</button>
+              </div>
+            </div>
+
+            <div class="payment-option" id="opt-card">
+              <div class="payment-option-header" onclick="selectMethod('card')">
+                <input type="radio" name="pay-method" value="card" />
+                <div class="card-icons">
+                  <img src="Imagenes/visa-logo-png_seeklogo-149692.png" alt="Visa" />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" />
+                </div>
+                <span class="method-label">Tarjeta de crédito / débito</span>
+              </div>
+              <div class="payment-option-body hidden" id="body-card">
+                <input type="text" placeholder="Número de tarjeta" maxlength="19" oninput="formatCard(this)" />
+                <input type="text" placeholder="Titular de la tarjeta" />
+                <div class="card-row">
+                  <input type="text" placeholder="MM/AA" maxlength="5" oninput="formatExpiry(this)" />
+                  <input type="text" placeholder="CVV" maxlength="4" />
+                </div>
+                <button class="continue-btn" style="width:100%; float:none; margin-top:4px;" onclick="simulateOrder()">PAGAR AHORA</button>
+              </div>
+            </div>
+
+            <div class="payment-option" id="opt-transfer">
+              <div class="payment-option-header" onclick="selectMethod('transfer')">
+                <input type="radio" name="pay-method" value="transfer" />
+                <img src="Imagenes/oxxo-logo-png_seeklogo-104888.png" alt="OXXO" style="height:22px;" />
+                <span class="method-label">OXXO / SPEI</span>
+              </div>
+              <div class="payment-option-body hidden" id="body-transfer">
+                <div class="transfer-tabs">
+                  <div class="transfer-tab active" id="tab-oxxo" onclick="switchTransfer('oxxo')">OXXO</div>
+                  <div class="transfer-tab" id="tab-spei" onclick="switchTransfer('spei')">SPEI</div>
+                </div>
+                <div id="info-oxxo" class="transfer-info">
+                  <p style="font-size:18px; letter-spacing:3px; font-weight:bold; color:#b34a8e; text-align:center;">6394 8521 7043 2210</p>
+                  <p><strong>Monto:</strong> <span class="oxxo-total-val">$0.00</span></p>
+                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="simulateOrder()">CONFIRMAR PEDIDO</button>
+                </div>
+                <div id="info-spei" class="transfer-info hidden">
+                  <p>CLABE: <strong>646180157041234567</strong></p>
+                  <p>Banco: <strong>STP</strong></p>
+                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="simulateOrder()">YA TRANSFERÍ</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="payment-option" id="opt-points">
+              <div class="payment-option-header" onclick="selectMethod('points')">
+                <input type="radio" name="pay-method" value="points" />
+                <span style="font-size: 20px; margin-right: 8px;">✨</span>
+                <span class="method-label">Puntos Cotton Candy</span>
+              </div>
+              <div class="payment-option-body hidden" id="body-points">
+                <div class="transfer-info">
+                  <p>Tienes disponibles: <strong>500 puntos</strong></p>
+                  <p style="font-size: 12px; color: #666;">1 punto = $1.00 MXN. Se descontarán de tu cuenta al confirmar.</p>
+                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="simulateOrder()">PAGAR CON PUNTOS</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="checkout-nav">
+            <button class="back-link" onclick="showShipping()">← Volver a dirección de envío</button>
+          </div>
+        </div>
+
+        <div id="step-confirm" class="hidden">
+          <div class="confirm-box">
+            <div class="confirm-icon">✓</div>
+            <h2>¡Pedido realizado!</h2>
+            <p>Gracias por tu compra. Recibirás un correo de confirmación pronto.</p>
+            <p style="color:#b34a8e; font-weight:bold; margin-top:10px;" id="confirm-order-num"></p>
+            <div class="confirm-actions">
+              <button class="btn-home" onclick="window.location.href='factura.html'">VER FACTURA</button>
+              <button class="btn-home" onclick="window.location.href='index.html'">VOLVER AL INICIO</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <aside class="summary-column">
+        <div class="summary-box">
+          <h3>Tu Pedido</h3>
+          <div id="cart-empty-msg" class="empty-cart-msg hidden">Tu carrito está vacío.</div>
+          <ul class="order-products" id="order-products"></ul>
+          <hr style="border:0; border-top:1px solid rgba(255,255,255,0.3); margin-bottom:12px;">
+          <div class="order-totals" id="order-totals">
+            <div><strong>Subtotal</strong><span id="summary-subtotal">$0.00</span></div>
+            <div id="summary-discount-row" class="hidden"><strong>Descuento</strong><span id="summary-discount">-$0.00</span></div>
+            <div><strong>Envío</strong><span id="summary-shipping">$120.00</span></div>
+            <div id="summary-coupon-row" class="hidden"><strong>Cupón</strong><span id="summary-coupon">-</span></div>
+          </div>
+          <div class="order-total-final">
+            <span>Total</span><span id="summary-total">$0.00</span>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </section>
+
+  <script>
+    const ENVIO = 120;
+
+    function obtenerCarrito() {
+      return JSON.parse(localStorage.getItem("carrito") || "[]");
+    }
+
+    function obtenerCupon() {
+      return JSON.parse(localStorage.getItem("cuponAplicado") || "null");
+    }
+
+    function formatearMoneda(valor) {
+      return `$${Number(valor).toFixed(2)}`;
+    }
+
+    function obtenerCantidadTotal(carrito) {
+      return carrito.reduce((total, item) => total + Number(item.cantidad), 0);
+    }
+
+    function obtenerItemsUnitarios(carrito) {
+      const items = [];
+
+      carrito.forEach(item => {
+        for (let i = 0; i < Number(item.cantidad); i++) {
+          items.push({
+            nombre: item.nombre,
+            precio: Number(item.precio)
+          });
+        }
+      });
+
+      return items;
+    }
+
+    function calcularDescuento(carrito, subtotal, cupon) {
+      let descuento = 0;
+      let envio = ENVIO;
+      let descripcion = "";
+
+      if (!cupon) {
+        return { descuento, envio, descripcion };
+      }
+
+      switch (cupon.tipo) {
+        case "porcentaje":
+          descuento = subtotal * (Number(cupon.valor) / 100);
+          descripcion = `${cupon.codigo} (${cupon.valor}% de descuento)`;
+          break;
+
+        case "tercera_prenda":
+          const cantidadTotal = obtenerCantidadTotal(carrito);
+
+          if (cantidadTotal >= 3) {
+            const itemsUnitarios = obtenerItemsUnitarios(carrito);
+            const terceraPrenda = itemsUnitarios[2];
+
+            if (terceraPrenda) {
+              descuento = terceraPrenda.precio * (Number(cupon.valor) / 100);
+              descripcion = `${cupon.codigo} (${cupon.valor}% en la tercera prenda)`;
+            }
+          } else {
+            descripcion = `${cupon.codigo} requiere al menos 3 prendas`;
+          }
+          break;
+
+        case "envio_gratis":
+          if (subtotal >= 2000) {
+            envio = 0;
+            descripcion = `${cupon.codigo} (envío gratis aplicado)`;
+          } else {
+            envio = ENVIO;
+            descripcion = `${cupon.codigo} requiere compra mínima de $2000.00`;
+          }
+          break;
+      }
+
+      return { descuento, envio, descripcion };
+    }
+
+    function obtenerResumenCompra() {
+      const carrito = obtenerCarrito();
+      const cupon = obtenerCupon();
+
+      let subtotal = 0;
+
+      carrito.forEach(item => {
+        subtotal += Number(item.precio) * Number(item.cantidad);
+      });
+
+      const resultado = calcularDescuento(carrito, subtotal, cupon);
+      const total = Math.max(0, subtotal - resultado.descuento + resultado.envio);
+
+      return {
+        carrito,
+        cupon,
+        subtotal,
+        descuento: resultado.descuento,
+        envio: resultado.envio,
+        descripcionCupon: resultado.descripcion,
+        total
+      };
+    }
+
+    function renderSummary() {
+  const resumen = obtenerResumenCompra();
+  const ul = document.getElementById("order-products");
+  ul.innerHTML = "";
+
+  // Usamos el objeto resumen de Rama-Andy que ya trae todo calculado
+  if (!resumen || resumen.carrito.length === 0) {
+    document.getElementById("cart-empty-msg").classList.remove("hidden");
+    document.getElementById("order-totals").style.visibility = "hidden";
+    document.querySelector(".order-total-final").style.visibility = "hidden";
+    return;
+  }
+
+  // Mostramos los contenedores de totales
+  document.getElementById("cart-empty-msg").classList.add("hidden");
+  document.getElementById("order-totals").style.visibility = "visible";
+  document.querySelector(".order-total-final").style.visibility = "visible";
+
+  // Dibujamos los productos
+  resumen.carrito.forEach(item => {
+    const itemSub = Number(item.precio) * Number(item.cantidad);
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="item-name">${item.nombre}</span>
+      <span class="item-qty">x${item.cantidad}</span>
+      <span>${formatearMoneda(itemSub)}</span>
+    `;
+    ul.appendChild(li);
+  });
+
+  // Actualizamos los valores numéricos en la interfaz
+  document.getElementById("summary-subtotal").textContent = formatearMoneda(resumen.subtotal);
+  document.getElementById("summary-total").textContent = formatearMoneda(resumen.total);
+  
+  // Verificamos si existe el ID de envío (evita errores si no existe en el HTML)
+  const shippingEl = document.getElementById("summary-shipping");
+  if (shippingEl) shippingEl.textContent = formatearMoneda(resumen.envio);
+
+  // Actualizamos los totales para OXXO/SPEI (Usando la lógica de ambas ramas)
+  const totalStr = formatearMoneda(resumen.total);
+  if (document.getElementById("oxxo-total")) document.getElementById("oxxo-total").textContent = totalStr;
+  if (document.getElementById("spei-total")) document.getElementById("spei-total").textContent = totalStr;
+  
+  // Lógica de Kim: por si usas clases en lugar de IDs únicos
+  document.querySelectorAll(".oxxo-total-val").forEach(el => el.textContent = totalStr);
+
+  // --- Lógica de Descuentos y Cupones (Rama-Andy) ---
+  const discountRow = document.getElementById("summary-discount-row");
+  const couponRow = document.getElementById("summary-coupon-row");
+
+  if (discountRow) {
+    if (resumen.descuento > 0) {
+      discountRow.classList.remove("hidden");
+      document.getElementById("summary-discount").textContent = `-${formatearMoneda(resumen.descuento)}`;
+    } else {
+      discountRow.classList.add("hidden");
+    }
+  }
+
+  if (couponRow) {
+    if (resumen.cupon) {
+      couponRow.classList.remove("hidden");
+      document.getElementById("summary-coupon").textContent = resumen.descripcionCupon || resumen.cupon.codigo;
+    } else {
+      couponRow.classList.add("hidden");
+    }
+  }
+}
+    // SIN VALIDACIONES: Pasa directo al pago
+    function validateAndShowPayment() {
+      const carrito = obtenerCarrito();
+      if (carrito.length === 0) {
+        alert("Tu carrito está vacío.");
+        return;
+      }
+      showPayment();
+    }
+
+    function showPayment() {
+      renderSummary();
+      document.getElementById('step-shipping').classList.add('hidden');
+      document.getElementById('step-payment').classList.remove('hidden');
+      document.getElementById('step-title').innerText = "Pago";
+      window.scrollTo(0, 0);
+    }
+
+    function showShipping() {
+      document.getElementById('step-payment').classList.add('hidden');
+      document.getElementById('step-shipping').classList.remove('hidden');
+      document.getElementById('step-title').innerText = "Envío";
+      window.scrollTo(0, 0);
+    }
+
+    function selectMethod(method) {
+      const methods = ['paypal', 'card', 'transfer', 'points'];
+      methods.forEach(m => {
+        const opt = document.getElementById(`opt-${m}`);
+        const body = document.getElementById(`body-${m}`);
+        const radio = opt.querySelector('input[type="radio"]');
+        if (m === method) {
+          opt.classList.add('active');
+          body.classList.remove('hidden');
+          radio.checked = true;
+        } else {
+          opt.classList.remove('active');
+          body.classList.add('hidden');
+          radio.checked = false;
+        }
+      });
+    }
+
+    function switchTransfer(type) {
+      ['oxxo', 'spei'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('active', t === type);
+        document.getElementById(`info-${t}`).classList.toggle('hidden', t !== type);
+      });
+    }
+
+    function formatCard(input) {
+      let v = input.value.replace(/\D/g, '').substring(0, 16);
+      input.value = v.replace(/(.{4})/g, '$1 ').trim();
+    }
+
+    function formatExpiry(input) {
+      let v = input.value.replace(/\D/g, '').substring(0, 4);
+      if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2);
+      input.value = v;
+    }
+
+    function simulateOrder() {
+  // 1. Obtener datos base (Combinando lógica de Andy para cupones)
+  const resumen = obtenerResumenCompra(); 
+  const orderNum = 'CC-' + Math.floor(10000 + Math.random() * 90000);
+  const facturaNum = 'FAC-' + Math.floor(10000 + Math.random() * 90000);
+  const hoy = new Date().toISOString().split('T')[0]; // Formato estándar YYYY-MM-DD
+  
+  // Capturar método de pago (Lógica de Kim)
+  const metodoInput = document.querySelector('input[name="pay-method"]:checked');
+  const metodoSeleccionado = metodoInput ? metodoInput.value : "No especificado";
+
+  // 2. Crear objeto de la compra (Completo con descuentos de Andy)
+  const compraRealizada = {
+    pedido: orderNum,
+    factura: facturaNum,
+    fecha: hoy,
+    cliente: document.getElementById("fname").value.trim() || "Andrea Guadalupe",
+    productos: resumen.carrito,
+    subtotal: resumen.subtotal,
+    descuento: resumen.descuento,
+    cupon: resumen.cupon ? resumen.cupon.codigo : null,
+    descripcionCupon: resumen.descripcionCupon,
+    envio: resumen.envio,
+    total: resumen.total,
+    metodo: metodoSeleccionado
+  };
+
+  // 3. Guardar para la factura inmediata
+  localStorage.setItem("ultimaCompra", JSON.stringify(compraRealizada));
+
+  // 4. AGREGAR AL HISTORIAL DEL PERFIL (Lógica de Kim - Vital para el Perfil)
+  const historial = JSON.parse(localStorage.getItem("misCompras") || "[]");
+  historial.unshift({ 
+    id: orderNum,
+    nombre: resumen.carrito.length > 1 ? `${resumen.carrito[0].nombre} y más...` : resumen.carrito[0].nombre,
+    talla: resumen.carrito[0].talla || "M",
+    color: resumen.carrito[0].color || "Varios",
+    precio: resumen.total,
+    fecha: hoy,
+    estado: "proceso",
+    emoji: "🛍️",
+    detalleCompleto: compraRealizada // Esto permite ver el ticket después
+  });
+  localStorage.setItem("misCompras", JSON.stringify(historial));
+
+  // 5. Limpiar datos temporales
+  localStorage.removeItem("carrito");
+  localStorage.removeItem("cuponAplicado");
+
+  // 6. Interfaz de Confirmación (Combinado)
+  const stepPayment = document.getElementById('step-payment');
+  const stepShipping = document.getElementById('step-shipping');
+  const stepConfirm = document.getElementById('step-confirm');
+  const stepTitle = document.getElementById('step-title');
+
+  if (stepPayment) stepPayment.classList.add('hidden');
+  if (stepShipping) stepShipping.classList.add('hidden');
+  if (stepConfirm) stepConfirm.classList.remove('hidden');
+  if (stepTitle) stepTitle.innerText = "Confirmación";
+  
+  document.getElementById('confirm-order-num').textContent = `Número de pedido: ${orderNum}`;
+  
+  window.scrollTo(0, 0);
+  
+  // Actualizar el badge del carrito si la función existe
+  if (typeof actualizarBadgeCarrito === 'function') {
+    actualizarBadgeCarrito();
+  }
+}
+
+// Inicialización al cargar la página
+window.onload = function() {
+  if (typeof renderSummary === 'function') renderSummary();
+  if (typeof generateOrderRef === 'function') generateOrderRef();
+};
+  </script>
+</body>
+</html>

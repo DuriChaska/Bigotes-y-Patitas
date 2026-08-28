@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subasta - Cotton Candy Clothing Store</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .auction-box {
+      background: #fff;
+      border-radius: 15px;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .profile-pic {
+      width: 100%;
+      height: auto; 
+      object-fit: contain; 
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+
+    .timer {
+      font-size: 18px;
+      font-weight: bold;
+      color: #e74c3c;
+      margin: 10px 0;
+    }
+
+    .offer-input {
+      width: 80%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+
+    .offer-button {
+      background-color: #f7c948;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .offer-button:hover {
+      background-color: #f4b400;
+    }
+
+    .offer-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .offers-list {
+      margin-top: 20px;
+      text-align: left;
+    }
+
+    .offer-item {
+      background: #f3e8ff;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+
+    .rating {
+      margin-top: 10px;
+    }
+
+    .star {
+      font-size: 28px;
+      cursor: pointer;
+      color: #ccc;
+      user-select: none;
+    }
+
+    .star.active {
+      color: #f7c948;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <div class="container">
+    <h1 class="section-title">Subasta</h1>
+    <p class="section-subtitle">Participa en nuestra subasta exclusiva</p>
+
+    <div class="auction-box">
+      <img src="Imagenes/sudaderajk.png" alt="Producto de subasta" class="profile-pic" id="imagenSubasta" />
+
+      <h2 id="tituloSubasta">Sudadera edición limitada</h2>
+      <p>Precio actual: <strong id="precioActual">$250 MXN</strong></p>
+
+      <div class="timer" id="timer">Tiempo restante: 00:10:00</div>
+
+      <input type="number" id="offerInput" class="offer-input" placeholder="Ingresa tu oferta" />
+      <br />
+      <button class="offer-button" id="offerBtn" onclick="hacerOferta()">Ofertar</button>
+
+      <p id="mensajeOferta" style="margin-top:10px; font-weight:bold;"></p>
+
+      <div class="rating">
+        <p>Califica esta subasta:</p>
+        <span class="star" onclick="calificar(1)">★</span>
+        <span class="star" onclick="calificar(2)">★</span>
+        <span class="star" onclick="calificar(3)">★</span>
+        <span class="star" onclick="calificar(4)">★</span>
+        <span class="star" onclick="calificar(5)">★</span>
+        <p id="ratingMessage"></p>
+      </div>
+
+      <div class="offers-list" id="offersList">
+        <h3>Ofertas recientes</h3>
+        <div class="offer-item">Usuario1: $200</div>
+        <div class="offer-item">Usuario2: $220</div>
+        <div class="offer-item">Usuario3: $250</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script>
+    let tiempoRestante = 600;
+
+    // 🔥 Arreglo con ofertas existentes
+    let ofertasRealizadas = [200, 220, 250];
+
+    window.onload = function () {
+      const nombre = localStorage.getItem("nombreSubasta");
+      const precio = localStorage.getItem("precioSubasta");
+      const imagen = localStorage.getItem("imagenSubasta");
+      const tiempo = localStorage.getItem("tiempoSubasta");
+
+      if (nombre) {
+        document.getElementById("tituloSubasta").textContent = nombre;
+      }
+
+      if (precio) {
+        document.getElementById("precioActual").textContent = "$" + precio + " MXN";
+      }
+
+      if (imagen) {
+        document.getElementById("imagenSubasta").src = imagen;
+      }
+
+      if (tiempo) {
+        tiempoRestante = parseInt(tiempo);
+      }
+
+      actualizarTimer();
+    };
+
+    function actualizarTimer() {
+      const timer = document.getElementById("timer");
+      const btn = document.getElementById("offerBtn");
+
+      let minutos = Math.floor(tiempoRestante / 60);
+      let segundos = tiempoRestante % 60;
+
+      minutos = minutos < 10 ? "0" + minutos : minutos;
+      segundos = segundos < 10 ? "0" + segundos : segundos;
+
+      timer.textContent = `Tiempo restante: ${minutos}:${segundos}`;
+
+      if (tiempoRestante <= 0) {
+        clearInterval(intervalo);
+        timer.textContent = "Subasta finalizada";
+        btn.disabled = true;
+        return;
+      }
+
+      tiempoRestante--;
+    }
+
+    const intervalo = setInterval(actualizarTimer, 1000);
+
+    function hacerOferta() {
+      const input = document.getElementById("offerInput");
+      const valor = parseFloat(input.value);
+      const mensaje = document.getElementById("mensajeOferta");
+      const lista = document.getElementById("offersList");
+      const precioActualElemento = document.getElementById("precioActual");
+
+      const precioTexto = precioActualElemento.textContent.replace("$", "").replace(" MXN", "").trim();
+      const precioActual = parseFloat(precioTexto);
+
+      // Validar si es mayor al precio actual
+      if (!valor || valor <= precioActual) {
+        alert("Ingresa una oferta mayor al precio actual.");
+        return;
+      }
+
+      // 🚫 Validar duplicados
+      if (ofertasRealizadas.includes(valor)) {
+        alert("Esa cantidad ya fue ofertada. Ingresa un valor diferente.");
+        return;
+      }
+
+      // Guardar oferta
+      ofertasRealizadas.push(valor);
+
+      // Actualizar precio
+      precioActualElemento.textContent = "$" + valor + " MXN";
+      mensaje.textContent = "Oferta registrada correctamente";
+
+      // Agregar a la lista
+      const nuevaOferta = document.createElement("div");
+      nuevaOferta.classList.add("offer-item");
+      nuevaOferta.textContent = "Tú: $" + valor;
+
+      lista.appendChild(nuevaOferta);
+
+      input.value = "";
+    }
+
+    function calificar(valor) {
+      const estrellas = document.querySelectorAll(".star");
+      const mensaje = document.getElementById("ratingMessage");
+
+      estrellas.forEach((estrella, index) => {
+        if (index < valor) {
+          estrella.classList.add("active");
+        } else {
+          estrella.classList.remove("active");
+        }
+      });
+
+      mensaje.textContent = "Calificaste con " + valor + " estrella(s)";
+    }
+  </script>
+
+</body>
+</html>

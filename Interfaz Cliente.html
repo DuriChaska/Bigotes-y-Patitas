@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cotton Candy Clothing Store - Interfaz Cliente</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="client-interface">
+    <h2>Agregar Dirección</h2>
+    <form class="address-form">
+      <div class="input-group">
+        <input type="text" placeholder="Nombre" />
+        <input type="text" placeholder="Apellidos" />
+      </div>
+      <div class="input-group">
+        <select required>
+          <option value="" disabled selected>País</option>
+          <option value="Mexico">México</option>
+        </select>
+      </div>
+      <input type="text" placeholder="Colonia" />
+      <input type="text" placeholder="Calle y número" />
+      <div class="input-group">
+        <input type="text" placeholder="Estado" />
+        <select required>
+          <option value="" disabled selected>Municipio</option>
+          <option value="Aguascalientes">Aguascalientes</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <input type="text" placeholder="Código Postal" />
+        <input type="tel" placeholder="Teléfono" />
+      </div>
+      <textarea placeholder="Descripción de la ubicación..."></textarea>
+      <button type="submit">AGREGAR</button>
+    </form>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+</body>
+</html>

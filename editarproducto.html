@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Productos - Cotton Candy Clothing Store</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <div class="container" style="padding-top: 64px;">
+
+    <aside class="sidebar">
+      <ul>
+        <li><a href="editarproducto.html">Productos</a></li>
+        <li><a href="pedidos.html">Pedidos</a></li>
+        <li><a href="promociones.html">Promociones</a></li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <div style="text-align:right; margin-bottom:20px;">
+        <a href="Interfaz Vendedor.html" class="btn-agregar">Agregar Producto</a>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Fotografía</th>
+            <th>Descripción</th>
+            <th>Precio</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="productos-lista"></tbody>
+      </table>
+    </main>
+
+  </div>
+
+  <script src="components.js"></script>
+  <script>
+    const productos = [
+      { id: "blusa-amarilla-cruzada",  nombre: "Blusa amarilla cruzada (manga larga)",  precio: "$399 MXN", imagen: "Imagenes/PLAYERA ESTAMPADA TRAVIS SCOTT.png" },
+      { id: "top-vino-acampanado",     nombre: "Top vino manga larga acampanada",        precio: "$389 MXN", imagen: "Imagenes/SUDADERA ESTAMPADA.png" },
+      { id: "top-rojo-tirantes",       nombre: "Top rojo con tirantes",                  precio: "$299 MXN", imagen: "Imagenes/Playera estampada jesus.png" },
+      { id: "top-rosa-mono",           nombre: "Top rosa con moño",                      precio: "$249 MXN", imagen: "Imagenes/Playera estampada con flores.png" },
+      { id: "top-rosa-strapless",      nombre: "Top rosa strapless",                     precio: "$269 MXN", imagen: "Imagenes/Playera de bruja feminista.png" },
+      { id: "top-amarillo-tirantes",   nombre: "Top amarillo con tirantes finos",        precio: "$289 MXN", imagen: "Imagenes/Playera Return of Misfits.png" },
+      { id: "top-rosa-manga-larga",    nombre: "Top rosa manga larga",                   precio: "$319 MXN", imagen: "Imagenes/Playera de manga corta para hombre.png" },
+      { id: "top-halter-brillante",    nombre: "Top brillante cuello halter",            precio: "$349 MXN", imagen: "Imagenes/Playera Estampada Gatos.png" },
+      { id: "blusa-blanca-vuelo",      nombre: "Blusa blanca con tirantes y vuelo",      precio: "$379 MXN", imagen: "Imagenes/playera estampada persona.png" }
+    ];
+
+    const lista = document.getElementById("productos-lista");
+
+    productos.forEach(p => {
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td><img src="${p.imagen}" alt="${p.nombre}" style="width:80px; border-radius:4px;"></td>
+        <td>${p.nombre}</td>
+        <td>${p.precio}</td>
+        <td>
+          <div class="action-buttons">
+            <a href="Interfaz-Editar.html" class="btn-editar">Editar</a>
+            <button class="btn-eliminar" onclick="this.closest('tr').remove()">×</button>
+          </div>
+        </td>
+      `;
+      lista.appendChild(fila);
+    });
+  </script>
+</body>
+</html>
