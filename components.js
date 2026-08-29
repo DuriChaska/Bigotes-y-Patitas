@@ -1,5 +1,6 @@
 // ============================================
-//  Cotton Candy Clothing Store - components.js
+//  Estampa-tla Pets - components.js
+//  Ropa y accesorios para perritos y gatitos
 //  Inyecta el header y footer en todas las páginas
 // ============================================
 
@@ -13,7 +14,7 @@ const navLinks = [
   { href: 'about.html', label: 'Nosotros' },
   { href: 'contact.html', label: 'Contacto' },
   { href: 'promos.html', label: 'Promos' },
-  { href: 'comunidad.html', label: 'Comunidad' },
+  { href: 'comunidad.html', label: 'Comunidad Peluda' },
   { href: 'login.html', label: 'Iniciar sesión' },
 ];
 
@@ -32,9 +33,9 @@ document.getElementById('header').innerHTML = `
   <header>
     <div class="logo">
       <div class="logo-icon">
-        <img src="Imagenes/Logo estampa-tla 1.png" alt="Logo Cotton Candy" />
+        <img src="Imagenes/Mascotas/logo-huella.svg" alt="Logo Estampa-tla Pets" />
       </div>
-      <span>Cotton Candy Clothing Store</span>
+      <span>Estampa-tla Pets</span>
     </div>
     <nav>
       <ul>${navHTML}</ul>
@@ -55,8 +56,8 @@ document.getElementById('header').innerHTML = `
 document.getElementById('footer').innerHTML = `
   <footer>
     <div class="left">
-      <p><strong>Cotton Candy Clothing Store</strong></p>
-      <p>¿Te gustaría colaborar con nosotros?</p>
+      <p><strong>Estampa-tla Pets</strong></p>
+      <p>Ropa y accesorios hechos con cariño para perritos y gatitos. ¿Te gustaría colaborar con nosotros?</p>
       <button type="button">ÚNETE →</button>
     </div>
     <div class="center">
@@ -88,8 +89,8 @@ document.getElementById('footer').innerHTML = `
       <p><strong>Teléfono:</strong><br />(449) 3116529</p>
     </div>
     <div class="bottom-text">
-      Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.
-      <br>Copyright © 2026 Cotton Candy Clothing Store | All Rights Reserved | Terms and Conditions | Privacy Policy
+      Estampa-tla Pets: diseños pensados para el bienestar y comodidad de tu mascota.
+      <br>Copyright © 2026 Estampa-tla Pets | Todos los derechos reservados | Términos y Condiciones | Aviso de Privacidad
     </div>
   </footer>
 `;
