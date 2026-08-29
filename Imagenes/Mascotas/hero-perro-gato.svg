@@ -1,0 +1,52 @@
+<svg viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="640" fill="#f6e4c9"/>
+  <circle cx="320" cy="300" r="220" fill="#eaf3e6"/>
+
+  <!-- suelo -->
+  <ellipse cx="320" cy="560" rx="260" ry="30" fill="#e0d3b0" opacity="0.6"/>
+
+  <!-- PERRO (izquierda) -->
+  <g transform="translate(120,230)">
+    <ellipse cx="90" cy="230" rx="80" ry="30" fill="#00000012"/>
+    <!-- cuerpo con sueter -->
+    <path d="M20 150 Q90 110 160 150 L165 260 Q90 300 15 260 Z" fill="#d97b4f"/>
+    <rect x="15" y="150" width="150" height="18" fill="#b8603a"/>
+    <!-- patas -->
+    <rect x="35" y="250" width="22" height="45" rx="10" fill="#c9a97e"/>
+    <rect x="125" y="250" width="22" height="45" rx="10" fill="#c9a97e"/>
+    <!-- cabeza -->
+    <circle cx="92" cy="110" r="65" fill="#e3c299"/>
+    <ellipse cx="45" cy="80" rx="20" ry="35" fill="#c9a97e" transform="rotate(-20 45 80)"/>
+    <ellipse cx="140" cy="80" rx="20" ry="35" fill="#c9a97e" transform="rotate(20 140 80)"/>
+    <circle cx="70" cy="105" r="7" fill="#4a3826"/>
+    <circle cx="114" cy="105" r="7" fill="#4a3826"/>
+    <ellipse cx="92" cy="128" rx="12" ry="9" fill="#4a3826"/>
+    <path d="M80 140 Q92 150 104 140" stroke="#4a3826" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <!-- pañuelo -->
+    <path d="M55 155 L92 178 L129 155" stroke="#6b8f71" stroke-width="16" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- GATO (derecha) -->
+  <g transform="translate(360,250)">
+    <ellipse cx="80" cy="210" rx="75" ry="28" fill="#00000012"/>
+    <!-- cuerpo con bandana -->
+    <path d="M15 140 Q80 105 145 140 L150 240 Q80 275 10 240 Z" fill="#6b8f71"/>
+    <!-- patas -->
+    <rect x="28" y="230" width="20" height="40" rx="10" fill="#efe0c0"/>
+    <rect x="112" y="230" width="20" height="40" rx="10" fill="#efe0c0"/>
+    <!-- cola -->
+    <path d="M145 220 Q195 200 180 140" stroke="#efe0c0" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <!-- cabeza -->
+    <circle cx="80" cy="100" r="58" fill="#efe0c0"/>
+    <path d="M30 70 L45 20 L70 65 Z" fill="#efe0c0"/>
+    <path d="M130 70 L115 20 L90 65 Z" fill="#efe0c0"/>
+    <path d="M38 68 L48 38 L62 63 Z" fill="#d97b4f"/>
+    <path d="M122 68 L112 38 L98 63 Z" fill="#d97b4f"/>
+    <circle cx="60" cy="98" r="6" fill="#4a3826"/>
+    <circle cx="100" cy="98" r="6" fill="#4a3826"/>
+    <path d="M75 112 L85 112 L80 120 Z" fill="#d97b4f"/>
+    <path d="M55 100 L35 96 M55 106 L33 108 M105 100 L125 96 M105 106 L127 108" stroke="#4a3826" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- bandana -->
+    <path d="M40 138 L80 158 L120 138" stroke="#f2c14e" stroke-width="14" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
