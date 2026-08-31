@@ -9,17 +9,17 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --pink-header: #ffc2cb;
-  --pink-footer: #d06794;
-  --pink-medio:  #b3488f;
-  --pink-fuerte: #b62694;
-  --purple-card: #e8d9f9;
-  --yellow:      #f5d35e;
-  --yellow-dk:   #e2c34a;
-  --bg:          #f3f3f3;
+  --pink-header: #f6e4c9;
+  --pink-footer: #6b8f71;
+  --pink-medio:  #d97b4f;
+  --pink-fuerte: #b8603a;
+  --purple-card: #eaf3e6;
+  --yellow:      #f2c14e;
+  --yellow-dk:   #dba93a;
+  --bg:          #fdf8f0;
   --white:       #ffffff;
-  --text:        #333333;
-  --gray:        #888888;
+  --text:        #4a3826;
+  --gray:        #8a7d6b;
 }
 
 body {
@@ -115,7 +115,7 @@ header .icons button:hover { color: var(--pink-medio); }
 .hero .left button:hover { background: #e2d8d1; }
 .hero .right {
   flex: 1.5;
-  background: url('https://images.unsplash.com/photo-1562157871-d908d4b7fda0?auto=format&fit=crop&w=800&q=80') center/cover no-repeat;
+  background: url('Imagenes/Mascotas/hero-perro-gato.svg') center/cover no-repeat;
 }
 
 @keyframes fadeUp {
@@ -203,7 +203,7 @@ header .icons button:hover { color: var(--pink-medio); }
 .promo-text a { margin-top: 15px; font-weight: 700; text-decoration: underline; color: #333; }
 .promo-images {
   flex: 1; display: flex; gap: 15px; padding: 20px;
-  justify-content: center; align-items: center; background-color: #b2d1dc;
+  justify-content: center; align-items: center; background-color: var(--purple-card);
 }
 .promo-images img { width: 100px; height: 140px; object-fit: cover; }
 
