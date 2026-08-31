@@ -65,15 +65,15 @@ document.getElementById('footer').innerHTML = `
       <ul>
         <li>
           <img src="Imagenes/Iconos/Facebook.png" alt="Facebook" class="icon" />
-          <a href="#">Facebook</a>
+          <a href="https://es-la.facebook.com/">Facebook</a>
         </li>
         <li>
           <img src="Imagenes/Iconos/Twitter.png" alt="Twitter" class="icon" />
-          <a href="#">Twitter</a>
+          <a href="https://x.com/">Twitter</a>
         </li>
         <li>
           <img src="Imagenes/Iconos/Instagram.png" alt="Instagram" class="icon" />
-          <a href="#">Instagram</a>
+          <a href="https://www.instagram.com/">Instagram</a>
         </li>
         <li>
           <img src="Imagenes/Iconos/Shopping cart.png" alt="Subastas" class="icon" />
@@ -91,6 +91,8 @@ document.getElementById('footer').innerHTML = `
     <div class="bottom-text">
       Estampa-tla Pets: diseños pensados para el bienestar y comodidad de tu mascota.
       <br>Copyright © 2026 Estampa-tla Pets | Todos los derechos reservados | Términos y Condiciones | Aviso de Privacidad
+      Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.
+      <br>Copyright © 2026 Bigotes y Patitas | All Rights Reserved | Terms and Conditions | Privacy Policy
     </div>
   </footer>
 `;
