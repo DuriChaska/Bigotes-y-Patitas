@@ -9,7 +9,7 @@ const productos = [
     precio: 399,
     precioFormatted: "$399 MXN",
     descripcion: "Blusa cruzada de manga larga con diseño fruncido al frente. Ideal para looks frescos y femeninos.",
-    imagen: "Imagenes/PLAYERA ESTAMPADA TRAVIS SCOTT.png"
+    
   },
   {
     id: "top-vino-acampanado",
@@ -17,7 +17,7 @@ const productos = [
     precio: 389,
     precioFormatted: "$389 MXN",
     descripcion: "Top ajustado en tono vino con mangas acampanadas, elegante y moderno.",
-    imagen: "Imagenes/SUDADERA ESTAMPADA.png"
+    
   },
   {
     id: "top-rojo-tirantes",
@@ -25,7 +25,7 @@ const productos = [
     precio: 299,
     precioFormatted: "$299 MXN",
     descripcion: "Top de tirantes con textura acanalada y diseño ajustado.",
-    imagen: "Imagenes/Playera estampada jesus.png"
+   
   },
   {
     id: "top-rosa-mono",
@@ -33,7 +33,7 @@ const productos = [
     precio: 249,
     precioFormatted: "$249 MXN",
     descripcion: "Top corto en tono rosa pastel con detalle de moño al frente.",
-    imagen: "Imagenes/Playera estampada con flores.png"
+  
   },
   {
     id: "top-rosa-strapless",
@@ -41,7 +41,7 @@ const productos = [
     precio: 269,
     precioFormatted: "$269 MXN",
     descripcion: "Top strapless con ajuste cómodo, ideal para climas cálidos.",
-    imagen: "Imagenes/Playera de bruja feminista.png"
+    
   },
   {
     id: "top-amarillo-tirantes",
@@ -49,7 +49,7 @@ const productos = [
     precio: 289,
     precioFormatted: "$289 MXN",
     descripcion: "Top ligero con tirantes delgados y diseño fruncido.",
-    imagen: "Imagenes/Playera Return of Misfits.png"
+    
   },
   {
     id: "top-rosa-manga-larga",
@@ -57,7 +57,7 @@ const productos = [
     precio: 319,
     precioFormatted: "$319 MXN",
     descripcion: "Top de manga larga en tono rosa suave.",
-    imagen: "Imagenes/Playera de manga corta para hombre.png"
+
   },
   {
     id: "top-halter-brillante",
@@ -65,7 +65,7 @@ const productos = [
     precio: 349,
     precioFormatted: "$349 MXN",
     descripcion: "Top con acabado brillante y cuello halter.",
-    imagen: "Imagenes/Playera Estampada Gatos.png"
+    
   },
   {
     id: "blusa-blanca-vuelo",
@@ -73,7 +73,7 @@ const productos = [
     precio: 379,
     precioFormatted: "$379 MXN",
     descripcion: "Blusa blanca con diseño romántico y fresco.",
-    imagen: "Imagenes/playera estampada persona.png"
+    
   }
 ];
 
