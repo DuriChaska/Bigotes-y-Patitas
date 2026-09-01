@@ -3,48 +3,142 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin - Cotton Candy Clothing Store</title>
+  <title>Dashboard Admin - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <div id="header"></div>
+  <div class="admin-shell">
 
-  <div class="container" style="padding-top: 64px;">
-
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <ul>
-        <li><a href="editarproducto.html">Productos</a></li>
-        <li><a href="pedidos.html">Pedidos</a></li>
-        <li><a href="promociones.html">Promociones</a></li>
-      </ul>
-    </aside>
+    <!-- Sidebar (inyectado por admin-components.js) -->
+    <div id="admin-sidebar"></div>
 
     <!-- Contenido principal -->
-    <main class="main-content">
-      <div class="dashboard-info">
-        <div class="info-box purple">
-          <h3>Productos</h3>
-          <p>5</p>
-        </div>
-        <div class="info-box blue">
-          <h3>Pedidos</h3>
-          <p>10</p>
-        </div>
-      </div>
-      <div class="add-product">
-        <a href="Interfaz Vendedor.html">
-          <button type="button">Agregar Producto</button>
-        </a>
-        <a href="editarproducto.html">
-          <button type="button">Editar Producto</button>
-        </a>
-      </div>
-    </main>
+    <main class="admin-main">
 
+      <div class="admin-topbar">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="admin-breadcrumb">Panel de administración · Resumen general</p>
+        </div>
+        <div class="admin-topbar-right">
+          <div class="admin-search">
+            <span>🔍</span>
+            <input type="text" placeholder="Buscar producto o pedido..." />
+          </div>
+          <div class="admin-profile-chip">
+            <div class="avatar">AD</div>
+            <span>Admin</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjetas de estadísticas -->
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <div class="admin-stat-icon green">🛍️</div>
+          </div>
+          <div class="stat-num">5</div>
+          <div class="stat-label">Productos publicados</div>
+          <div class="stat-delta up">Todos activos</div>
+        </div>
+
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <div class="admin-stat-icon blue">📦</div>
+          </div>
+          <div class="stat-num">10</div>
+          <div class="stat-label">Pedidos totales</div>
+          <div class="stat-delta up">+4 esta semana</div>
+        </div>
+
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <div class="admin-stat-icon yellow">🏷️</div>
+          </div>
+          <div class="stat-num">3</div>
+          <div class="stat-label">Promociones activas</div>
+          <div class="stat-delta up">1 por vencer pronto</div>
+        </div>
+
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <div class="admin-stat-icon orange">💰</div>
+          </div>
+          <div class="stat-num">$2,100</div>
+          <div class="stat-label">Ventas del mes (MXN)</div>
+          <div class="stat-delta warn">2 productos con bajo stock</div>
+        </div>
+      </div>
+
+      <!-- Paneles: inventario + bajo stock -->
+      <div class="admin-panels">
+        <div class="admin-panel">
+          <h2>Estado del inventario</h2>
+          <p class="panel-sub">Productos en stock vs. agotados o con pocas piezas</p>
+          <div class="admin-donut-wrap">
+            <div class="admin-donut">
+              <span>75%<small>en stock</small></span>
+            </div>
+            <ul class="admin-legend">
+              <li><span class="dot green"></span> En stock — 75%</li>
+              <li><span class="dot orange"></span> Bajo stock / agotado — 25%</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h2>Productos con bajo stock</h2>
+          <p class="panel-sub">Revisa antes de que se agoten</p>
+          <ul class="admin-list">
+            <li>
+              <div>
+                <div class="item-name">Suéter tejido para perro</div>
+                <div class="item-sub">Quedan 2 piezas</div>
+              </div>
+              <span class="item-tag low">Bajo stock</span>
+            </li>
+            <li>
+              <div>
+                <div class="item-name">Arnés ajustable para perro</div>
+                <div class="item-sub">Agotado</div>
+              </div>
+              <span class="item-tag low">Agotado</span>
+            </li>
+            <li>
+              <div>
+                <div class="item-name">Collar con corbatín para gato</div>
+                <div class="item-sub">Quedan 6 piezas</div>
+              </div>
+              <span class="item-tag ok">En stock</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Acciones rápidas -->
+      <div class="admin-panel">
+        <h2>Acciones rápidas</h2>
+        <p class="panel-sub">Gestiona tu tienda desde aquí</p>
+        <div class="admin-quick">
+          <a href="Interfaz Vendedor.html" class="primary">+ Agregar producto</a>
+          <a href="editarproducto.html" class="secondary">Editar productos</a>
+          <a href="pedidos.html" class="secondary">Ver pedidos</a>
+          <a href="promociones.html" class="secondary">Ver promociones</a>
+        </div>
+      </div>
+
+    </main>
   </div>
 
-  <script src="components.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    // Si no hay una sesión de admin iniciada, regresa al login.
+    // (Comentado por ahora para no bloquear el acceso mientras se prueba el diseño.)
+    // if (!sessionStorage.getItem('bp_admin_logueado')) {
+    //   window.location.href = 'admin-login.html';
+    // }
+  </script>
 </body>
 </html>

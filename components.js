@@ -1,5 +1,5 @@
 // ============================================
-//  Estampa-tla Pets - components.js
+//  Bigotes y Patitas - components.js
 //  Ropa y accesorios para perritos y gatitos
 //  Inyecta el header y footer en todas las páginas
 // ============================================
@@ -33,9 +33,9 @@ document.getElementById('header').innerHTML = `
   <header>
     <div class="logo">
       <div class="logo-icon">
-        <img src="Imagenes/Mascotas/logo-huella.svg" alt="Logo Estampa-tla Pets" />
+        <img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="Logo Bigotes y Patitas" />
       </div>
-      <span>Estampa-tla Pets</span>
+      <span>Bigotes y Patitas</span>
     </div>
     <nav>
       <ul>${navHTML}</ul>
@@ -43,7 +43,10 @@ document.getElementById('header').innerHTML = `
     <div class="icons">
       <img src="Imagenes/Iconos/Avatar.png" alt="Perfil" class="icon"
         onclick="window.location.href='Interfaz Cliente - Perfil.html'" />
-      
+
+      <span class="admin-access-icon" title="Panel de administración"
+        onclick="window.location.href='admin-login.html'">🔒</span>
+
       <div class="cart-icon-wrapper" style="position: relative; display: inline-block; cursor: pointer;" onclick="window.location.href='carrito.html'">
         <img src="Imagenes/Iconos/Shopping cart.png" alt="Carrito" class="icon" />
         <span id="cart-badge" class="cart-badge">0</span>
@@ -56,7 +59,7 @@ document.getElementById('header').innerHTML = `
 document.getElementById('footer').innerHTML = `
   <footer>
     <div class="left">
-      <p><strong>Estampa-tla Pets</strong></p>
+      <p><strong>Bigotes y Patitas</strong></p>
       <p>Ropa y accesorios hechos con cariño para perritos y gatitos. ¿Te gustaría colaborar con nosotros?</p>
       <button type="button">ÚNETE →</button>
     </div>
@@ -89,8 +92,8 @@ document.getElementById('footer').innerHTML = `
       <p><strong>Teléfono:</strong><br />(449) 3116529</p>
     </div>
     <div class="bottom-text">
-      Estampa-tla Pets: diseños pensados para el bienestar y comodidad de tu mascota.
-      <br>Copyright © 2026 Estampa-tla Pets | Todos los derechos reservados | Términos y Condiciones | Aviso de Privacidad
+      Bigotes y Patitas: diseños pensados para el bienestar y comodidad de tu mascota.
+      <br>Copyright © 2026 Bigotes y Patitas | Todos los derechos reservados | Términos y Condiciones | Aviso de Privacidad
       Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.
       <br>Copyright © 2026 Bigotes y Patitas | All Rights Reserved | Terms and Conditions | Privacy Policy
     </div>

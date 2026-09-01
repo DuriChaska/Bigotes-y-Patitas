@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso Administrador - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="admin-login-body">
+
+  <a class="admin-back-site" href="index.html">← Volver al sitio</a>
+
+  <div class="admin-login-card">
+    <div class="admin-login-logo">
+      <img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="Bigotes y Patitas" />
+    </div>
+    <h1>Bigotes y Patitas</h1>
+    <p class="admin-login-sub">Panel de administración · Inicia sesión para continuar</p>
+
+    <div id="admin-login-error" class="admin-login-error">
+      Correo o contraseña incorrectos. Inténtalo de nuevo.
+    </div>
+
+    <form class="admin-login-form" onsubmit="return entrarAdmin(event)">
+      <div class="admin-field">
+        <label for="admin-email">Correo electrónico</label>
+        <input type="email" id="admin-email" placeholder="admin@bigotesypatitas.com" required />
+      </div>
+
+      <div class="admin-field">
+        <label for="admin-pass">Contraseña</label>
+        <div class="admin-input-wrap">
+          <input type="password" id="admin-pass" placeholder="••••••••" required />
+          <span class="toggle-pass" onclick="togglePass()">Mostrar</span>
+        </div>
+      </div>
+
+      <div class="admin-login-options">
+        <label><input type="checkbox" /> Recordarme</label>
+        <a href="#">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <button type="submit" class="admin-login-btn">Iniciar sesión</button>
+    </form>
+
+    <p class="admin-login-footer">
+      ¿No tienes acceso? <a href="contact.html">Contacta al administrador</a>
+    </p>
+  </div>
+
+  <script>
+    function togglePass() {
+      const input = document.getElementById('admin-pass');
+      const link = document.querySelector('.toggle-pass');
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      link.textContent = isPass ? 'Ocultar' : 'Mostrar';
+    }
+
+    function entrarAdmin(e) {
+      e.preventDefault();
+      // TODO: reemplazar por validación real contra el backend cuando esté listo.
+      const email = document.getElementById('admin-email').value.trim();
+      const pass = document.getElementById('admin-pass').value.trim();
+      const errorBox = document.getElementById('admin-login-error');
+
+      if (email.length > 0 && pass.length > 0) {
+        errorBox.classList.remove('show');
+        sessionStorage.setItem('bp_admin_logueado', 'true');
+        window.location.href = 'admin.html';
+      } else {
+        errorBox.classList.add('show');
+      }
+      return false;
+    }
+  </script>
+</body>
+</html>
