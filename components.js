@@ -1,10 +1,6 @@
 // ============================================
-<<<<<<< HEAD
-//  Cotton Candy Clothing Store - components.js
-=======
 //  Estampa-tla Pets - components.js
 //  Ropa y accesorios para perritos y gatitos
->>>>>>> 1427ce2c8807422f3af923f30c343e84fd3d2928
 //  Inyecta el header y footer en todas las páginas
 // ============================================
 
@@ -18,11 +14,7 @@ const navLinks = [
   { href: 'about.html', label: 'Nosotros' },
   { href: 'contact.html', label: 'Contacto' },
   { href: 'promos.html', label: 'Promos' },
-<<<<<<< HEAD
-  { href: 'comunidad.html', label: 'Comunidad' },
-=======
   { href: 'comunidad.html', label: 'Comunidad Peluda' },
->>>>>>> 1427ce2c8807422f3af923f30c343e84fd3d2928
   { href: 'login.html', label: 'Iniciar sesión' },
 ];
 
@@ -41,15 +33,9 @@ document.getElementById('header').innerHTML = `
   <header>
     <div class="logo">
       <div class="logo-icon">
-<<<<<<< HEAD
-        <img src="Imagenes/Logo estampa-tla 1.png" alt="Logo Cotton Candy" />
-      </div>
-      <span>Cotton Candy Clothing Store</span>
-=======
         <img src="Imagenes/Mascotas/logo-huella.svg" alt="Logo Estampa-tla Pets" />
       </div>
       <span>Estampa-tla Pets</span>
->>>>>>> 1427ce2c8807422f3af923f30c343e84fd3d2928
     </div>
     <nav>
       <ul>${navHTML}</ul>
@@ -70,13 +56,8 @@ document.getElementById('header').innerHTML = `
 document.getElementById('footer').innerHTML = `
   <footer>
     <div class="left">
-<<<<<<< HEAD
-      <p><strong>Cotton Candy Clothing Store</strong></p>
-      <p>¿Te gustaría colaborar con nosotros?</p>
-=======
       <p><strong>Estampa-tla Pets</strong></p>
       <p>Ropa y accesorios hechos con cariño para perritos y gatitos. ¿Te gustaría colaborar con nosotros?</p>
->>>>>>> 1427ce2c8807422f3af923f30c343e84fd3d2928
       <button type="button">ÚNETE →</button>
     </div>
     <div class="center">
@@ -84,17 +65,6 @@ document.getElementById('footer').innerHTML = `
       <ul>
         <li>
           <img src="Imagenes/Iconos/Facebook.png" alt="Facebook" class="icon" />
-<<<<<<< HEAD
-          <a href="#">Facebook</a>
-        </li>
-        <li>
-          <img src="Imagenes/Iconos/Twitter.png" alt="Twitter" class="icon" />
-          <a href="#">Twitter</a>
-        </li>
-        <li>
-          <img src="Imagenes/Iconos/Instagram.png" alt="Instagram" class="icon" />
-          <a href="#">Instagram</a>
-=======
           <a href="https://es-la.facebook.com/">Facebook</a>
         </li>
         <li>
@@ -104,7 +74,6 @@ document.getElementById('footer').innerHTML = `
         <li>
           <img src="Imagenes/Iconos/Instagram.png" alt="Instagram" class="icon" />
           <a href="https://www.instagram.com/">Instagram</a>
->>>>>>> 1427ce2c8807422f3af923f30c343e84fd3d2928
         </li>
         <li>
           <img src="Imagenes/Iconos/Shopping cart.png" alt="Subastas" class="icon" />
@@ -120,15 +89,10 @@ document.getElementById('footer').innerHTML = `
       <p><strong>Teléfono:</strong><br />(449) 3116529</p>
     </div>
     <div class="bottom-text">
-<<<<<<< HEAD
-      Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.
-      <br>Copyright © 2026 Cotton Candy Clothing Store | All Rights Reserved | Terms and Conditions | Privacy Policy
-=======
       Estampa-tla Pets: diseños pensados para el bienestar y comodidad de tu mascota.
       <br>Copyright © 2026 Estampa-tla Pets | Todos los derechos reservados | Términos y Condiciones | Aviso de Privacidad
       Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.
       <br>Copyright © 2026 Bigotes y Patitas | All Rights Reserved | Terms and Conditions | Privacy Policy
->>>>>>> 1427ce2c8807422f3af923f30c343e84fd3d2928
     </div>
   </footer>
 `;
