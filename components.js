@@ -33,9 +33,9 @@ document.getElementById('header').innerHTML = `
   <header>
     <div class="logo">
       <div class="logo-icon">
-        <img src="Imagenes/Mascotas/logo-huella.svg" alt="Logo Estampa-tla Pets" />
+        <img src="Imagenes/Mascotas/logo_huella_sinfondo" alt="Logo Estampa-tla Pets" />
       </div>
-      <span>Estampa-tla Pets</span>
+      <span>Bigotes y Patitas</span>
     </div>
     <nav>
       <ul>${navHTML}</ul>
