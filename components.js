@@ -59,7 +59,7 @@ document.getElementById('header').innerHTML = `
 document.getElementById('footer').innerHTML = `
   <footer>
     <div class="left">
-      <p><strong>Estampa-tla Pets</strong></p>
+      <p><strong>Bigotes y Patitas</strong></p>
       <p>Ropa y accesorios hechos con cariño para perritos y gatitos. ¿Te gustaría colaborar con nosotros?</p>
       <button type="button">ÚNETE →</button>
     </div>
@@ -92,8 +92,8 @@ document.getElementById('footer').innerHTML = `
       <p><strong>Teléfono:</strong><br />(449) 3116529</p>
     </div>
     <div class="bottom-text">
-      Estampa-tla Pets: diseños pensados para el bienestar y comodidad de tu mascota.
-      <br>Copyright © 2026 Estampa-tla Pets | Todos los derechos reservados | Términos y Condiciones | Aviso de Privacidad
+      Bigotes y Patitas: diseños pensados para el bienestar y comodidad de tu mascota.
+      <br>Copyright © 2026 Bigotes y Patitas | Todos los derechos reservados | Términos y Condiciones | Aviso de Privacidad
       Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.
       <br>Copyright © 2026 Bigotes y Patitas | All Rights Reserved | Terms and Conditions | Privacy Policy
     </div>
