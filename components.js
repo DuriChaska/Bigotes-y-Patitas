@@ -33,7 +33,7 @@ document.getElementById('header').innerHTML = `
   <header>
     <div class="logo">
       <div class="logo-icon">
-        <img src="Imagenes/Mascotas/logo_huella_sinfondo" alt="Logo Estampa-tla Pets" />
+        <img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="Logo Bigotes y Patitas" />
       </div>
       <span>Bigotes y Patitas</span>
     </div>
@@ -43,7 +43,10 @@ document.getElementById('header').innerHTML = `
     <div class="icons">
       <img src="Imagenes/Iconos/Avatar.png" alt="Perfil" class="icon"
         onclick="window.location.href='Interfaz Cliente - Perfil.html'" />
-      
+
+      <span class="admin-access-icon" title="Panel de administración"
+        onclick="window.location.href='admin-login.html'">🔒</span>
+
       <div class="cart-icon-wrapper" style="position: relative; display: inline-block; cursor: pointer;" onclick="window.location.href='carrito.html'">
         <img src="Imagenes/Iconos/Shopping cart.png" alt="Carrito" class="icon" />
         <span id="cart-badge" class="cart-badge">0</span>
