@@ -1,5 +1,5 @@
 // ============================================
-//  Estampa-tla Pets - components.js
+//  Bigotes y Patitas - components.js
 //  Ropa y accesorios para perritos y gatitos
 //  Inyecta el header y footer en todas las páginas
 // ============================================
