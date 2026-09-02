@@ -20,14 +20,70 @@
       </div>
 
       <div class="admin-panel">
-        <div class="admin-empty-state">
-          <div class="icon">🐾</div>
-          <h3>Próximamente</h3>
-          <p>Aquí vas a poder ver el listado de clientes registrados, sus pedidos y su historial de compras.</p>
-        </div>
-      </div>
-    </main>
+  <!-- Botón de navegación -->
+  <div class="back-link">
+    <a href="#" style="text-decoration: none; color: inherit; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 16px;">
+      &lt; Volver a clientes
+    </a>
   </div>
+
+  <!-- Tarjeta principal del cliente -->
+  <div class="client-card" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <!-- Encabezado con Avatar y Nombre -->
+    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+      <img src="Imagenes/Prueba.jpg" alt="Ana Pérez" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;" />
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <h2 style="margin: 0; font-size: 24px;">Ana Pérez</h2>
+        <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 16px; font-size: 14px; font-weight: 500;">Activo</span>
+      </div>
+    </div>
+
+    <!-- Rejilla de Información del Cliente -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px; margin-bottom: 24px;">
+      <div>
+        <span style="color: #6b7280; display: inline-block; width: 100px;">Empresa</span>
+        <strong>Peluquería Canina El Parque</strong>
+      </div>
+      <div>
+        <span style="color: #6b7280; display: inline-block; width: 120px;">Etapa CRM</span>
+        <span style="background-color: #fef08a; color: #854d0e; padding: 4px 12px; border-radius: 16px; font-size: 14px; font-weight: 500;">Lead Calificado</span>
+      </div>
+      <div>
+        <span style="color: #6b7280; display: inline-block; width: 100px;">Correo</span>
+        <span>ana.perez@peluqueriaparque.com</span>
+      </div>
+      <div>
+        <span style="color: #6b7280; display: inline-block; width: 120px;">Fecha de registro</span>
+        <span>15/05/2024</span>
+      </div>
+      <div>
+        <span style="color: #6b7280; display: inline-block; width: 100px;">Teléfono</span>
+        <span>555-987-6543</span>
+      </div>
+      <div>
+        <span style="color: #6b7280; display: inline-block; width: 120px;">Estado</span>
+        <span style="background-color: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 16px; font-size: 14px; font-weight: 500;">Activo</span>
+      </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+      <button style="background: transparent; border: 1px solid #374151; padding: 8px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+        ✏️ Editar cliente
+      </button>
+      <button style="background: #1e3a1e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+        Cambiar etapa CRM
+      </button>
+    </div>
+
+    <!-- Pestañas de Navegación -->
+    <div style="display: flex; gap: 24px; border-bottom: 1px solid #e5e7eb; margin-top: 16px;">
+      <button style="background: none; border: none; padding: 8px 4px; cursor: pointer; color: #6b7280;">Información</button>
+      <button style="background: none; border: none; padding: 8px 4px; cursor: pointer; font-weight: bold; border-bottom: 2px solid #111827;">Interacciones</button>
+      <button style="background: none; border: none; padding: 8px 4px; cursor: pointer; color: #6b7280;">Evaluaciones</button>
+    </div>
+  </div>
+</div>
 
   <script src="admin-components.js"></script>
 </body>
