@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reportes - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Reportes</h1>
+          <p class="admin-breadcrumb">Panel de administración · Indicadores para evaluar el desempeño del CRM</p>
+        </div>
+      </div>
+
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon blue">👤</div></div>
+          <div class="stat-num">42</div>
+          <div class="stat-label">Total de clientes</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon green">💚</div></div>
+          <div class="stat-num">30</div>
+          <div class="stat-label">Clientes activos</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon yellow">💬</div></div>
+          <div class="stat-num">18</div>
+          <div class="stat-label">Interacciones (este mes)</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon orange">⚠️</div></div>
+          <div class="stat-num">6</div>
+          <div class="stat-label">Clientes sin interacción</div>
+        </div>
+      </div>
+
+      <div class="admin-panels">
+        <div class="admin-panel">
+          <h2>Interacciones por tipo</h2>
+          <p class="panel-sub">Distribución de las interacciones registradas este mes</p>
+          <div class="admin-bars">
+            <div class="admin-bar-row">
+              <span class="admin-bar-label">Llamada</span>
+              <div class="admin-bar-track"><div class="admin-bar-fill green" style="width:80%;"></div></div>
+              <span class="admin-bar-value">8</span>
+            </div>
+            <div class="admin-bar-row">
+              <span class="admin-bar-label">Correo</span>
+              <div class="admin-bar-track"><div class="admin-bar-fill blue" style="width:60%;"></div></div>
+              <span class="admin-bar-value">6</span>
+            </div>
+            <div class="admin-bar-row">
+              <span class="admin-bar-label">Reunión</span>
+              <div class="admin-bar-track"><div class="admin-bar-fill orange" style="width:40%;"></div></div>
+              <span class="admin-bar-value">4</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h2>Clientes por etapa CRM</h2>
+          <p class="panel-sub">En qué etapa están tus clientes</p>
+          <div class="admin-donut-wrap">
+            <div class="admin-donut" style="background: conic-gradient(#f2c14e 0% 20%, var(--admin-green) 20% 71%, #d97b4f 71% 90%, #c94b46 90% 100%);">
+              <span>42<small>clientes</small></span>
+            </div>
+            <ul class="admin-legend">
+              <li><span class="dot" style="background:#f2c14e;"></span> Prospecto — 8 (20%)</li>
+              <li><span class="dot green"></span> Activo — 22 (51%)</li>
+              <li><span class="dot orange"></span> Frecuente — 8 (19%)</li>
+              <li><span class="dot" style="background:#c94b46;"></span> Inactivo — 4 (10%)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin-components.js"></script>
+</body>
+</html>

@@ -15,20 +15,56 @@
       <div class="admin-topbar">
         <div>
           <h1>Mi actividad</h1>
-          <p class="admin-breadcrumb">Panel de administración · Historial de acciones</p>
+          <p class="admin-breadcrumb">Panel de administración · Actividades realizadas por el usuario</p>
+        </div>
+        <div class="admin-topbar-right">
+          <div class="admin-search">
+            <span>📅</span>
+            <span id="rango-fechas">01/07/2025 - 31/07/2025</span>
+          </div>
         </div>
       </div>
 
       <div class="admin-panel">
-        <div class="admin-empty-state">
-          <div class="icon">🕒</div>
-          <h3>Próximamente</h3>
-          <p>Aquí vas a poder ver el historial de productos, pedidos y promociones que has gestionado.</p>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+              </tr>
+            </thead>
+            <tbody id="actividad-lista"></tbody>
+          </table>
         </div>
+        <p id="actividad-conteo" style="margin-top:14px; font-size:.82rem; color:var(--gray);"></p>
       </div>
     </main>
   </div>
 
   <script src="admin-components.js"></script>
+  <script>
+    const actividades = [
+      { fecha: "25/07/2025", cliente: "María López",      tipo: "Llamada", descripcion: "Se discutieron nuevos diseños para la próxima temporada." },
+      { fecha: "24/07/2025", cliente: "Luis Hernández",   tipo: "Correo",  descripcion: "Envío de información de promociones." },
+      { fecha: "20/07/2025", cliente: "Ana García",       tipo: "Reunión", descripcion: "Reunión en tienda para muestras de productos." },
+      { fecha: "18/07/2025", cliente: "Carlos Ruiz",      tipo: "Llamada", descripcion: "Seguimiento a pedido anterior." },
+    ];
+
+    const cuerpo = document.getElementById('actividad-lista');
+    cuerpo.innerHTML = actividades.map(a => `
+      <tr>
+        <td>${a.fecha}</td>
+        <td>${a.cliente}</td>
+        <td>${a.tipo}</td>
+        <td>${a.descripcion}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('actividad-conteo').textContent =
+      `Mostrando 1 a ${actividades.length} de ${actividades.length} actividades`;
+  </script>
 </body>
 </html>

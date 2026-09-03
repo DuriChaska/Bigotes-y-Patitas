@@ -15,20 +15,101 @@
       <div class="admin-topbar">
         <div>
           <h1>Clientes</h1>
-          <p class="admin-breadcrumb">Panel de administración · Listado de clientes</p>
+          <p class="admin-breadcrumb">Panel de administración · Listado, búsqueda y filtro de clientes</p>
+        </div>
+        <div class="admin-topbar-right admin-quick">
+          <a href="#" class="primary">+ Nuevo cliente</a>
         </div>
       </div>
 
       <div class="admin-panel">
-        <div class="admin-empty-state">
-          <div class="icon">🐾</div>
-          <h3>Próximamente</h3>
-          <p>Aquí vas a poder ver el listado de clientes registrados, sus pedidos y su historial de compras.</p>
+        <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:18px;">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span>🔍</span>
+            <input type="text" id="buscador-clientes" placeholder="Buscar por nombre, correo o mascota..." onkeyup="filtrarClientes()" />
+          </div>
+          <select id="filtro-estado" class="admin-search" style="min-width:160px; cursor:pointer;" onchange="filtrarClientes()">
+            <option value="todos">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Frecuente">Frecuente</option>
+            <option value="Inactivo">Inactivo</option>
+            <option value="En riesgo">En riesgo</option>
+          </select>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Mascota</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="clientes-lista"></tbody>
+          </table>
         </div>
       </div>
     </main>
   </div>
 
   <script src="admin-components.js"></script>
+  <script>
+    const clientes = [
+      { id: 1, nombre: "Ana García",        mascota: "Firulais (Perro)", correo: "ana.garcia@correo.com",     telefono: "555-123-4567", estado: "En riesgo" },
+      { id: 2, nombre: "Luis Hernández",     mascota: "Michi (Gato)",     correo: "luis.hdz@correo.com",       telefono: "555-987-6543", estado: "En riesgo" },
+      { id: 3, nombre: "Paola Ramírez",      mascota: "Toby (Perro)",     correo: "paola.ramirez@correo.com",  telefono: "555-456-7890", estado: "En riesgo" },
+      { id: 4, nombre: "Carlos Ruiz",        mascota: "Luna (Gata)",      correo: "carlos.ruiz@correo.com",    telefono: "555-321-9876", estado: "Activo" },
+      { id: 5, nombre: "María López",        mascota: "Rocky (Perro)",    correo: "maria.lopez@correo.com",    telefono: "555-654-3210", estado: "Frecuente" },
+      { id: 6, nombre: "Jorge Sánchez",      mascota: "Kiara (Perra)",    correo: "jorge.sanchez@correo.com",  telefono: "555-789-0123", estado: "Activo" },
+      { id: 7, nombre: "Fernanda Torres",    mascota: "Simba (Gato)",     correo: "fernanda.torres@correo.com",telefono: "555-234-5678", estado: "Frecuente" },
+      { id: 8, nombre: "Diego Morales",      mascota: "Coco (Perro)",     correo: "diego.morales@correo.com",  telefono: "555-345-6789", estado: "Inactivo" },
+      { id: 9, nombre: "Valeria Castillo",   mascota: "Nube (Gata)",      correo: "valeria.castillo@correo.com",telefono: "555-567-8901", estado: "Activo" },
+      { id: 10, nombre: "Ricardo Medina",    mascota: "Bruno (Perro)",    correo: "ricardo.medina@correo.com", telefono: "555-678-9012", estado: "Inactivo" }
+    ];
+
+    const tagClass = { "Activo": "ok", "Frecuente": "ok", "Inactivo": "low", "En riesgo": "low" };
+
+    function pintarClientes(lista) {
+      const cuerpo = document.getElementById("clientes-lista");
+      cuerpo.innerHTML = "";
+      lista.forEach(c => {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>${c.id}</td>
+          <td>${c.nombre}</td>
+          <td>${c.mascota}</td>
+          <td>${c.correo}</td>
+          <td>${c.telefono}</td>
+          <td><span class="item-tag ${tagClass[c.estado]}">${c.estado}</span></td>
+          <td>
+            <div class="action-buttons">
+              <a href="admin-interacciones.html?cliente=${encodeURIComponent(c.nombre)}" class="btn-editar">Ver</a>
+            </div>
+          </td>
+        `;
+        cuerpo.appendChild(fila);
+      });
+    }
+
+    function filtrarClientes() {
+      const texto = document.getElementById("buscador-clientes").value.toLowerCase();
+      const estado = document.getElementById("filtro-estado").value;
+      const filtrados = clientes.filter(c => {
+        const coincideTexto = c.nombre.toLowerCase().includes(texto)
+          || c.correo.toLowerCase().includes(texto)
+          || c.mascota.toLowerCase().includes(texto);
+        const coincideEstado = estado === "todos" || c.estado === estado;
+        return coincideTexto && coincideEstado;
+      });
+      pintarClientes(filtrados);
+    }
+
+    pintarClientes(clientes);
+  </script>
 </body>
 </html>

@@ -12,9 +12,11 @@ const adminPaginaActual = window.location.pathname.split('/').pop();
 const adminNavLinks = [
   { href: 'admin.html',              label: 'Dashboard',      icon: '🏠' },
   { href: 'admin-clientes.html',     label: 'Clientes',       icon: '👤' },
+  { href: 'admin-interacciones-todas.html', label: 'Interacciones', icon: '💬' },
   { href: 'editarproducto.html',     label: 'Productos',      icon: '🛍️' },
   { href: 'pedidos.html',            label: 'Pedidos',        icon: '📦' },
   { href: 'promociones.html',        label: 'Promociones',    icon: '🏷️' },
+  { href: 'admin-reportes.html',     label: 'Reportes',       icon: '📊' },
   { href: 'admin-actividad.html',    label: 'Mi actividad',   icon: '🕒' },
   { href: 'admin-configuracion.html',label: 'Configuración',  icon: '⚙️' },
 ];

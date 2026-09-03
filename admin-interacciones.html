@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historial de interacciones - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <a href="admin-clientes.html" class="admin-volver">← Volver a clientes</a>
+
+      <div class="admin-topbar">
+        <div>
+          <h1 id="titulo-cliente">Historial de interacciones</h1>
+          <p class="admin-breadcrumb">Panel de administración · Línea de tiempo de interacciones del cliente</p>
+        </div>
+        <div class="admin-topbar-right admin-quick">
+          <a href="#" class="primary" onclick="return nuevaInteraccion(event)">+ Nueva interacción</a>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <ul class="admin-timeline" id="timeline-lista"></ul>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin-components.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const cliente = params.get('cliente') || 'María López';
+    document.getElementById('titulo-cliente').textContent = 'Historial de interacciones — ' + cliente;
+
+    const datosInteracciones = {
+      "María López": [
+        { tipo: "Llamada", icono: "📞", color: "green",  texto: "Se discutieron nuevos diseños para la próxima temporada.", usuario: "Admin", fecha: "15/05/2025 10:30" },
+        { tipo: "Correo",  icono: "✉️", color: "blue",   texto: "Envío de catálogo de nuevos productos.",                   usuario: "Admin", fecha: "10/05/2025 14:20" },
+        { tipo: "Reunión", icono: "👥", color: "gray",   texto: "Reunión en tienda para ver muestras de productos.",         usuario: "Juan Pérez", fecha: "02/05/2025 11:00" }
+      ],
+      "Ana García": [
+        { tipo: "Correo",  icono: "✉️", color: "blue",   texto: "Se envió recordatorio de renovación de suscripción de snacks.", usuario: "Admin", fecha: "18/07/2025 09:15" },
+        { tipo: "Llamada", icono: "📞", color: "green",  texto: "Sin respuesta, se dejó mensaje de voz.",                          usuario: "Admin", fecha: "05/07/2025 16:40" }
+      ],
+      "Luis Hernández": [
+        { tipo: "Correo",  icono: "✉️", color: "blue",   texto: "Se envió promoción de collares para gato.", usuario: "Admin", fecha: "25/07/2025 12:05" }
+      ],
+    };
+
+    const interacciones = datosInteracciones[cliente] || [
+      { tipo: "Correo", icono: "✉️", color: "blue", texto: "Sin interacciones registradas todavía para este cliente.", usuario: "Admin", fecha: "—" }
+    ];
+
+    function pintarTimeline() {
+      const lista = document.getElementById('timeline-lista');
+      lista.innerHTML = interacciones.map(i => `
+        <li class="admin-timeline-item">
+          <div class="admin-timeline-icon ${i.color}">${i.icono}</div>
+          <div class="admin-timeline-content">
+            <div class="admin-timeline-top">
+              <strong>${i.tipo}</strong>
+              <span class="admin-timeline-date">${i.fecha}</span>
+            </div>
+            <p>${i.texto}</p>
+            <span class="admin-timeline-user">Usuario: ${i.usuario}</span>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function nuevaInteraccion(e) {
+      e.preventDefault();
+      const tipo = prompt("Tipo de interacción (Llamada, Correo o Reunión):", "Llamada");
+      if (!tipo) return false;
+      const texto = prompt("Descripción de la interacción:", "");
+      if (texto === null) return false;
+      const iconos = { "Llamada": ["📞","green"], "Correo": ["✉️","blue"], "Reunión": ["👥","gray"] };
+      const [icono, color] = iconos[tipo] || ["📝","gray"];
+      const ahora = new Date();
+      const fecha = ahora.toLocaleDateString('es-MX') + ' ' + ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      interacciones.unshift({ tipo, icono, color, texto, usuario: "Admin", fecha });
+      pintarTimeline();
+      return false;
+    }
+
+    pintarTimeline();
+  </script>
+</body>
+</html>
