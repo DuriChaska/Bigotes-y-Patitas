@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contacto - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="contact-us">
+    <div class="contact-hero">
+      <div class="contact-info">
+        <div class="icon">
+          <img src="Imagenes/Iconos/Icon1.png" alt="Icono" style="width:40px; height:40px;" />
+        </div>
+        <h2>CONTÁCTANOS</h2>
+        <p>______________________________</p>
+        <p>Síguenos en nuestras redes sociales</p>
+        <div class="social-icons">
+          <img src="Imagenes/Iconos/Facebook.png" alt="Facebook" class="icon" />
+          <img src="Imagenes/Iconos/Twitter.png" alt="Twitter" class="icon" />
+          <img src="Imagenes/Iconos/Instagram.png" alt="Instagram" class="icon" />
+        </div>
+      </div>
+      <div class="contact-image">
+        <img src="Imagenes/contact us.png" alt="Playeras sonriendo" />
+      </div>
+    </div>
+
+    <form class="contact-form" id="contactForm">
+      <div class="input-group">
+        <input type="text" placeholder="Nombre" />
+        <input type="email" placeholder="Email" />
+      </div>
+      <textarea placeholder="Mensaje" rows="5"></textarea>
+      <button type="submit" id="sendBtn">Enviar →</button>
+      <p id="formMessage" class="form-message"></p>
+    </form>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script>
+    document.getElementById("contactForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      document.getElementById("formMessage").textContent = "¡Mensaje enviado!";
+      document.getElementById("sendBtn").disabled = true;
+    });
+  </script>
+</body>
+</html>

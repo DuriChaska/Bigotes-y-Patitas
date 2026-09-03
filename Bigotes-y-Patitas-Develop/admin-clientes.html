@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clientes - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Clientes</h1>
+          <p class="admin-breadcrumb">Panel de administración · Listado, búsqueda y seguimiento de clientes</p>
+        </div>
+        <div class="admin-topbar-right">
+          <!-- Botón cambiado a Nuevo Cliente -->
+          <button class="admin-quick-btn primary" onclick="abrirModalCliente()">
+            <span>➕</span><span>Nuevo cliente</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de búsqueda y filtros -->
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span>🔍</span>
+            <input type="text" id="buscarCliente" placeholder="Buscar por nombre, mascota o correo..." oninput="filtrarClientes()">
+          </div>
+          <select id="filtroEtapa" class="admin-select" onchange="filtrarClientes()">
+            <option value="">Todos los estados</option>
+            <option value="Prospecto">Prospecto</option>
+            <option value="Activo">Activo</option>
+            <option value="Frecuente">Frecuente</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla de clientes -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Listado de clientes</h2>
+          <span class="admin-count-pill" id="contadorClientes">5 clientes</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="tablaClientes">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Mascota</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Etapa CRM</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-nombre="María López" data-etapa="Activo">
+                <td>María López</td>
+                <td>Luna (Golden Retriever)</td>
+                <td>maria@correo.com</td>
+                <td>449-123-4567</td>
+                <td><span class="admin-tag ok">Activo</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('María López','Luna (Golden Retriever)','maria@correo.com','449-123-4567','Activo')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Juan Pérez" data-etapa="Frecuente">
+                <td>Juan Pérez</td>
+                <td>Firulais (Mestizo)</td>
+                <td>juan@email.com</td>
+                <td>449-987-6543</td>
+                <td><span class="admin-tag warn">Frecuente</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Juan Pérez','Firulais (Mestizo)','juan@email.com','449-987-6543','Frecuente')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Ana García" data-etapa="Prospecto">
+                <td>Ana García</td>
+                <td>Michi (Gato Siamés)</td>
+                <td>ana@correo.com</td>
+                <td>449-456-7890</td>
+                <td><span class="admin-tag info">Prospecto</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Ana García','Michi (Gato Siamés)','ana@correo.com','449-456-7890','Prospecto')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Carlos Ruiz" data-etapa="Inactivo">
+                <td>Carlos Ruiz</td>
+                <td>Toby (Bulldog Francés)</td>
+                <td>carlos@correo.com</td>
+                <td>449-321-6547</td>
+                <td><span class="admin-tag muted">Inactivo</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Carlos Ruiz','Toby (Bulldog Francés)','carlos@correo.com','449-321-6547','Inactivo')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Luisa Morales" data-etapa="Activo">
+                <td>Luisa Morales</td>
+                <td>Nube (Conejo)</td>
+                <td>luisa@correo.com</td>
+                <td>449-654-3210</td>
+                <td><span class="admin-tag ok">Activo</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Luisa Morales','Nube (Conejo)','luisa@correo.com','449-654-3210','Activo')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p id="sinResultados" class="admin-empty-state hidden" style="padding:34px 20px;">
+            <span class="icon">🐾</span>
+            <br>No se encontraron clientes con ese criterio.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Registrar / Nuevo Cliente -->
+  <div id="modalCliente" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-head">
+        <h3><span>🐾</span><span>Registrar nuevo cliente</span></h3>
+        <button class="admin-modal-close" onclick="cerrarModalCliente()">&times;</button>
+      </div>
+
+      <form id="formCliente" onsubmit="guardarCliente(event)">
+        <div class="admin-form-group">
+          <label for="nuevoNombre">Nombre del cliente</label>
+          <input type="text" id="nuevoNombre" placeholder="Ej. Sofía Castro" required>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="nuevaMascota">Mascota</label>
+          <input type="text" id="nuevaMascota" placeholder="Ej. Coco (Pastor Alemán)" required>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="nuevoCorreo">Correo electrónico</label>
+          <input type="email" id="nuevoCorreo" placeholder="correo@ejemplo.com" required>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="nuevoTelefono">Teléfono</label>
+          <input type="text" id="nuevoTelefono" placeholder="449-000-0000" required>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" onclick="cerrarModalCliente()">Cancelar</button>
+          <button type="submit" class="admin-btn-primary">Guardar cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span>✅</span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-components.js"></script>
+  <script>
+    function abrirModalCliente() {
+      document.getElementById('modalCliente').classList.remove('hidden');
+    }
+
+    function cerrarModalCliente() {
+      document.getElementById('modalCliente').classList.add('hidden');
+      document.getElementById('formCliente').reset();
+    }
+
+    function guardarCliente(e) {
+      e.preventDefault();
+      const nombre = document.getElementById('nuevoNombre').value;
+      cerrarModalCliente();
+      mostrarToast(`Cliente ${nombre} registrado correctamente`);
+    }
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    function verCliente(nombre, mascota, correo, telefono, etapa) {
+      alert(`Cliente: ${nombre}\nMascota: ${mascota}\nCorreo: ${correo}\nTeléfono: ${telefono}\nEtapa CRM: ${etapa}`);
+    }
+
+    function filtrarClientes() {
+      const texto = document.getElementById('buscarCliente').value.trim().toLowerCase();
+      const etapa = document.getElementById('filtroEtapa').value;
+      const filas = document.querySelectorAll('#tablaClientes tbody tr');
+      let visibles = 0;
+
+      filas.forEach(fila => {
+        const coincideTexto = fila.textContent.toLowerCase().includes(texto);
+        const coincideEtapa = !etapa || fila.dataset.etapa === etapa;
+        const mostrar = coincideTexto && coincideEtapa;
+        fila.classList.toggle('hidden', !mostrar);
+        if (mostrar) visibles++;
+      });
+
+      document.getElementById('contadorClientes').textContent = `${visibles} cliente${visibles === 1 ? '' : 's'}`;
+      document.getElementById('sinResultados').classList.toggle('hidden', visibles !== 0);
+    }
+  </script>
+</body>
+</html>
