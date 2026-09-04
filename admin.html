@@ -23,7 +23,7 @@
         </div>
         <div class="admin-topbar-right">
           <div class="admin-search">
-            <span>🔍</span>
+            <span data-bp-icon="search"></span>
             <input type="text" placeholder="Buscar cliente..." />
           </div>
           <div class="admin-profile-chip">
@@ -37,7 +37,7 @@
       <div class="admin-stats">
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon blue">👤</div>
+            <div class="admin-stat-icon blue" data-bp-icon="users"></div>
           </div>
           <div class="stat-num">42</div>
           <div class="stat-label">Total de clientes</div>
@@ -46,7 +46,7 @@
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon green">💚</div>
+            <div class="admin-stat-icon green" data-bp-icon="check"></div>
           </div>
           <div class="stat-num">30</div>
           <div class="stat-label">Clientes activos</div>
@@ -55,7 +55,7 @@
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon yellow">💬</div>
+            <div class="admin-stat-icon yellow" data-bp-icon="chat"></div>
           </div>
           <div class="stat-num">18</div>
           <div class="stat-label">Interacciones (este mes)</div>
@@ -64,7 +64,7 @@
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon orange">⚠️</div>
+            <div class="admin-stat-icon orange" data-bp-icon="warning"></div>
           </div>
           <div class="stat-num">6</div>
           <div class="stat-label">Clientes sin interacción</div>
@@ -125,16 +125,16 @@
         <h2>Acciones rápidas</h2>
         <p class="panel-sub">Da seguimiento a tus clientes desde aquí</p>
         <div class="admin-quick">
-          <a href="admin-clientes.html" class="primary">👤 Ver clientes</a>
-          <a href="editarproducto.html" class="secondary">Editar productos</a>
-          <a href="pedidos.html" class="secondary">Ver pedidos</a>
-          <a href="promociones.html" class="secondary">Ver promociones</a>
+          <a href="admin-clientes.html" class="primary"><span data-bp-icon="users" style="margin-right:6px;"></span>Ver clientes</a>
+          <a href="admin-interacciones-todas.html" class="secondary"><span data-bp-icon="chat" style="margin-right:6px;"></span>Ver interacciones</a>
+          <a href="admin-reportes.html" class="secondary"><span data-bp-icon="chart" style="margin-right:6px;"></span>Ver reportes</a>
         </div>
       </div>
 
     </main>
   </div>
 
+  <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
 </body>
 </html>

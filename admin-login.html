@@ -11,14 +11,11 @@
   <a class="admin-back-site" href="index.html">← Volver al sitio</a>
 
   <div class="admin-login-card">
-    <div class="admin-login-brand">
-      <div class="admin-login-logo">
-        <img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="Bigotes y Patitas" />
-      </div>
-      <h1>Bigotes y Patitas</h1>
-      <span class="admin-login-tag">Panel CRM</span>
+    <div class="admin-login-logo">
+      <img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="Bigotes y Patitas" />
     </div>
-    <p class="admin-login-sub">Inicia sesión para continuar</p>
+    <h1>Bigotes y Patitas</h1>
+    <p class="admin-login-sub">Panel de administración · Inicia sesión para continuar</p>
 
     <div id="admin-login-error" class="admin-login-error">
       Correo o contraseña incorrectos. Inténtalo de nuevo.
@@ -27,36 +24,37 @@
     <form class="admin-login-form" onsubmit="return entrarAdmin(event)">
       <div class="admin-field">
         <label for="admin-email">Correo electrónico</label>
-        <input type="email" id="admin-email" placeholder="usuario@ejemplo.com" required />
+        <input type="email" id="admin-email" placeholder="admin@bigotesypatitas.com" required />
       </div>
 
       <div class="admin-field">
         <label for="admin-pass">Contraseña</label>
         <div class="admin-input-wrap">
-          <input type="password" id="admin-pass" placeholder="••••••••••" required />
-          <span class="toggle-pass" onclick="togglePass()">👁️</span>
+          <input type="password" id="admin-pass" placeholder="••••••••" required />
+          <span class="toggle-pass" onclick="togglePass()">Mostrar</span>
         </div>
       </div>
 
       <div class="admin-login-options">
         <label><input type="checkbox" /> Recordarme</label>
+        <a href="#">¿Olvidaste tu contraseña?</a>
       </div>
 
       <button type="submit" class="admin-login-btn">Iniciar sesión</button>
     </form>
 
     <p class="admin-login-footer">
-      ¿No tienes cuenta? <a href="contact.html">Contacta al administrador</a>
+      ¿No tienes acceso? <a href="contact.html">Contacta al administrador</a>
     </p>
   </div>
 
   <script>
     function togglePass() {
       const input = document.getElementById('admin-pass');
-      const icon = document.querySelector('.toggle-pass');
+      const link = document.querySelector('.toggle-pass');
       const isPass = input.type === 'password';
       input.type = isPass ? 'text' : 'password';
-      icon.textContent = isPass ? '🙈' : '👁️';
+      link.textContent = isPass ? 'Ocultar' : 'Mostrar';
     }
 
     function entrarAdmin(e) {
