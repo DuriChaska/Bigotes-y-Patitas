@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historial de interacciones - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <a href="admin-clientes.html" class="admin-volver"><span data-bp-icon="arrow_left" style="margin-right:4px;"></span>Volver a clientes</a>
+
+      <div class="admin-topbar">
+        <div>
+          <h1 id="titulo-cliente">Historial de interacciones</h1>
+          <p class="admin-breadcrumb">Panel de administración · Línea de tiempo de interacciones del cliente</p>
+        </div>
+        <div class="admin-topbar-right admin-quick">
+          <a href="#" class="primary" onclick="return nuevaInteraccion(event)"><span data-bp-icon="plus" style="margin-right:6px;"></span>Nueva interacción</a>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <ul class="admin-timeline" id="timeline-lista"></ul>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Nueva interacción -->
+  <div id="modalInteraccion" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-head">
+        <h3><span data-bp-icon="chat"></span><span>Nueva interacción</span></h3>
+        <button class="admin-modal-close" onclick="cerrarModalInteraccion()">&times;</button>
+      </div>
+
+      <form id="formInteraccion" onsubmit="return guardarInteraccion(event)">
+        <div class="admin-form-group">
+          <label for="int-tipo">Tipo de interacción</label>
+          <select id="int-tipo" class="admin-select" style="width:100%;">
+            <option value="Llamada">Llamada</option>
+            <option value="Correo">Correo</option>
+            <option value="Reunión">Reunión</option>
+          </select>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="int-desc">Descripción</label>
+          <textarea id="int-desc" placeholder="Describe brevemente la interacción..." required></textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="admin-form-group">
+            <label for="int-fecha">Fecha</label>
+            <input type="date" id="int-fecha" required>
+          </div>
+          <div class="admin-form-group">
+            <label for="int-responsable">Responsable</label>
+            <select id="int-responsable" class="admin-select" style="width:100%;">
+              <option value="Admin">Admin</option>
+              <option value="Juan Pérez">Juan Pérez</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" onclick="cerrarModalInteraccion()">Cancelar</button>
+          <button type="submit" class="admin-btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Interacción registrada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const cliente = params.get('cliente') || 'María López';
+    document.getElementById('titulo-cliente').textContent = 'Historial de interacciones — ' + cliente;
+
+    const datosInteracciones = {
+      "María López": [
+        { tipo: "Llamada", icono: "phone", color: "green",  texto: "Se discutieron nuevos diseños para la próxima temporada.", usuario: "Admin", fecha: "15/05/2025 10:30" },
+        { tipo: "Correo",  icono: "mail", color: "blue",   texto: "Envío de catálogo de nuevos productos.",                   usuario: "Admin", fecha: "10/05/2025 14:20" },
+        { tipo: "Reunión", icono: "group", color: "gray",   texto: "Reunión en tienda para ver muestras de productos.",         usuario: "Juan Pérez", fecha: "02/05/2025 11:00" }
+      ],
+      "Ana García": [
+        { tipo: "Correo",  icono: "mail", color: "blue",   texto: "Se envió recordatorio de renovación de suscripción de snacks.", usuario: "Admin", fecha: "18/07/2025 09:15" },
+        { tipo: "Llamada", icono: "phone", color: "green",  texto: "Sin respuesta, se dejó mensaje de voz.",                          usuario: "Admin", fecha: "05/07/2025 16:40" }
+      ],
+      "Luis Hernández": [
+        { tipo: "Correo",  icono: "mail", color: "blue",   texto: "Se envió promoción de collares para gato.", usuario: "Admin", fecha: "25/07/2025 12:05" }
+      ],
+    };
+
+    const interacciones = datosInteracciones[cliente] || [
+      { tipo: "Correo", icono: "mail", color: "blue", texto: "Sin interacciones registradas todavía para este cliente.", usuario: "Admin", fecha: "—" }
+    ];
+
+    function pintarTimeline() {
+      const lista = document.getElementById('timeline-lista');
+      lista.innerHTML = interacciones.map(i => `
+        <li class="admin-timeline-item">
+          <div class="admin-timeline-icon ${i.color}">${bpIcon(i.icono)}</div>
+          <div class="admin-timeline-content">
+            <div class="admin-timeline-top">
+              <strong>${i.tipo}</strong>
+              <span class="admin-timeline-date">${i.fecha}</span>
+            </div>
+            <p>${i.texto}</p>
+            <span class="admin-timeline-user">Usuario: ${i.usuario}</span>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function nuevaInteraccion(e) {
+      e.preventDefault();
+      document.getElementById('int-fecha').valueAsDate = new Date();
+      document.getElementById('modalInteraccion').classList.remove('hidden');
+      return false;
+    }
+
+    function cerrarModalInteraccion() {
+      document.getElementById('modalInteraccion').classList.add('hidden');
+      document.getElementById('formInteraccion').reset();
+    }
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2400);
+    }
+
+    function guardarInteraccion(e) {
+      e.preventDefault();
+      const tipo = document.getElementById('int-tipo').value;
+      const texto = document.getElementById('int-desc').value;
+      const fechaInput = document.getElementById('int-fecha').value;
+      const usuario = document.getElementById('int-responsable').value;
+      const iconos = { "Llamada": ["phone","green"], "Correo": ["mail","blue"], "Reunión": ["group","gray"] };
+      const [icono, color] = iconos[tipo] || ["chat","gray"];
+      const fecha = fechaInput
+        ? new Date(fechaInput + 'T00:00:00').toLocaleDateString('es-MX')
+        : new Date().toLocaleDateString('es-MX');
+      interacciones.unshift({ tipo, icono, color, texto, usuario, fecha });
+      pintarTimeline();
+      cerrarModalInteraccion();
+      mostrarToast('Interacción registrada correctamente');
+      return false;
+    }
+
+    pintarTimeline();
+  </script>
+</body>
+</html>
