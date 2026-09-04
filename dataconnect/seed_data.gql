@@ -1,0 +1,27 @@
+mutation SeedDatabase @transaction {
+  user_insertMany(data: [
+    {id: "00000000-0000-4000-a000-000000000001", name: "Alice Smith", email: "alice@example.com", role: "admin"},
+    {id: "00000000-0000-4000-a000-000000000002", name: "Bob Jones", email: "bob@example.com", role: "sales"},
+    {id: "00000000-0000-4000-a000-000000000003", name: "Charlie Day", email: "charlie@example.com", role: "sales"}
+  ])
+  customer_insertMany(data: [
+    {id: "c0000000-0000-4000-a000-000000000001", name: "Acme Corp", email: "contact@acme.com", status: "active", phoneNumber: "555-0101", priority: 1},
+    {id: "c0000000-0000-4000-a000-000000000002", name: "Globex Inc", email: "info@globex.com", status: "lead", phoneNumber: "555-0102", priority: 2},
+    {id: "c0000000-0000-4000-a000-000000000003", name: "Soylent Corp", email: "sales@soylent.com", status: "churned", phoneNumber: "555-0103", priority: 3}
+  ])
+  deal_insertMany(data: [
+    {id: "d0000000-0000-4000-a000-000000000001", title: "Enterprise License", stage: "negotiation", value: 50000.0, customerId: "c0000000-0000-4000-a000-000000000001"},
+    {id: "d0000000-0000-4000-a000-000000000002", title: "Consulting Package", stage: "prospecting", value: 15000.0, customerId: "c0000000-0000-4000-a000-000000000002"},
+    {id: "d0000000-0000-4000-a000-000000000003", title: "Cloud Migration", stage: "closed", value: 120000.0, customerId: "c0000000-0000-4000-a000-000000000001"}
+  ])
+  interaction_insertMany(data: [
+    {id: "i0000000-0000-4000-a000-000000000001", type: "call", summary: "Initial discovery call", createdAt: "2023-10-01T10:00:00Z", durationMinutes: 30, customerId: "c0000000-0000-4000-a000-000000000001"},
+    {id: "i0000000-0000-4000-a000-000000000002", type: "meeting", summary: "Product demo", createdAt: "2023-10-05T14:30:00Z", durationMinutes: 60, customerId: "c0000000-0000-4000-a000-000000000002"},
+    {id: "i0000000-0000-4000-a000-000000000003", type: "email", summary: "Follow up on proposal", createdAt: "2023-10-07T09:00:00Z", customerId: "c0000000-0000-4000-a000-000000000001"}
+  ])
+  note_insertMany(data: [
+    {id: "n0000000-0000-4000-a000-000000000001", content: "Key decision maker is the CTO.", createdAt: "2023-10-01T11:00:00Z", customerId: "c0000000-0000-4000-a000-000000000001", userId: "00000000-0000-4000-a000-000000000001"},
+    {id: "n0000000-0000-4000-a000-000000000002", content: "Pricing concerns raised.", createdAt: "2023-10-05T15:30:00Z", customerId: "c0000000-0000-4000-a000-000000000002", userId: "00000000-0000-4000-a000-000000000002"},
+    {id: "n0000000-0000-4000-a000-000000000003", content: "Client requested technical whitepaper.", createdAt: "2023-10-08T10:00:00Z", customerId: "c0000000-0000-4000-a000-000000000001", userId: "00000000-0000-4000-a000-000000000003"}
+  ])
+}

@@ -1,0 +1,139 @@
+mutation InsertCustomer($data: Customer_Data!) @auth(level: USER) {
+  customer_insert(data: $data)
+}
+
+mutation UpsertCustomer($data: Customer_Data!) @auth(level: USER) {
+  customer_upsert(data: $data)
+}
+
+mutation UpdateCustomer($id: UUID!, $data: Customer_Data!) @auth(level: USER) {
+  customer_update(id: $id, data: $data)
+}
+
+mutation DeleteCustomer($id: UUID!) @auth(level: USER) {
+  customer_delete(id: $id)
+}
+
+query GetCustomer($id: UUID!) @auth(level: USER) {
+  customer(id: $id) {
+    id name email status
+  }
+}
+
+query ListCustomers @auth(level: USER) {
+  customers {
+    id name email status
+  }
+}
+
+mutation InsertDeal($data: Deal_Data!) @auth(level: USER) {
+  deal_insert(data: $data)
+}
+
+mutation UpsertDeal($data: Deal_Data!) @auth(level: USER) {
+  deal_upsert(data: $data)
+}
+
+mutation UpdateDeal($id: UUID!, $data: Deal_Data!) @auth(level: USER) {
+  deal_update(id: $id, data: $data)
+}
+
+mutation DeleteDeal($id: UUID!) @auth(level: USER) {
+  deal_delete(id: $id)
+}
+
+query GetDeal($id: UUID!) @auth(level: USER) {
+  deal(id: $id) {
+    id title stage value
+  }
+}
+
+query ListDeals @auth(level: USER) {
+  deals {
+    id title stage value
+  }
+}
+
+mutation InsertInteraction($data: Interaction_Data!) @auth(level: USER) {
+  interaction_insert(data: $data)
+}
+
+mutation UpsertInteraction($data: Interaction_Data!) @auth(level: USER) {
+  interaction_upsert(data: $data)
+}
+
+mutation UpdateInteraction($id: UUID!, $data: Interaction_Data!) @auth(level: USER) {
+  interaction_update(id: $id, data: $data)
+}
+
+mutation DeleteInteraction($id: UUID!) @auth(level: USER) {
+  interaction_delete(id: $id)
+}
+
+query GetInteraction($id: UUID!) @auth(level: USER) {
+  interaction(id: $id) {
+    id type summary createdAt
+  }
+}
+
+query ListInteractions @auth(level: USER) {
+  interactions {
+    id type summary createdAt
+  }
+}
+
+mutation InsertNote($data: Note_Data!) @auth(level: USER) {
+  note_insert(data: $data)
+}
+
+mutation UpsertNote($data: Note_Data!) @auth(level: USER) {
+  note_upsert(data: $data)
+}
+
+mutation UpdateNote($id: UUID!, $data: Note_Data!) @auth(level: USER) {
+  note_update(id: $id, data: $data)
+}
+
+mutation DeleteNote($id: UUID!) @auth(level: USER) {
+  note_delete(id: $id)
+}
+
+query GetNote($id: UUID!) @auth(level: USER) {
+  note(id: $id) {
+    id content createdAt
+  }
+}
+
+query ListNotes @auth(level: USER) {
+  notes {
+    id content createdAt
+  }
+}
+
+mutation InsertUser($data: User_Data!) @auth(level: USER) {
+  user_insert(data: $data)
+}
+
+mutation UpsertUser($data: User_Data!) @auth(level: USER) {
+  user_upsert(data: $data)
+}
+
+mutation UpdateUser($id: UUID!, $data: User_Data!) @auth(level: USER) {
+  user_update(id: $id, data: $data)
+}
+
+mutation DeleteUser($id: UUID!) @auth(level: USER) {
+  user_delete(id: $id)
+}
+
+query GetUser($id: UUID!) @auth(level: USER) {
+  user(id: $id) {
+    id name email role
+  }
+}
+
+query ListUsers @auth(level: USER) {
+  users {
+    id name email role
+  }
+}
