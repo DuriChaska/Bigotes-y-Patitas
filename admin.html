@@ -19,12 +19,12 @@
       <div class="admin-topbar">
         <div>
           <h1>Dashboard</h1>
-          <p class="admin-breadcrumb">Panel de administración · Resumen general</p>
+          <p class="admin-breadcrumb">Panel de administración · Resumen de clientes</p>
         </div>
         <div class="admin-topbar-right">
           <div class="admin-search">
-            <span>🔍</span>
-            <input type="text" placeholder="Buscar producto o pedido..." />
+            <span data-bp-icon="search"></span>
+            <input type="text" placeholder="Buscar cliente..." />
           </div>
           <div class="admin-profile-chip">
             <div class="avatar">AD</div>
@@ -33,112 +33,108 @@
         </div>
       </div>
 
-      <!-- Tarjetas de estadísticas -->
+      <!-- Tarjetas de estadísticas de clientes -->
       <div class="admin-stats">
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon green">🛍️</div>
+            <div class="admin-stat-icon blue" data-bp-icon="users"></div>
           </div>
-          <div class="stat-num">5</div>
-          <div class="stat-label">Productos publicados</div>
-          <div class="stat-delta up">Todos activos</div>
+          <div class="stat-num">42</div>
+          <div class="stat-label">Total de clientes</div>
+          <div class="stat-delta up">Todos los clientes</div>
         </div>
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon blue">📦</div>
+            <div class="admin-stat-icon green" data-bp-icon="check"></div>
           </div>
-          <div class="stat-num">10</div>
-          <div class="stat-label">Pedidos totales</div>
-          <div class="stat-delta up">+4 esta semana</div>
+          <div class="stat-num">30</div>
+          <div class="stat-label">Clientes activos</div>
+          <div class="stat-delta up">71% del total</div>
         </div>
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon yellow">🏷️</div>
+            <div class="admin-stat-icon yellow" data-bp-icon="chat"></div>
           </div>
-          <div class="stat-num">3</div>
-          <div class="stat-label">Promociones activas</div>
-          <div class="stat-delta up">1 por vencer pronto</div>
+          <div class="stat-num">18</div>
+          <div class="stat-label">Interacciones (este mes)</div>
+          <div class="stat-delta up">+9% vs mes anterior</div>
         </div>
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <div class="admin-stat-icon orange">💰</div>
+            <div class="admin-stat-icon orange" data-bp-icon="warning"></div>
           </div>
-          <div class="stat-num">$2,100</div>
-          <div class="stat-label">Ventas del mes (MXN)</div>
-          <div class="stat-delta warn">2 productos con bajo stock</div>
+          <div class="stat-num">6</div>
+          <div class="stat-label">Clientes sin interacción</div>
+          <div class="stat-delta warn">Últimos 30 días</div>
         </div>
       </div>
 
-      <!-- Paneles: inventario + bajo stock -->
+      <!-- Paneles: clientes activos vs inactivos + clientes en riesgo -->
       <div class="admin-panels">
         <div class="admin-panel">
-          <h2>Estado del inventario</h2>
-          <p class="panel-sub">Productos en stock vs. agotados o con pocas piezas</p>
+          <h2>Clientes activos vs inactivos</h2>
+          <p class="panel-sub">Proporción de clientes con y sin compras recientes</p>
           <div class="admin-donut-wrap">
             <div class="admin-donut">
-              <span>75%<small>en stock</small></span>
+              <span>71%<small>activos</small></span>
             </div>
             <ul class="admin-legend">
-              <li><span class="dot green"></span> En stock — 75%</li>
-              <li><span class="dot orange"></span> Bajo stock / agotado — 25%</li>
+              <li><span class="dot green"></span> Activos — 30 (71%)</li>
+              <li><span class="dot orange"></span> Inactivos — 12 (29%)</li>
             </ul>
           </div>
         </div>
 
         <div class="admin-panel">
-          <h2>Productos con bajo stock</h2>
-          <p class="panel-sub">Revisa antes de que se agoten</p>
+          <h2>Clientes en riesgo</h2>
+          <p class="panel-sub">Sin interacción reciente — dales seguimiento</p>
           <ul class="admin-list">
             <li>
               <div>
-                <div class="item-name">Suéter tejido para perro</div>
-                <div class="item-sub">Quedan 2 piezas</div>
+                <div class="item-name">Ana García</div>
+                <div class="item-sub">Sin interacción desde hace 45 días</div>
               </div>
-              <span class="item-tag low">Bajo stock</span>
+              <span class="item-tag low">En riesgo</span>
             </li>
             <li>
               <div>
-                <div class="item-name">Arnés ajustable para perro</div>
-                <div class="item-sub">Agotado</div>
+                <div class="item-name">Luis Hernández</div>
+                <div class="item-sub">Sin interacción desde hace 38 días</div>
               </div>
-              <span class="item-tag low">Agotado</span>
+              <span class="item-tag low">En riesgo</span>
             </li>
             <li>
               <div>
-                <div class="item-name">Collar con corbatín para gato</div>
-                <div class="item-sub">Quedan 6 piezas</div>
+                <div class="item-name">Paola Ramírez</div>
+                <div class="item-sub">Sin interacción desde hace 33 días</div>
               </div>
-              <span class="item-tag ok">En stock</span>
+              <span class="item-tag low">En riesgo</span>
             </li>
           </ul>
+          <div style="text-align:right; margin-top:10px;">
+            <a href="admin-clientes.html" style="font-size:.82rem; font-weight:700; color:var(--admin-green);">Ver todos →</a>
+          </div>
         </div>
       </div>
 
       <!-- Acciones rápidas -->
       <div class="admin-panel">
         <h2>Acciones rápidas</h2>
-        <p class="panel-sub">Gestiona tu tienda desde aquí</p>
+        <p class="panel-sub">Da seguimiento a tus clientes desde aquí</p>
         <div class="admin-quick">
-          <a href="Interfaz Vendedor.html" class="primary">+ Agregar producto</a>
-          <a href="editarproducto.html" class="secondary">Editar productos</a>
-          <a href="pedidos.html" class="secondary">Ver pedidos</a>
-          <a href="promociones.html" class="secondary">Ver promociones</a>
+          <a href="admin-clientes.html" class="primary"><span data-bp-icon="users" style="margin-right:6px;"></span>Ver clientes</a>
+          <a href="admin-interacciones-todas.html" class="secondary"><span data-bp-icon="chat" style="margin-right:6px;"></span>Ver interacciones</a>
+          <a href="admin-reportes.html" class="secondary"><span data-bp-icon="chart" style="margin-right:6px;"></span>Ver reportes</a>
         </div>
       </div>
 
     </main>
   </div>
 
+  <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    // Si no hay una sesión de admin iniciada, regresa al login.
-    // (Comentado por ahora para no bloquear el acceso mientras se prueba el diseño.)
-    // if (!sessionStorage.getItem('bp_admin_logueado')) {
-    //   window.location.href = 'admin-login.html';
-    // }
-  </script>
 </body>
 </html>

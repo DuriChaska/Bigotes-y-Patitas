@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clasificación y seguimiento - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <a href="admin-clientes.html" class="admin-volver"><span data-bp-icon="arrow_left" style="margin-right:4px;"></span>Volver a clientes</a>
+
+      <div class="admin-topbar">
+        <div>
+          <h1>Clasificación y seguimiento</h1>
+          <p class="admin-breadcrumb">Panel de administración · Cambiar etapa del cliente y filtrado</p>
+        </div>
+      </div>
+
+      <div class="admin-panels" style="grid-template-columns: 1.5fr 1fr; gap: 20px;">
+
+        <!-- Tarjeta de edición -->
+        <div class="admin-panel">
+          <h2>Editar etapa CRM</h2>
+          <p class="panel-sub" id="client-name">María López</p>
+
+          <div class="admin-form-group" style="margin-top:16px;">
+            <label for="crm-stage">Nueva etapa</label>
+            <select id="crm-stage" class="admin-select" style="width:100%;">
+              <option value="Prospecto">Prospecto</option>
+              <option value="Activo">Activo</option>
+              <option value="Frecuente">Frecuente</option>
+              <option value="Inactivo">Inactivo</option>
+            </select>
+          </div>
+
+          <div class="admin-stat-card" style="margin-bottom: 20px; background: var(--purple-card); padding: 15px; border-radius: 10px; box-shadow: none;">
+            <p style="font-size: 0.85rem; color: var(--text); margin:0;">Los cambios en la etapa ayudan a dar mejor seguimiento y priorizar a tus clientes.</p>
+          </div>
+
+          <div class="admin-quick">
+            <a href="#" class="secondary" id="btn-cancelar">Cancelar</a>
+            <a href="#" class="primary" id="btn-guardar">Guardar cambios</a>
+          </div>
+        </div>
+
+        <!-- Tarjeta de filtro -->
+        <div class="admin-panel">
+          <h2>Filtrar por etapa</h2>
+          <p class="panel-sub">Selecciona una categoría</p>
+          <ul class="admin-list" id="filter-list" style="margin-top: 10px;">
+            <li data-value="Todas" style="padding:10px; cursor:pointer; border-radius:8px;">Todas</li>
+            <li data-value="Prospecto" style="padding:10px; cursor:pointer; border-radius:8px;">Prospecto</li>
+            <li data-value="Activo" style="padding:10px; cursor:pointer; border-radius:8px;">Activo</li>
+            <li data-value="Frecuente" style="padding:10px; cursor:pointer; border-radius:8px;">Frecuente</li>
+            <li data-value="Inactivo" style="padding:10px; cursor:pointer; border-radius:8px;">Inactivo</li>
+          </ul>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const cliente = params.get('cliente') || 'María López';
+    document.getElementById('client-name').textContent = cliente;
+
+    const selectStage = document.getElementById('crm-stage');
+    const filterListItems = document.querySelectorAll('#filter-list li');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const btnCancelar = document.getElementById('btn-cancelar');
+
+    // Etapa actual del cliente (vendría de la base de datos)
+    let estadoOriginal = 'Frecuente';
+    selectStage.value = estadoOriginal;
+
+    function resaltarLista(valor) {
+      filterListItems.forEach(item => {
+        const activo = item.dataset.value === valor;
+        item.style.background = activo ? 'rgba(107,143,113,.15)' : 'transparent';
+        item.style.fontWeight = activo ? 'bold' : 'normal';
+      });
+    }
+    resaltarLista(estadoOriginal);
+
+    selectStage.addEventListener('change', e => resaltarLista(e.target.value));
+
+    filterListItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const valor = item.dataset.value;
+        if (valor !== 'Todas') selectStage.value = valor;
+        resaltarLista(valor);
+        if (valor !== 'Todas') return;
+        // "Todas" -> ir al listado sin filtro
+        window.location.href = 'admin-clientes.html';
+      });
+    });
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    btnGuardar.addEventListener('click', (e) => {
+      e.preventDefault();
+      estadoOriginal = selectStage.value;
+      mostrarToast(`Etapa de ${cliente} guardada como: ${estadoOriginal}`);
+    });
+
+    btnCancelar.addEventListener('click', (e) => {
+      e.preventDefault();
+      selectStage.value = estadoOriginal;
+      resaltarLista(estadoOriginal);
+      window.location.href = 'admin-cliente-detalle.html?cliente=' + encodeURIComponent(cliente);
+    });
+  </script>
+</body>
+</html>
