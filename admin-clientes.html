@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clientes - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -141,15 +142,10 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    let clientes = [
-      { id: 1, nombre: "María López",   mascota: "Luna (Golden Retriever)", correo: "maria@correo.com",  telefono: "449-123-4567", etapa: "Activo",    estado: "Activo" },
-      { id: 2, nombre: "Juan Pérez",     mascota: "Firulais (Mestizo)",      correo: "juan@email.com",    telefono: "449-987-6543", etapa: "Frecuente", estado: "Activo" },
-      { id: 3, nombre: "Ana García",     mascota: "Michi (Gato Siamés)",     correo: "ana@correo.com",    telefono: "449-456-7890", etapa: "Prospecto", estado: "Activo" },
-      { id: 4, nombre: "Carlos Ruiz",    mascota: "Toby (Bulldog Francés)",  correo: "carlos@correo.com", telefono: "449-321-6547", etapa: "Inactivo",  estado: "Inactivo" },
-      { id: 5, nombre: "Luisa Morales",  mascota: "Nube (Conejo)",           correo: "luisa@correo.com",  telefono: "449-654-3210", etapa: "Activo",    estado: "Activo" },
-    ];
-    let siguienteId = 6;
+  <script type="module">
+    import { escucharClientes, crearCliente, actualizarCliente, actualizarEtapaCliente, eliminarCliente as eliminarClienteDB } from './firebase-db.js';
+
+    let clientes = [];
     const claseEtapa  = { "Activo": "ok", "Frecuente": "warn", "Prospecto": "info", "Inactivo": "muted" };
     const claseEstado = { "Activo": "ok", "Inactivo": "muted" };
 
@@ -157,23 +153,41 @@
       const cuerpo = document.getElementById('cuerpoClientes');
       cuerpo.innerHTML = clientes.map(c => `
         <tr data-id="${c.id}" data-nombre="${c.nombre}" data-etapa="${c.etapa}" data-estado="${c.estado}">
-          <td>${c.id}</td>
+          <td>${c.id.slice(0, 5)}</td>
           <td>${c.nombre}</td>
           <td>${c.mascota}</td>
           <td>${c.correo}</td>
           <td>${c.telefono}</td>
-          <td><span class="admin-tag ${claseEtapa[c.etapa]}">${c.etapa}</span></td>
-          <td><span class="admin-tag ${claseEstado[c.estado]}">${c.estado}</span></td>
+          <td><span class="admin-tag ${claseEtapa[c.etapa] || 'muted'}">${c.etapa}</span></td>
+          <td><span class="admin-tag ${claseEstado[c.estado] || 'muted'}">${c.estado}</span></td>
           <td class="admin-table-actions">
-            <button title="Ver cliente" onclick="verCliente('${c.nombre}')">${bpIcon('eye')}</button>
-            <button title="Interacciones" onclick="verInteracciones('${c.nombre}')">${bpIcon('chat')}</button>
-            <button title="Editar cliente" onclick="editarCliente(${c.id})">${bpIcon('pencil')}</button>
-            <button title="Eliminar cliente" class="danger" onclick="eliminarCliente(${c.id})">${bpIcon('trash')}</button>
+            <button title="Ver cliente" onclick="verCliente('${c.id}')">${bpIcon('eye')}</button>
+            <button title="Interacciones" onclick="verInteracciones('${c.id}','${c.nombre}')">${bpIcon('chat')}</button>
+            <button title="Editar cliente" onclick="editarCliente('${c.id}')">${bpIcon('pencil')}</button>
+            <button title="Eliminar cliente" class="danger" onclick="eliminarCliente('${c.id}')">${bpIcon('trash')}</button>
           </td>
         </tr>
       `).join('');
       filtrarClientes();
+
+      // Si se llegó desde "Editar cliente" en el detalle, abrir el modal ya cargado
+      const paramsUrl = new URLSearchParams(window.location.search);
+      const idAEditar = paramsUrl.get('editar');
+      if (idAEditar && clientes.some(c => c.id === idAEditar)) {
+        editarCliente(idAEditar);
+        window.history.replaceState({}, '', 'admin-clientes.html');
+      }
     }
+
+    // Suscripción en tiempo real a la colección "clientes" de Firestore
+    escucharClientes((lista) => {
+      clientes = lista;
+      pintarClientes();
+    });
+
+    // Si se llegó desde "Clasificación y seguimiento" con un filtro de etapa en la URL
+    const etapaUrl = new URLSearchParams(window.location.search).get('etapa');
+    if (etapaUrl) document.getElementById('filtroEtapa').value = etapaUrl;
 
     function abrirModalCliente() {
       document.getElementById('clienteEditId').value = '';
@@ -182,6 +196,7 @@
       document.getElementById('formCliente').reset();
       document.getElementById('modalCliente').classList.remove('hidden');
     }
+    window.abrirModalCliente = abrirModalCliente;
 
     function editarCliente(id) {
       const c = clientes.find(x => x.id === id);
@@ -197,24 +212,32 @@
       document.getElementById('nuevoEstado').value = c.estado;
       document.getElementById('modalCliente').classList.remove('hidden');
     }
+    window.editarCliente = editarCliente;
 
-    function eliminarCliente(id) {
+    async function eliminarCliente(id) {
       const c = clientes.find(x => x.id === id);
       if (!c) return;
       if (!confirm(`¿Eliminar a ${c.nombre} del listado de clientes? Esta acción no se puede deshacer.`)) return;
-      clientes = clientes.filter(x => x.id !== id);
-      pintarClientes();
-      mostrarToast(`Cliente ${c.nombre} eliminado`);
+      try {
+        await eliminarClienteDB(id);
+        mostrarToast(`Cliente ${c.nombre} eliminado`);
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo eliminar. Revisa tu conexión con Firebase.');
+      }
     }
+    window.eliminarCliente = eliminarCliente;
 
     function cerrarModalCliente() {
       document.getElementById('modalCliente').classList.add('hidden');
       document.getElementById('formCliente').reset();
     }
+    window.cerrarModalCliente = cerrarModalCliente;
 
-    function guardarCliente(e) {
+    async function guardarCliente(e) {
       e.preventDefault();
       const id = document.getElementById('clienteEditId').value;
+      const boton = document.getElementById('btnGuardarCliente');
       const datos = {
         nombre: document.getElementById('nuevoNombre').value,
         mascota: document.getElementById('nuevaMascota').value,
@@ -224,19 +247,24 @@
         estado: document.getElementById('nuevoEstado').value,
       };
 
-      if (id) {
-        const c = clientes.find(x => x.id === Number(id));
-        Object.assign(c, datos);
-        mostrarToast(`Cliente ${datos.nombre} actualizado correctamente`);
-      } else {
-        clientes.push({ id: siguienteId++, ...datos });
-        mostrarToast(`Cliente ${datos.nombre} registrado correctamente`);
+      boton.disabled = true;
+      try {
+        if (id) {
+          await actualizarCliente(id, datos);
+          mostrarToast(`Cliente ${datos.nombre} actualizado correctamente`);
+        } else {
+          await crearCliente(datos);
+          mostrarToast(`Cliente ${datos.nombre} registrado correctamente`);
+        }
+        cerrarModalCliente();
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo guardar. Revisa tu conexión con Firebase.');
       }
-
-      pintarClientes();
-      cerrarModalCliente();
+      boton.disabled = false;
       return false;
     }
+    window.guardarCliente = guardarCliente;
 
     function mostrarToast(msg) {
       const toast = document.getElementById('toast');
@@ -245,13 +273,15 @@
       setTimeout(() => toast.classList.remove('show'), 2600);
     }
 
-    function verCliente(nombre) {
-      window.location.href = 'admin-cliente-detalle.html?cliente=' + encodeURIComponent(nombre);
+    function verCliente(id) {
+      window.location.href = 'admin-cliente-detalle.html?cliente=' + encodeURIComponent(id);
     }
+    window.verCliente = verCliente;
 
-    function verInteracciones(nombre) {
-      window.location.href = 'admin-interacciones.html?cliente=' + encodeURIComponent(nombre);
+    function verInteracciones(id, nombre) {
+      window.location.href = 'admin-interacciones.html?cliente=' + encodeURIComponent(id) + '&nombre=' + encodeURIComponent(nombre);
     }
+    window.verInteracciones = verInteracciones;
 
     function filtrarClientes() {
       const texto = document.getElementById('buscarCliente').value.trim().toLowerCase();
@@ -272,16 +302,7 @@
       document.getElementById('contadorClientes').textContent = `${visibles} cliente${visibles === 1 ? '' : 's'}`;
       document.getElementById('sinResultados').classList.toggle('hidden', visibles !== 0);
     }
-
-    pintarClientes();
-
-    // Si se llegó desde "Editar cliente" en el detalle, abrir el modal ya cargado
-    const paramsUrl = new URLSearchParams(window.location.search);
-    const nombreAEditar = paramsUrl.get('editar');
-    if (nombreAEditar) {
-      const c = clientes.find(x => x.nombre === nombreAEditar);
-      if (c) editarCliente(c.id);
-    }
+    window.filtrarClientes = filtrarClientes;
   </script>
 </body>
 </html>

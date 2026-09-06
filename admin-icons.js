@@ -27,6 +27,8 @@ const ADMIN_ICONS = {
   paw:         '<circle cx="7" cy="9" r="1.8"/><circle cx="12" cy="6.5" r="1.8"/><circle cx="17" cy="9" r="1.8"/><path d="M12 12c-3.3 0-5.7 2.2-5.7 4.6 0 1.7 1.5 2.9 3.2 2.4a5 5 0 0 1 5 0c1.7.5 3.2-.7 3.2-2.4 0-2.4-2.4-4.6-5.7-4.6z"/>',
   hourglass:   '<path d="M6 3.5h12"/><path d="M6 20.5h12"/><path d="M7 3.5v3.2c0 1.6 5 4.3 5 5.3s-5 3.7-5 5.3v3.2"/><path d="M17 3.5v3.2c0 1.6-5 4.3-5 5.3s5 3.7 5 5.3v3.2"/>',
   arrow_left:  '<path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>',
+  shield:      '<path d="M12 3.5 5 6v5.5c0 4.6 3 7.6 7 9 4-1.4 7-4.4 7-9V6z"/><path d="m9 12 2 2 4-4.3"/>',
+  key:         '<circle cx="8" cy="15" r="4"/><path d="m11 12 8.5-8.5"/><path d="m16 6 2.5 2.5"/><path d="m18.5 3.5 2.5 2.5"/>',
 };
 
 function bpIcon(name, cls) {
