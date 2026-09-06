@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Interacciones - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -54,29 +55,26 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    const todasInteracciones = [
-      { fecha: "25/07/2025", cliente: "María López",    tipo: "Llamada", descripcion: "Se discutieron nuevos diseños para la próxima temporada.", usuario: "Admin" },
-      { fecha: "24/07/2025", cliente: "Luis Hernández", tipo: "Correo",  descripcion: "Envío de información de promociones.",                     usuario: "Admin" },
-      { fecha: "20/07/2025", cliente: "Ana García",     tipo: "Reunión", descripcion: "Reunión en tienda para muestras de productos.",             usuario: "Juan Pérez" },
-      { fecha: "18/07/2025", cliente: "Carlos Ruiz",    tipo: "Llamada", descripcion: "Seguimiento a pedido anterior.",                            usuario: "Admin" },
-      { fecha: "18/07/2025", cliente: "Ana García",     tipo: "Correo",  descripcion: "Se envió recordatorio de renovación de suscripción de snacks.", usuario: "Admin" },
-      { fecha: "10/05/2025", cliente: "María López",    tipo: "Correo",  descripcion: "Envío de catálogo de nuevos productos.",                    usuario: "Admin" },
-      { fecha: "05/07/2025", cliente: "Ana García",     tipo: "Llamada", descripcion: "Sin respuesta, se dejó mensaje de voz.",                    usuario: "Admin" },
-      { fecha: "25/07/2025", cliente: "Luis Hernández", tipo: "Correo",  descripcion: "Se envió promoción de collares para gato.",                 usuario: "Admin" },
-    ];
+  <script type="module">
+    import { escucharTodasInteracciones } from './firebase-db.js';
+
+    let todasInteracciones = [];
 
     function pintarInteracciones(lista) {
       const cuerpo = document.getElementById('inter-lista');
-      cuerpo.innerHTML = lista.map(i => `
-        <tr>
-          <td>${i.fecha}</td>
-          <td>${i.cliente}</td>
-          <td>${i.tipo}</td>
-          <td>${i.descripcion}</td>
-          <td>${i.usuario}</td>
-        </tr>
-      `).join('');
+      if (lista.length === 0) {
+        cuerpo.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">No hay interacciones registradas todavía.</td></tr>`;
+      } else {
+        cuerpo.innerHTML = lista.map(i => `
+          <tr>
+            <td>${i.fecha || '—'}</td>
+            <td>${i.clienteNombre}</td>
+            <td>${i.tipo}</td>
+            <td>${i.descripcion}</td>
+            <td>${i.usuario}</td>
+          </tr>
+        `).join('');
+      }
       document.getElementById('inter-conteo').textContent =
         `Mostrando ${lista.length} de ${todasInteracciones.length} interacciones`;
     }
@@ -85,14 +83,18 @@
       const texto = document.getElementById('buscador-inter').value.toLowerCase();
       const tipo = document.getElementById('filtro-tipo').value;
       const filtradas = todasInteracciones.filter(i => {
-        const coincideTexto = i.cliente.toLowerCase().includes(texto) || i.descripcion.toLowerCase().includes(texto);
+        const coincideTexto = i.clienteNombre.toLowerCase().includes(texto) || i.descripcion.toLowerCase().includes(texto);
         const coincideTipo = tipo === 'todos' || i.tipo === tipo;
         return coincideTexto && coincideTipo;
       });
       pintarInteracciones(filtradas);
     }
+    window.filtrarInteracciones = filtrarInteracciones;
 
-    pintarInteracciones(todasInteracciones);
+    escucharTodasInteracciones((lista) => {
+      todasInteracciones = lista;
+      filtrarInteracciones();
+    });
   </script>
 </body>
 </html>

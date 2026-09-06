@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Detalle de cliente - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -70,49 +71,53 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    // Datos de ejemplo (mismos clientes que admin-clientes.html); en producción vendrían de la base de datos.
-    const clientesDB = {
-      "María López":   { mascota: "Luna (Golden Retriever)", correo: "maria@correo.com",  telefono: "449-123-4567", etapa: "Activo",    fecha: "12/04/2024" },
-      "Juan Pérez":     { mascota: "Firulais (Mestizo)",      correo: "juan@email.com",    telefono: "449-987-6543", etapa: "Frecuente", fecha: "03/02/2024" },
-      "Ana García":     { mascota: "Michi (Gato Siamés)",     correo: "ana@correo.com",    telefono: "449-456-7890", etapa: "Prospecto", fecha: "20/06/2024" },
-      "Carlos Ruiz":    { mascota: "Toby (Bulldog Francés)",  correo: "carlos@correo.com", telefono: "449-321-6547", etapa: "Inactivo",  fecha: "15/01/2024" },
-      "Luisa Morales":  { mascota: "Nube (Conejo)",           correo: "luisa@correo.com",  telefono: "449-654-3210", etapa: "Activo",    fecha: "28/05/2024" },
-    };
+  <script type="module">
+    import { obtenerCliente } from './firebase-db.js';
 
     const tagClase = { "Activo": "ok", "Frecuente": "warn", "Prospecto": "info", "Inactivo": "muted" };
-
     const params = new URLSearchParams(window.location.search);
-    const nombre = params.get('cliente') || 'María López';
-    const c = clientesDB[nombre] || clientesDB["María López"];
-    const iniciales = nombre.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    const id = params.get('cliente');
 
-    document.getElementById('cd-titulo').textContent = nombre;
-    document.getElementById('cd-nombre').textContent = nombre;
-    document.getElementById('cd-avatar').textContent = iniciales;
-    document.getElementById('cd-mascota').textContent = c.mascota;
-    document.getElementById('cd-correo').textContent = c.correo;
-    document.getElementById('cd-telefono').textContent = c.telefono;
-    document.getElementById('cd-fecha').textContent = c.fecha;
+    async function cargar() {
+      if (!id) {
+        document.getElementById('cd-titulo').textContent = 'Cliente no encontrado';
+        return;
+      }
+      const c = await obtenerCliente(id);
+      if (!c) {
+        document.getElementById('cd-titulo').textContent = 'Cliente no encontrado';
+        return;
+      }
 
-    ['cd-etapa'].forEach(id => {
-      const el = document.getElementById(id);
-      el.textContent = c.etapa;
-      el.className = 'admin-tag ' + (tagClase[c.etapa] || 'muted');
-    });
-    ['cd-estado', 'cd-estado2'].forEach(id => {
-      const el = document.getElementById(id);
-      const activo = c.etapa !== 'Inactivo';
-      el.textContent = activo ? 'Activo' : 'Inactivo';
-      el.className = 'admin-tag ' + (activo ? 'ok' : 'muted');
-    });
+      const iniciales = c.nombre.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
 
-    document.getElementById('cd-btn-etapa').href = 'admin-cliente-etapa.html?cliente=' + encodeURIComponent(nombre);
-    document.getElementById('cd-link-historial').href = 'admin-interacciones.html?cliente=' + encodeURIComponent(nombre);
-    document.getElementById('cd-btn-editar').addEventListener('click', (e) => {
-      e.preventDefault();
-      window.location.href = 'admin-clientes.html?editar=' + encodeURIComponent(nombre);
-    });
+      document.getElementById('cd-titulo').textContent = c.nombre;
+      document.getElementById('cd-nombre').textContent = c.nombre;
+      document.getElementById('cd-avatar').textContent = iniciales;
+      document.getElementById('cd-mascota').textContent = c.mascota;
+      document.getElementById('cd-correo').textContent = c.correo;
+      document.getElementById('cd-telefono').textContent = c.telefono;
+      document.getElementById('cd-fecha').textContent = c.fechaRegistro || '—';
+
+      const etapaEl = document.getElementById('cd-etapa');
+      etapaEl.textContent = c.etapa;
+      etapaEl.className = 'admin-tag ' + (tagClase[c.etapa] || 'muted');
+
+      ['cd-estado', 'cd-estado2'].forEach(elId => {
+        const el = document.getElementById(elId);
+        const activo = c.estado === 'Activo';
+        el.textContent = c.estado;
+        el.className = 'admin-tag ' + (activo ? 'ok' : 'muted');
+      });
+
+      document.getElementById('cd-btn-etapa').href = 'admin-cliente-etapa.html?cliente=' + encodeURIComponent(id);
+      document.getElementById('cd-link-historial').href = 'admin-interacciones.html?cliente=' + encodeURIComponent(id) + '&nombre=' + encodeURIComponent(c.nombre);
+      document.getElementById('cd-btn-editar').addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = 'admin-clientes.html?editar=' + encodeURIComponent(id);
+      });
+    }
+    cargar();
 
     // Pestañas
     document.querySelectorAll('.admin-tab-btn').forEach(btn => {

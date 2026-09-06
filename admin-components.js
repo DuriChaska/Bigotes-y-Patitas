@@ -16,6 +16,7 @@ const adminNavLinks = [
   { href: 'admin-interacciones-todas.html',  label: 'Interacciones',  icon: 'chat' },
   { href: 'admin-reportes.html',             label: 'Reportes',       icon: 'chart' },
   { href: 'admin-actividad.html',            label: 'Mi actividad',   icon: 'clock' },
+  { href: 'admin-usuarios.html',             label: 'Usuarios',       icon: 'shield', soloAdmin: true },
   { href: 'admin-configuracion.html',        label: 'Configuración',  icon: 'settings' },
 ];
 
@@ -28,7 +29,7 @@ const adminAliasActivo = {
 const adminPaginaActiva = adminAliasActivo[adminPaginaActual] || adminPaginaActual;
 
 const adminNavHTML = adminNavLinks.map(link => `
-  <li>
+  <li${link.soloAdmin ? ' class="solo-admin"' : ''}>
     <a href="${link.href}" class="${adminPaginaActiva === link.href ? 'active' : ''}">
       <span class="nav-icon">${bpIcon(link.icon)}</span>
       <span class="nav-label">${link.label}</span>
@@ -62,8 +63,9 @@ function renderAdminSidebar() {
 
 function cerrarSesionAdmin(e) {
   if (e) e.preventDefault();
-  sessionStorage.removeItem('bp_admin_logueado');
-  window.location.href = 'admin-login.html';
+  import('./firebase-db.js').then(({ logoutAdmin }) => {
+    logoutAdmin().finally(() => { window.location.href = 'admin-login.html'; });
+  });
 }
 
 document.addEventListener('DOMContentLoaded', renderAdminSidebar);

@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para "Bigotes y Patitas".
+// Cópialas en Firebase Console → Firestore Database → Reglas,
+// o despliégalas con la CLI de Firebase (firebase deploy --only firestore:rules).
+//
+// Lógica:
+//  - clientes / interacciones: cualquier usuario con sesión iniciada puede
+//    leer y escribir (administradores y vendedores tienen el mismo acceso
+//    aquí, tal como lo pidió el equipo).
+//  - usuarios: cualquiera con sesión puede LEER (para saber su propio rol
+//    al entrar), pero solo alguien cuyo propio documento diga
+//    rol == "administrador" puede crear, editar o borrar perfiles de otros.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /clientes/{clienteId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /interacciones/{interaccionId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /usuarios/{uid} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
+    }
+
+    // Cualquier otra colección queda bloqueada por defecto.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

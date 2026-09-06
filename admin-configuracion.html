@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Configuración - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -15,21 +16,187 @@
       <div class="admin-topbar">
         <div>
           <h1>Configuración</h1>
-          <p class="admin-breadcrumb">Panel de administración · Preferencias de la tienda</p>
+          <p class="admin-breadcrumb">Panel de administración · Tu cuenta</p>
         </div>
       </div>
 
-      <div class="admin-panel">
-        <div class="admin-empty-state">
-          <div class="icon" data-bp-icon="settings"></div>
-          <h3>Próximamente</h3>
-          <p>Aquí vas a poder configurar los datos de la tienda, métodos de pago y usuarios administradores.</p>
+      <div class="admin-panels" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+
+        <!-- Datos personales -->
+        <div class="admin-panel">
+          <h2>Datos personales</h2>
+          <p class="panel-sub">Tu nombre y rol dentro del panel</p>
+
+          <form id="form-nombre" onsubmit="return guardarNombre(event)" style="margin-top:16px;">
+            <div class="admin-form-group">
+              <label for="cfg-nombre">Nombre para mostrar</label>
+              <input type="text" id="cfg-nombre" required>
+            </div>
+            <div class="admin-form-group">
+              <label>Rol actual</label>
+              <div><span class="admin-tag" id="cfg-rol">—</span></div>
+            </div>
+            <div class="admin-quick">
+              <button type="submit" class="admin-quick-btn primary" style="border:none; cursor:pointer;">Guardar nombre</button>
+            </div>
+          </form>
         </div>
+
+        <!-- Cambiar correo -->
+        <div class="admin-panel">
+          <h2>Cambiar correo</h2>
+          <p class="panel-sub">Correo con el que inicias sesión</p>
+
+          <form id="form-correo" onsubmit="return guardarCorreo(event)" style="margin-top:16px;">
+            <div class="admin-form-group">
+              <label for="cfg-correo-actual">Correo actual</label>
+              <input type="email" id="cfg-correo-actual" disabled>
+            </div>
+            <div class="admin-form-group">
+              <label for="cfg-correo-nuevo">Nuevo correo</label>
+              <input type="email" id="cfg-correo-nuevo" placeholder="nuevo@correo.com" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="cfg-correo-pass">Tu contraseña actual (para confirmar)</label>
+              <input type="password" id="cfg-correo-pass" required>
+            </div>
+            <div class="admin-quick">
+              <button type="submit" class="admin-quick-btn primary" style="border:none; cursor:pointer;">Actualizar correo</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Cambiar contraseña -->
+        <div class="admin-panel">
+          <h2>Cambiar contraseña</h2>
+          <p class="panel-sub">Usa una contraseña de al menos 6 caracteres</p>
+
+          <form id="form-pass" onsubmit="return guardarContrasena(event)" style="margin-top:16px;">
+            <div class="admin-form-group">
+              <label for="cfg-pass-actual">Contraseña actual</label>
+              <input type="password" id="cfg-pass-actual" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="cfg-pass-nueva">Contraseña nueva</label>
+              <input type="password" id="cfg-pass-nueva" minlength="6" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="cfg-pass-confirmar">Confirmar contraseña nueva</label>
+              <input type="password" id="cfg-pass-confirmar" minlength="6" required>
+            </div>
+            <div class="admin-quick">
+              <button type="submit" class="admin-quick-btn primary" style="border:none; cursor:pointer;">Actualizar contraseña</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Info de sesión -->
+        <div class="admin-panel">
+          <h2>Sesión</h2>
+          <p class="panel-sub">Cerrar tu sesión en este dispositivo</p>
+          <div class="admin-quick" style="margin-top:16px;">
+            <a href="#" class="secondary" onclick="cerrarSesionAdmin(event)"><span data-bp-icon="logout" style="margin-right:6px;"></span>Cerrar sesión</a>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
 
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
+  <script type="module">
+    import { cambiarNombrePropio, cambiarCorreoPropio, cambiarContrasenaPropia } from './firebase-db.js';
+
+    const claseRol = { administrador: 'rol-administrador', vendedor: 'rol-vendedor' };
+    const etiquetaRol = { administrador: 'Administrador', vendedor: 'Vendedor' };
+
+    document.addEventListener('bp-sesion-lista', (e) => {
+      const s = e.detail;
+      document.getElementById('cfg-nombre').value = s.nombre || '';
+      document.getElementById('cfg-correo-actual').value = s.correo || '';
+      const chipRol = document.getElementById('cfg-rol');
+      chipRol.textContent = etiquetaRol[s.rol] || s.rol;
+      chipRol.className = 'admin-tag ' + (claseRol[s.rol] || '');
+    });
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    function mensajeErrorAuth(codigo) {
+      const mensajes = {
+        'auth/wrong-password': 'Tu contraseña actual no es correcta.',
+        'auth/invalid-credential': 'Tu contraseña actual no es correcta.',
+        'auth/too-many-requests': 'Demasiados intentos. Espera un momento e inténtalo de nuevo.',
+        'auth/email-already-in-use': 'Ese correo ya lo está usando otra cuenta.',
+        'auth/invalid-email': 'El correo no tiene un formato válido.',
+        'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+        'auth/requires-recent-login': 'Por seguridad, vuelve a iniciar sesión e inténtalo de nuevo.',
+      };
+      return mensajes[codigo] || 'No se pudo completar la acción. Revisa tu conexión con Firebase.';
+    }
+
+    async function guardarNombre(e) {
+      e.preventDefault();
+      try {
+        await cambiarNombrePropio(document.getElementById('cfg-nombre').value.trim());
+        mostrarToast('Nombre actualizado correctamente');
+      } catch (err) {
+        console.error(err);
+        mostrarToast(mensajeErrorAuth(err.code));
+      }
+      return false;
+    }
+    window.guardarNombre = guardarNombre;
+
+    async function guardarCorreo(e) {
+      e.preventDefault();
+      const nuevo = document.getElementById('cfg-correo-nuevo').value.trim();
+      const pass = document.getElementById('cfg-correo-pass').value;
+      try {
+        await cambiarCorreoPropio(nuevo, pass);
+        document.getElementById('cfg-correo-actual').value = nuevo;
+        document.getElementById('form-correo').reset();
+        document.getElementById('cfg-correo-actual').value = nuevo;
+        mostrarToast('Correo actualizado correctamente');
+      } catch (err) {
+        console.error(err);
+        mostrarToast(mensajeErrorAuth(err.code));
+      }
+      return false;
+    }
+    window.guardarCorreo = guardarCorreo;
+
+    async function guardarContrasena(e) {
+      e.preventDefault();
+      const actual = document.getElementById('cfg-pass-actual').value;
+      const nueva = document.getElementById('cfg-pass-nueva').value;
+      const confirmar = document.getElementById('cfg-pass-confirmar').value;
+
+      if (nueva !== confirmar) {
+        mostrarToast('La confirmación no coincide con la contraseña nueva');
+        return false;
+      }
+
+      try {
+        await cambiarContrasenaPropia(nueva, actual);
+        document.getElementById('form-pass').reset();
+        mostrarToast('Contraseña actualizada correctamente');
+      } catch (err) {
+        console.error(err);
+        mostrarToast(mensajeErrorAuth(err.code));
+      }
+      return false;
+    }
+    window.guardarContrasena = guardarContrasena;
+  </script>
 </body>
 </html>
