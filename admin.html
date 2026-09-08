@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dashboard Admin - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -39,7 +40,7 @@
           <div class="admin-stat-top">
             <div class="admin-stat-icon blue" data-bp-icon="users"></div>
           </div>
-          <div class="stat-num">42</div>
+          <div class="stat-num" id="stat-total">0</div>
           <div class="stat-label">Total de clientes</div>
           <div class="stat-delta up">Todos los clientes</div>
         </div>
@@ -48,27 +49,27 @@
           <div class="admin-stat-top">
             <div class="admin-stat-icon green" data-bp-icon="check"></div>
           </div>
-          <div class="stat-num">30</div>
+          <div class="stat-num" id="stat-activos">0</div>
           <div class="stat-label">Clientes activos</div>
-          <div class="stat-delta up">71% del total</div>
+          <div class="stat-delta up" id="stat-activos-pct">0% del total</div>
         </div>
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
             <div class="admin-stat-icon yellow" data-bp-icon="chat"></div>
           </div>
-          <div class="stat-num">18</div>
+          <div class="stat-num" id="stat-interacciones">0</div>
           <div class="stat-label">Interacciones (este mes)</div>
-          <div class="stat-delta up">+9% vs mes anterior</div>
+          <div class="stat-delta up">Total registrado</div>
         </div>
 
         <div class="admin-stat-card">
           <div class="admin-stat-top">
             <div class="admin-stat-icon orange" data-bp-icon="warning"></div>
           </div>
-          <div class="stat-num">6</div>
+          <div class="stat-num" id="stat-sin-interaccion">0</div>
           <div class="stat-label">Clientes sin interacción</div>
-          <div class="stat-delta warn">Últimos 30 días</div>
+          <div class="stat-delta warn">Nunca contactados</div>
         </div>
       </div>
 
@@ -78,41 +79,21 @@
           <h2>Clientes activos vs inactivos</h2>
           <p class="panel-sub">Proporción de clientes con y sin compras recientes</p>
           <div class="admin-donut-wrap">
-            <div class="admin-donut">
-              <span>71%<small>activos</small></span>
+            <div class="admin-donut" id="donut-activos">
+              <span id="donut-pct">0%<small>activos</small></span>
             </div>
-            <ul class="admin-legend">
-              <li><span class="dot green"></span> Activos — 30 (71%)</li>
-              <li><span class="dot orange"></span> Inactivos — 12 (29%)</li>
+            <ul class="admin-legend" id="leyenda-activos">
+              <li><span class="dot green"></span> Activos — 0 (0%)</li>
+              <li><span class="dot orange"></span> Inactivos — 0 (0%)</li>
             </ul>
           </div>
         </div>
 
         <div class="admin-panel">
           <h2>Clientes en riesgo</h2>
-          <p class="panel-sub">Sin interacción reciente — dales seguimiento</p>
-          <ul class="admin-list">
-            <li>
-              <div>
-                <div class="item-name">Ana García</div>
-                <div class="item-sub">Sin interacción desde hace 45 días</div>
-              </div>
-              <span class="item-tag low">En riesgo</span>
-            </li>
-            <li>
-              <div>
-                <div class="item-name">Luis Hernández</div>
-                <div class="item-sub">Sin interacción desde hace 38 días</div>
-              </div>
-              <span class="item-tag low">En riesgo</span>
-            </li>
-            <li>
-              <div>
-                <div class="item-name">Paola Ramírez</div>
-                <div class="item-sub">Sin interacción desde hace 33 días</div>
-              </div>
-              <span class="item-tag low">En riesgo</span>
-            </li>
+          <p class="panel-sub">Sin interacciones registradas — dales seguimiento</p>
+          <ul class="admin-list" id="lista-riesgo">
+            <li><div class="item-sub">Cargando...</div></li>
           </ul>
           <div style="text-align:right; margin-top:10px;">
             <a href="admin-clientes.html" style="font-size:.82rem; font-weight:700; color:var(--admin-green);">Ver todos →</a>
@@ -136,5 +117,47 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
+  <script type="module">
+    import { calcularMetricas } from './firebase-db.js';
+
+    async function cargarDashboard() {
+      const m = await calcularMetricas();
+      const pctActivos = m.totalClientes ? Math.round((m.activos / m.totalClientes) * 100) : 0;
+      const pctInactivos = 100 - pctActivos;
+
+      document.getElementById('stat-total').textContent = m.totalClientes;
+      document.getElementById('stat-activos').textContent = m.activos;
+      document.getElementById('stat-activos-pct').textContent = `${pctActivos}% del total`;
+      document.getElementById('stat-interacciones').textContent = m.interacciones.length;
+      document.getElementById('stat-sin-interaccion').textContent = m.sinInteraccionReciente;
+
+      document.getElementById('donut-pct').innerHTML = `${pctActivos}%<small>activos</small>`;
+      document.getElementById('donut-activos').style.background =
+        `conic-gradient(var(--admin-green) 0% ${pctActivos}%, var(--pink-medio) ${pctActivos}% 100%)`;
+      document.getElementById('leyenda-activos').innerHTML = `
+        <li><span class="dot green"></span> Activos — ${m.activos} (${pctActivos}%)</li>
+        <li><span class="dot orange"></span> Inactivos — ${m.inactivos} (${pctInactivos}%)</li>
+      `;
+
+      const interaccionesPorCliente = {};
+      m.interacciones.forEach(i => { interaccionesPorCliente[i.clienteId] = true; });
+      const enRiesgo = m.clientes.filter(c => !interaccionesPorCliente[c.id]).slice(0, 5);
+
+      const listaRiesgo = document.getElementById('lista-riesgo');
+      listaRiesgo.innerHTML = enRiesgo.length === 0
+        ? `<li><div class="item-sub">Todos los clientes tienen interacciones registradas 🎉</div></li>`
+        : enRiesgo.map(c => `
+            <li>
+              <div>
+                <div class="item-name">${c.nombre}</div>
+                <div class="item-sub">Sin interacciones registradas</div>
+              </div>
+              <span class="item-tag low">En riesgo</span>
+            </li>
+          `).join('');
+    }
+
+    cargarDashboard();
+  </script>
 </body>
 </html>

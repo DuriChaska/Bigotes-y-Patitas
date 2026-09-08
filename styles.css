@@ -1467,3 +1467,15 @@ button .bp-icon, a .bp-icon { width: 16px; height: 16px; }
 
 /* Mi actividad - filtro de rango de fechas editable */
 .admin-date-input { min-width: 128px; color: var(--text); }
+
+/* Oculta el panel hasta confirmar la sesión (admin-auth-guard.js) para evitar parpadeos */
+.admin-shell { visibility: hidden; }
+html.admin-autenticado .admin-shell { visibility: visible; }
+
+/* ===========================
+   Admin - Roles (administrador / vendedor)
+=========================== */
+html.rol-vendedor .solo-admin { display: none !important; }
+
+.admin-tag.rol-administrador { background: #e6ddfa; color: #5b3fae; }
+.admin-tag.rol-vendedor { background: #dcecf8; color: #2b6690; }

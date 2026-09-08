@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mi actividad - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -48,45 +49,52 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    // fechaISO se usa para filtrar; fecha es la que se muestra en la tabla
-    const actividades = [
-      { fechaISO: "2025-07-25", fecha: "25/07/2025", cliente: "María López",      tipo: "Llamada", descripcion: "Se discutieron nuevos diseños para la próxima temporada." },
-      { fechaISO: "2025-07-24", fecha: "24/07/2025", cliente: "Luis Hernández",   tipo: "Correo",  descripcion: "Envío de información de promociones." },
-      { fechaISO: "2025-07-20", fecha: "20/07/2025", cliente: "Ana García",       tipo: "Reunión", descripcion: "Reunión en tienda para muestras de productos." },
-      { fechaISO: "2025-07-18", fecha: "18/07/2025", cliente: "Carlos Ruiz",      tipo: "Llamada", descripcion: "Seguimiento a pedido anterior." },
-    ];
+  <script type="module">
+    import { escucharTodasInteracciones } from './firebase-db.js';
+
+    let actividades = [];
+
+    // Convierte "dd/mm/aaaa" a "aaaa-mm-dd" para poder comparar fechas
+    function aISO(fechaTexto) {
+      if (!fechaTexto) return '';
+      const [d, m, a] = fechaTexto.split('/');
+      return a && m && d ? `${a}-${m}-${d}` : '';
+    }
 
     function pintarActividad(lista) {
       const cuerpo = document.getElementById('actividad-lista');
-      cuerpo.innerHTML = lista.map(a => `
-        <tr>
-          <td>${a.fecha}</td>
-          <td>${a.cliente}</td>
-          <td>${a.tipo}</td>
-          <td>${a.descripcion}</td>
-        </tr>
-      `).join('');
+      cuerpo.innerHTML = lista.length === 0
+        ? `<tr><td colspan="4" style="text-align:center; color:var(--gray); padding:20px;">No hay actividad en ese rango de fechas.</td></tr>`
+        : lista.map(a => `
+            <tr>
+              <td>${a.fecha || '—'}</td>
+              <td>${a.clienteNombre}</td>
+              <td>${a.tipo}</td>
+              <td>${a.descripcion}</td>
+            </tr>
+          `).join('');
 
       document.getElementById('actividad-conteo').textContent =
-        `Mostrando 1 a ${lista.length} de ${actividades.length} actividades`;
+        `Mostrando ${lista.length} de ${actividades.length} actividades`;
     }
 
     function filtrarPorFecha() {
       const desde = document.getElementById('fecha-desde').value;
       const hasta = document.getElementById('fecha-hasta').value;
       const filtradas = actividades.filter(a => {
-        const cumpleDesde = !desde || a.fechaISO >= desde;
-        const cumpleHasta = !hasta || a.fechaISO <= hasta;
+        const iso = aISO(a.fecha);
+        const cumpleDesde = !desde || !iso || iso >= desde;
+        const cumpleHasta = !hasta || !iso || iso <= hasta;
         return cumpleDesde && cumpleHasta;
       });
       pintarActividad(filtradas);
     }
+    window.filtrarPorFecha = filtrarPorFecha;
 
-    // Rango inicial: del primer al último registro de ejemplo
-    document.getElementById('fecha-desde').value = "2025-07-01";
-    document.getElementById('fecha-hasta').value = "2025-07-31";
-    pintarActividad(actividades);
+    escucharTodasInteracciones((lista) => {
+      actividades = lista;
+      filtrarPorFecha();
+    });
   </script>
 </body>
 </html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usuarios - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<body data-solo-admin>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Usuarios</h1>
+          <p class="admin-breadcrumb">Panel de administración · Administradores y vendedores con acceso al panel</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button class="admin-quick-btn primary" onclick="abrirModalUsuario()">
+            <span data-bp-icon="plus"></span><span>Nuevo usuario</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <p style="color:var(--gray); font-size:.85rem; margin:0;">
+          <strong>Administrador:</strong> acceso completo, incluida esta pantalla para dar de alta a otros administradores o vendedores.
+          <strong>Vendedor:</strong> el mismo acceso a clientes, interacciones, reportes y mi actividad, pero sin poder entrar aquí.
+        </p>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Listado de usuarios</h2>
+          <span class="admin-count-pill" id="contadorUsuarios">0 usuarios</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpoUsuarios"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Nuevo usuario -->
+  <div id="modalUsuario" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-head">
+        <h3><span data-bp-icon="shield"></span><span>Nuevo usuario</span></h3>
+        <button class="admin-modal-close" onclick="cerrarModalUsuario()">&times;</button>
+      </div>
+
+      <form id="formUsuario" onsubmit="return guardarUsuario(event)">
+        <div class="admin-form-group">
+          <label for="u-nombre">Nombre completo</label>
+          <input type="text" id="u-nombre" placeholder="Ej. Sofía Castro" required>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="u-correo">Correo electrónico</label>
+          <input type="email" id="u-correo" placeholder="correo@ejemplo.com" required>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="u-contrasena">Contraseña temporal</label>
+          <input type="password" id="u-contrasena" placeholder="Mínimo 6 caracteres" minlength="6" required>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="u-rol">Rol</label>
+          <select id="u-rol" class="admin-select" style="width:100%;">
+            <option value="vendedor">Vendedor</option>
+            <option value="administrador">Administrador</option>
+          </select>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" onclick="cerrarModalUsuario()">Cancelar</button>
+          <button type="submit" class="admin-btn-primary" id="btnGuardarUsuario">Crear usuario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { escucharUsuarios, crearUsuarioConRol, actualizarRolUsuario, eliminarPerfilUsuario } from './firebase-db.js';
+
+    let usuarios = [];
+
+    function pintarUsuarios() {
+      const cuerpo = document.getElementById('cuerpoUsuarios');
+      document.getElementById('contadorUsuarios').textContent = `${usuarios.length} usuario${usuarios.length === 1 ? '' : 's'}`;
+
+      cuerpo.innerHTML = usuarios.length === 0
+        ? `<tr><td colspan="4" style="text-align:center; color:var(--gray); padding:20px;">Todavía no hay usuarios registrados.</td></tr>`
+        : usuarios.map(u => `
+          <tr>
+            <td>${u.nombre}${u.uid === window.BP_SESION?.uid ? ' <span style="color:var(--gray); font-size:.78rem;">(tú)</span>' : ''}</td>
+            <td>${u.correo}</td>
+            <td>
+              <select class="admin-select" style="min-width:150px;" onchange="cambiarRol('${u.uid}', this.value)" ${u.uid === window.BP_SESION?.uid ? 'disabled title="No puedes cambiar tu propio rol aquí"' : ''}>
+                <option value="vendedor" ${u.rol === 'vendedor' ? 'selected' : ''}>Vendedor</option>
+                <option value="administrador" ${u.rol === 'administrador' ? 'selected' : ''}>Administrador</option>
+              </select>
+            </td>
+            <td class="admin-table-actions">
+              <button title="Eliminar acceso" class="danger" onclick="eliminarUsuario('${u.uid}','${u.nombre}')" ${u.uid === window.BP_SESION?.uid ? 'disabled' : ''}>${bpIcon('trash')}</button>
+            </td>
+          </tr>
+        `).join('');
+    }
+
+    escucharUsuarios((lista) => {
+      usuarios = lista;
+      pintarUsuarios();
+    });
+    // Vuelve a pintar en cuanto sepamos quiénes somos (para marcar "(tú)" y deshabilitar botones propios)
+    document.addEventListener('bp-sesion-lista', pintarUsuarios);
+
+    function abrirModalUsuario() {
+      document.getElementById('formUsuario').reset();
+      document.getElementById('modalUsuario').classList.remove('hidden');
+    }
+    window.abrirModalUsuario = abrirModalUsuario;
+
+    function cerrarModalUsuario() {
+      document.getElementById('modalUsuario').classList.add('hidden');
+    }
+    window.cerrarModalUsuario = cerrarModalUsuario;
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2800);
+    }
+
+    async function guardarUsuario(e) {
+      e.preventDefault();
+      const boton = document.getElementById('btnGuardarUsuario');
+      const nombre = document.getElementById('u-nombre').value;
+      const correo = document.getElementById('u-correo').value;
+      const contrasena = document.getElementById('u-contrasena').value;
+      const rol = document.getElementById('u-rol').value;
+
+      boton.disabled = true;
+      boton.textContent = 'Creando...';
+      try {
+        await crearUsuarioConRol({ nombre, correo, contrasena, rol });
+        mostrarToast(`Usuario ${nombre} creado como ${rol}`);
+        cerrarModalUsuario();
+      } catch (err) {
+        console.error(err);
+        const mensajes = {
+          'auth/email-already-in-use': 'Ese correo ya tiene una cuenta.',
+          'auth/invalid-email': 'El correo no es válido.',
+          'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+        };
+        mostrarToast(mensajes[err.code] || 'No se pudo crear el usuario. Revisa tu conexión con Firebase.');
+      }
+      boton.disabled = false;
+      boton.textContent = 'Crear usuario';
+      return false;
+    }
+    window.guardarUsuario = guardarUsuario;
+
+    async function cambiarRol(uid, rolNuevo) {
+      try {
+        await actualizarRolUsuario(uid, rolNuevo);
+        mostrarToast('Rol actualizado correctamente');
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo actualizar el rol.');
+      }
+    }
+    window.cambiarRol = cambiarRol;
+
+    async function eliminarUsuario(uid, nombre) {
+      if (!confirm(`¿Quitarle el acceso al panel a ${nombre}? Podrá seguir existiendo su cuenta de correo, pero ya no podrá entrar.`)) return;
+      try {
+        await eliminarPerfilUsuario(uid);
+        mostrarToast(`Se quitó el acceso de ${nombre}`);
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo quitar el acceso.');
+      }
+    }
+    window.eliminarUsuario = eliminarUsuario;
+  </script>
+</body>
+</html>

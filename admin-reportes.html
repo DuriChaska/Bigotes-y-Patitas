@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reportes y métricas - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -26,7 +27,7 @@
             <span class="stat-label">Total de clientes</span>
             <div class="admin-stat-icon green" data-bp-icon="users"></div>
           </div>
-          <span class="stat-num">128</span>
+          <span class="stat-num" id="r-total">0</span>
           <span class="stat-delta">Todos los clientes registrados</span>
         </div>
         <div class="admin-stat-card">
@@ -34,24 +35,24 @@
             <span class="stat-label">Clientes activos</span>
             <div class="admin-stat-icon orange" data-bp-icon="paw"></div>
           </div>
-          <span class="stat-num">96</span>
-          <span class="stat-delta up">75% del total</span>
+          <span class="stat-num" id="r-activos">0</span>
+          <span class="stat-delta up" id="r-activos-pct">0% del total</span>
         </div>
         <div class="admin-stat-card">
           <div class="admin-stat-top">
-            <span class="stat-label">Interacciones (este mes)</span>
+            <span class="stat-label">Interacciones registradas</span>
             <div class="admin-stat-icon yellow" data-bp-icon="chat"></div>
           </div>
-          <span class="stat-num">48</span>
-          <span class="stat-delta up">+12% vs. mes anterior</span>
+          <span class="stat-num" id="r-interacciones">0</span>
+          <span class="stat-delta up">Histórico total</span>
         </div>
         <div class="admin-stat-card">
           <div class="admin-stat-top">
             <span class="stat-label">Clientes sin interacción</span>
             <div class="admin-stat-icon blue" data-bp-icon="hourglass"></div>
           </div>
-          <span class="stat-num">15</span>
-          <span class="stat-delta warn">Últimos 30 días</span>
+          <span class="stat-num" id="r-sin-interaccion">0</span>
+          <span class="stat-delta warn">Nunca contactados</span>
         </div>
       </div>
 
@@ -59,27 +60,22 @@
       <div class="admin-panels">
         <div class="admin-panel">
           <h2>Interacciones por tipo</h2>
-          <p class="panel-sub">Distribución de contactos con clientes este mes</p>
-          <div class="admin-bars">
+          <p class="panel-sub">Distribución de contactos con clientes</p>
+          <div class="admin-bars" id="barras-tipo">
             <div class="admin-bar-col">
-              <span class="bar-num">22</span>
-              <div class="admin-bar" style="height: 100%; background: var(--admin-green);"></div>
+              <span class="bar-num">0</span>
+              <div class="admin-bar" style="height: 4%; background: var(--admin-green);"></div>
               <span class="bar-label">Llamada</span>
             </div>
             <div class="admin-bar-col">
-              <span class="bar-num">14</span>
-              <div class="admin-bar" style="height: 64%; background: var(--pink-medio);"></div>
+              <span class="bar-num">0</span>
+              <div class="admin-bar" style="height: 4%; background: var(--pink-medio);"></div>
               <span class="bar-label">Correo</span>
             </div>
             <div class="admin-bar-col">
-              <span class="bar-num">8</span>
-              <div class="admin-bar" style="height: 36%; background: var(--yellow);"></div>
-              <span class="bar-label">Visita</span>
-            </div>
-            <div class="admin-bar-col">
-              <span class="bar-num">4</span>
-              <div class="admin-bar" style="height: 18%; background: var(--gray);"></div>
-              <span class="bar-label">Compra</span>
+              <span class="bar-num">0</span>
+              <div class="admin-bar" style="height: 4%; background: var(--yellow);"></div>
+              <span class="bar-label">Reunión</span>
             </div>
           </div>
         </div>
@@ -88,19 +84,10 @@
           <h2>Clientes por etapa CRM</h2>
           <p class="panel-sub">Estado actual de la cartera de clientes</p>
           <div class="admin-donut-wrap">
-            <div class="admin-donut" style="background: conic-gradient(
-              var(--admin-green) 0% 44%,
-              var(--pink-medio) 44% 66%,
-              var(--yellow) 66% 82%,
-              var(--gray) 82% 100%);">
-              <span>128<small>clientes</small></span>
+            <div class="admin-donut" id="donut-etapas">
+              <span id="donut-etapas-total">0<small>clientes</small></span>
             </div>
-            <ul class="admin-legend">
-              <li><span class="dot" style="background: var(--admin-green);"></span>Activo · 56</li>
-              <li><span class="dot" style="background: var(--pink-medio);"></span>Frecuente · 28</li>
-              <li><span class="dot" style="background: var(--yellow);"></span>Prospecto · 20</li>
-              <li><span class="dot" style="background: var(--gray);"></span>Inactivo · 24</li>
-            </ul>
+            <ul class="admin-legend" id="leyenda-etapas"></ul>
           </div>
         </div>
       </div>
@@ -111,28 +98,8 @@
           <h2>Clientes en riesgo</h2>
           <span class="admin-count-pill">Sin interacción reciente</span>
         </div>
-        <ul class="admin-list">
-          <li>
-            <div>
-              <div class="item-name">María López</div>
-              <div class="item-sub">Sin interacción desde hace 45 días</div>
-            </div>
-            <span class="item-tag low">Atender</span>
-          </li>
-          <li>
-            <div>
-              <div class="item-name">Carlos Ruiz</div>
-              <div class="item-sub">Sin interacción desde hace 38 días</div>
-            </div>
-            <span class="item-tag low">Atender</span>
-          </li>
-          <li>
-            <div>
-              <div class="item-name">Ana García</div>
-              <div class="item-sub">Sin interacción desde hace 35 días</div>
-            </div>
-            <span class="item-tag ok">Seguimiento</span>
-          </li>
+        <ul class="admin-list" id="r-lista-riesgo">
+          <li><div class="item-sub">Cargando...</div></li>
         </ul>
       </div>
     </main>
@@ -140,5 +107,68 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
+  <script type="module">
+    import { calcularMetricas } from './firebase-db.js';
+
+    const coloresEtapa = { Activo: 'var(--admin-green)', Frecuente: 'var(--pink-medio)', Prospecto: 'var(--yellow)', Inactivo: 'var(--gray)' };
+
+    async function cargarReportes() {
+      const m = await calcularMetricas();
+      const pctActivos = m.totalClientes ? Math.round((m.activos / m.totalClientes) * 100) : 0;
+
+      document.getElementById('r-total').textContent = m.totalClientes;
+      document.getElementById('r-activos').textContent = m.activos;
+      document.getElementById('r-activos-pct').textContent = `${pctActivos}% del total`;
+      document.getElementById('r-interacciones').textContent = m.interacciones.length;
+      document.getElementById('r-sin-interaccion').textContent = m.sinInteraccionReciente;
+
+      // Barras por tipo de interacción
+      const maxTipo = Math.max(1, ...Object.values(m.porTipo));
+      const cols = document.querySelectorAll('#barras-tipo .admin-bar-col');
+      const tipos = ['Llamada', 'Correo', 'Reunión'];
+      cols.forEach((col, i) => {
+        const val = m.porTipo[tipos[i]] || 0;
+        col.querySelector('.bar-num').textContent = val;
+        col.querySelector('.admin-bar').style.height = Math.max(4, Math.round((val / maxTipo) * 100)) + '%';
+      });
+
+      // Dona por etapa CRM
+      const etapas = ['Activo', 'Frecuente', 'Prospecto', 'Inactivo'];
+      let acumulado = 0;
+      const segmentos = etapas.map(et => {
+        const cantidad = m.porEtapa[et] || 0;
+        const pct = m.totalClientes ? (cantidad / m.totalClientes) * 100 : 0;
+        const seg = `${coloresEtapa[et]} ${acumulado}% ${acumulado + pct}%`;
+        acumulado += pct;
+        return seg;
+      });
+      document.getElementById('donut-etapas').style.background = m.totalClientes
+        ? `conic-gradient(${segmentos.join(', ')})`
+        : '#e6ddd0';
+      document.getElementById('donut-etapas-total').innerHTML = `${m.totalClientes}<small>clientes</small>`;
+      document.getElementById('leyenda-etapas').innerHTML = etapas.map(et => `
+        <li><span class="dot" style="background:${coloresEtapa[et]};"></span>${et} · ${m.porEtapa[et] || 0}</li>
+      `).join('');
+
+      // Clientes en riesgo (sin ninguna interacción registrada)
+      const interaccionesPorCliente = {};
+      m.interacciones.forEach(i => { interaccionesPorCliente[i.clienteId] = true; });
+      const enRiesgo = m.clientes.filter(c => !interaccionesPorCliente[c.id]);
+      const listaRiesgo = document.getElementById('r-lista-riesgo');
+      listaRiesgo.innerHTML = enRiesgo.length === 0
+        ? `<li><div class="item-sub">Todos los clientes tienen interacciones registradas 🎉</div></li>`
+        : enRiesgo.map(c => `
+            <li>
+              <div>
+                <div class="item-name">${c.nombre}</div>
+                <div class="item-sub">Sin interacciones registradas</div>
+              </div>
+              <span class="item-tag low">Atender</span>
+            </li>
+          `).join('');
+    }
+
+    cargarReportes();
+  </script>
 </body>
 </html>

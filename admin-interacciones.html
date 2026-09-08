@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Historial de interacciones - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -81,45 +82,48 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
+  <script type="module">
+    import { escucharInteraccionesDeCliente, crearInteraccion } from './firebase-db.js';
+
     const params = new URLSearchParams(window.location.search);
-    const cliente = params.get('cliente') || 'María López';
-    document.getElementById('titulo-cliente').textContent = 'Historial de interacciones — ' + cliente;
+    const clienteId = params.get('cliente');
+    const clienteNombre = params.get('nombre') || 'Cliente';
+    document.getElementById('titulo-cliente').textContent = 'Historial de interacciones — ' + clienteNombre;
 
-    const datosInteracciones = {
-      "María López": [
-        { tipo: "Llamada", icono: "phone", color: "green",  texto: "Se discutieron nuevos diseños para la próxima temporada.", usuario: "Admin", fecha: "15/05/2025 10:30" },
-        { tipo: "Correo",  icono: "mail", color: "blue",   texto: "Envío de catálogo de nuevos productos.",                   usuario: "Admin", fecha: "10/05/2025 14:20" },
-        { tipo: "Reunión", icono: "group", color: "gray",   texto: "Reunión en tienda para ver muestras de productos.",         usuario: "Juan Pérez", fecha: "02/05/2025 11:00" }
-      ],
-      "Ana García": [
-        { tipo: "Correo",  icono: "mail", color: "blue",   texto: "Se envió recordatorio de renovación de suscripción de snacks.", usuario: "Admin", fecha: "18/07/2025 09:15" },
-        { tipo: "Llamada", icono: "phone", color: "green",  texto: "Sin respuesta, se dejó mensaje de voz.",                          usuario: "Admin", fecha: "05/07/2025 16:40" }
-      ],
-      "Luis Hernández": [
-        { tipo: "Correo",  icono: "mail", color: "blue",   texto: "Se envió promoción de collares para gato.", usuario: "Admin", fecha: "25/07/2025 12:05" }
-      ],
-    };
-
-    const interacciones = datosInteracciones[cliente] || [
-      { tipo: "Correo", icono: "mail", color: "blue", texto: "Sin interacciones registradas todavía para este cliente.", usuario: "Admin", fecha: "—" }
-    ];
+    const iconosPorTipo = { "Llamada": ["phone","green"], "Correo": ["mail","blue"], "Reunión": ["group","gray"] };
+    let interacciones = [];
 
     function pintarTimeline() {
       const lista = document.getElementById('timeline-lista');
-      lista.innerHTML = interacciones.map(i => `
+      if (interacciones.length === 0) {
+        lista.innerHTML = `<li class="admin-timeline-item"><div class="admin-timeline-content"><p>Sin interacciones registradas todavía para este cliente.</p></div></li>`;
+        return;
+      }
+      lista.innerHTML = interacciones.map(i => {
+        const [icono, color] = iconosPorTipo[i.tipo] || ["chat", "gray"];
+        const fecha = i.fecha || (i.creadoEn && i.creadoEn.toDate ? i.creadoEn.toDate().toLocaleDateString('es-MX') : '—');
+        return `
         <li class="admin-timeline-item">
-          <div class="admin-timeline-icon ${i.color}">${bpIcon(i.icono)}</div>
+          <div class="admin-timeline-icon ${color}">${bpIcon(icono)}</div>
           <div class="admin-timeline-content">
             <div class="admin-timeline-top">
               <strong>${i.tipo}</strong>
-              <span class="admin-timeline-date">${i.fecha}</span>
+              <span class="admin-timeline-date">${fecha}</span>
             </div>
-            <p>${i.texto}</p>
+            <p>${i.descripcion}</p>
             <span class="admin-timeline-user">Usuario: ${i.usuario}</span>
           </div>
-        </li>
-      `).join('');
+        </li>`;
+      }).join('');
+    }
+
+    if (clienteId) {
+      escucharInteraccionesDeCliente(clienteId, (lista) => {
+        interacciones = lista;
+        pintarTimeline();
+      });
+    } else {
+      pintarTimeline();
     }
 
     function nuevaInteraccion(e) {
@@ -128,11 +132,13 @@
       document.getElementById('modalInteraccion').classList.remove('hidden');
       return false;
     }
+    window.nuevaInteraccion = nuevaInteraccion;
 
     function cerrarModalInteraccion() {
       document.getElementById('modalInteraccion').classList.add('hidden');
       document.getElementById('formInteraccion').reset();
     }
+    window.cerrarModalInteraccion = cerrarModalInteraccion;
 
     function mostrarToast(msg) {
       const toast = document.getElementById('toast');
@@ -141,25 +147,29 @@
       setTimeout(() => toast.classList.remove('show'), 2400);
     }
 
-    function guardarInteraccion(e) {
+    async function guardarInteraccion(e) {
       e.preventDefault();
+      if (!clienteId) { mostrarToast('No se identificó al cliente.'); return false; }
+
       const tipo = document.getElementById('int-tipo').value;
-      const texto = document.getElementById('int-desc').value;
+      const descripcion = document.getElementById('int-desc').value;
       const fechaInput = document.getElementById('int-fecha').value;
       const usuario = document.getElementById('int-responsable').value;
-      const iconos = { "Llamada": ["phone","green"], "Correo": ["mail","blue"], "Reunión": ["group","gray"] };
-      const [icono, color] = iconos[tipo] || ["chat","gray"];
       const fecha = fechaInput
         ? new Date(fechaInput + 'T00:00:00').toLocaleDateString('es-MX')
         : new Date().toLocaleDateString('es-MX');
-      interacciones.unshift({ tipo, icono, color, texto, usuario, fecha });
-      pintarTimeline();
-      cerrarModalInteraccion();
-      mostrarToast('Interacción registrada correctamente');
+
+      try {
+        await crearInteraccion({ clienteId, clienteNombre, tipo, descripcion, usuario, fecha });
+        cerrarModalInteraccion();
+        mostrarToast('Interacción registrada correctamente');
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo guardar. Revisa tu conexión con Firebase.');
+      }
       return false;
     }
-
-    pintarTimeline();
+    window.guardarInteraccion = guardarInteraccion;
   </script>
 </body>
 </html>
