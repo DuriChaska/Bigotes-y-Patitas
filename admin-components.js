@@ -16,6 +16,7 @@ const adminNavLinks = [
   { href: 'admin-interacciones-todas.html',  label: 'Interacciones',  icon: 'chat' },
   { href: 'admin-reportes.html',             label: 'Reportes',       icon: 'chart' },
   { href: 'admin-actividad.html',            label: 'Mi actividad',   icon: 'clock' },
+  { href: 'admin-scm.html',                  label: 'SCM',            icon: 'layers', soloAdmin: true },
   { href: 'admin-usuarios.html',             label: 'Usuarios',       icon: 'shield', soloAdmin: true },
   { href: 'admin-configuracion.html',        label: 'Configuración',  icon: 'settings' },
 ];
@@ -25,6 +26,8 @@ const adminAliasActivo = {
   'admin-cliente-detalle.html': 'admin-clientes.html',
   'admin-cliente-etapa.html':   'admin-clientes.html',
   'admin-interacciones.html':   'admin-interacciones-todas.html',
+  'admin-scm-productos.html':   'admin-scm.html',
+  'admin-scm-proveedores.html': 'admin-scm.html',
 };
 const adminPaginaActiva = adminAliasActivo[adminPaginaActual] || adminPaginaActual;
 

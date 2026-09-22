@@ -29,6 +29,42 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
     }
 
+    // ---- SCM (cadena de suministros): SOLO administradores ----
+    // Ni vendedores, ni clientes, ni cuentas sin perfil en "usuarios" pueden
+    // leer o escribir aquí. Esta es la barrera real: el menú oculto y la
+    // redirección de las páginas son solo cortesía de la interfaz.
+    function esAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
+    }
+
+    function productoScmValido(d) {
+      return d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 120
+        && d.stock is int && d.stock >= 0
+        && d.stockMin is int && d.stockMin >= 0
+        && d.estrategia in ['PUSH', 'PULL']
+        && d.costo is number && d.costo >= 0;
+    }
+
+    match /scm_productos/{productoId} {
+      allow read, delete: if esAdmin();
+      allow create, update: if esAdmin() && productoScmValido(request.resource.data);
+    }
+
+    function proveedorScmValido(d) {
+      return d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 120
+        && d.contacto is string && d.contacto.size() <= 120
+        && d.correo is string && d.correo.size() <= 200
+        && d.telefono is string && d.telefono.size() <= 40
+        && d.direccion is string && d.direccion.size() <= 300;
+    }
+
+    match /scm_proveedores/{proveedorId} {
+      allow read, delete: if esAdmin();
+      allow create, update: if esAdmin() && proveedorScmValido(request.resource.data);
+    }
+
     // Cualquier otra colección queda bloqueada por defecto.
     match /{document=**} {
       allow read, write: if false;

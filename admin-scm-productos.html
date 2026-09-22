@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Productos SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
+<body data-solo-admin>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Productos</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Visualiza, busca y administra productos</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn primary" id="btnNuevo">
+            <span data-bp-icon="plus"></span><span>Nuevo producto</span>
+          </button>
+        </div>
+      </div>
+
+      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+
+      <!-- Búsqueda y filtro -->
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscar" placeholder="Buscar producto..." aria-label="Buscar producto" />
+          </div>
+          <select id="filtroCategoria" class="admin-select" aria-label="Filtrar por categoría">
+            <option value="Todas">Todas las categorías</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Listado de productos</h2>
+          <span class="admin-count-pill" id="contador">0 productos</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Imagen</th>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Stock</th>
+                <th>Stock mín.</th>
+                <th>Estrategia</th>
+                <th style="text-align:right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo"></tbody>
+          </table>
+          <div id="estadoVacio" class="admin-empty-state hidden" style="padding:34px 20px;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Nuevo / Editar producto -->
+  <div id="modal" class="admin-modal-overlay hidden">
+    <div class="admin-modal scm-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <div class="admin-modal-head">
+        <h3><span data-bp-icon="package"></span><span id="modalTitulo">Nuevo producto</span></h3>
+        <button type="button" class="admin-modal-close" id="btnCerrar" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <form id="form" novalidate>
+        <input type="hidden" id="productoId" value="" />
+
+        <div class="admin-form-group">
+          <label for="f-nombre">Nombre</label>
+          <input type="text" id="f-nombre" maxlength="120" placeholder="Nombre del producto" required />
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-descripcion">Descripción</label>
+          <textarea id="f-descripcion" rows="3" maxlength="500" placeholder="Descripción..."></textarea>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-categoria">Categoría</label>
+            <select id="f-categoria" required>
+              <option value="" disabled selected>Selecciona una categoría</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="f-proveedor">Proveedor</label>
+            <select id="f-proveedor">
+              <option value="" selected>Selecciona un proveedor</option>
+            </select>
+            <small id="avisoProveedor" class="hidden" style="display:block; margin-top:6px; color:var(--gray); font-size:.74rem;">
+              Aún no hay proveedores. <a href="admin-scm-proveedores.html" style="color:var(--admin-green); font-weight:700;">Registra uno aquí</a>.
+            </small>
+          </div>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-stock">Stock actual</label>
+            <input type="number" id="f-stock" min="0" step="1" value="0" required />
+          </div>
+          <div class="admin-form-group">
+            <label for="f-stockMin">Stock mínimo</label>
+            <input type="number" id="f-stockMin" min="0" step="1" value="0" required />
+          </div>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-estrategia">Estrategia logística</label>
+            <select id="f-estrategia" required>
+              <option value="PUSH">PUSH</option>
+              <option value="PULL">PULL</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="f-costo">Costo unitario ($)</label>
+            <input type="number" id="f-costo" min="0" step="0.001" value="0.000" required />
+          </div>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="admin-btn-primary" id="btnGuardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      escucharProductosScm, crearProductoScm, actualizarProductoScm,
+      eliminarProductoScm, cargarProductosScmEjemplo,
+      escucharProveedoresScm, cargarProveedoresScmEjemplo,
+    } from './firebase-db.js';
+    import { CATEGORIAS, EJEMPLOS_PROVEEDORES, EJEMPLOS_PRODUCTOS } from './scm-config.js';
+
+    const IMG_VACIA = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="10" fill="#f1ece1"/>' +
+      '<text x="40" y="47" font-family="sans-serif" font-size="20" font-weight="700" text-anchor="middle" fill="#8a7d6b">SCM</text></svg>');
+
+    // Valor especial del select para un proveedor "antiguo" que ya no está en la lista de proveedores
+    const SIN_REGISTRAR = '__sin_registrar__';
+
+    // ─────────────────────────────────────────────
+    //  Utilidades
+    // ─────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+
+    // Todo lo que viene de la base se escapa antes de meterlo en innerHTML (evita XSS).
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // Solo se aceptan imágenes http(s); cualquier otra cosa cae al recuadro por defecto.
+    const urlImagen = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : IMG_VACIA;
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2800);
+    }
+
+    function llenarOpciones(select, valores) {
+      valores.forEach(v => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = v;
+        select.appendChild(o);
+      });
+    }
+
+    // Si un producto trae una categoría que ya no está en la lista, se agrega para no perderla al editar.
+    function asegurarOpcion(select, valor) {
+      if (!valor) return;
+      if (![...select.options].some(o => o.value === valor)) {
+        const o = document.createElement('option');
+        o.value = valor; o.textContent = valor;
+        select.appendChild(o);
+      }
+    }
+
+    llenarOpciones($('filtroCategoria'), CATEGORIAS);
+    llenarOpciones($('f-categoria'), CATEGORIAS);
+
+    // ─────────────────────────────────────────────
+    //  Estado
+    // ─────────────────────────────────────────────
+    let productos = [];
+    let proveedores = [];
+    let cargado = false;
+    let errorCarga = null;
+    let nombreSinRegistrar = '';   // proveedor "antiguo" del producto que se está editando
+
+    // ─────────────────────────────────────────────
+    //  Proveedor: el select se alimenta de scm_proveedores
+    // ─────────────────────────────────────────────
+    function pintarOpcionesProveedor(seleccion) {
+      const select = $('f-proveedor');
+      select.innerHTML = '';
+      const vacia = document.createElement('option');
+      vacia.value = '';
+      vacia.textContent = proveedores.length ? 'Selecciona un proveedor' : 'Aún no hay proveedores registrados';
+      select.appendChild(vacia);
+      proveedores.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = p.nombre;
+        select.appendChild(o);
+      });
+      if (nombreSinRegistrar) {
+        const o = document.createElement('option');
+        o.value = SIN_REGISTRAR; o.textContent = `${nombreSinRegistrar} (sin registrar)`;
+        select.appendChild(o);
+      }
+      select.value = [...select.options].some(o => o.value === seleccion) ? seleccion : '';
+      $('avisoProveedor').classList.toggle('hidden', proveedores.length > 0);
+    }
+
+    // ─────────────────────────────────────────────
+    //  Tabla
+    // ─────────────────────────────────────────────
+    function filtrados() {
+      const texto = $('buscar').value.trim().toLowerCase();
+      const cat = $('filtroCategoria').value;
+      return productos.filter(p => {
+        const coincideTexto = String(p.nombre ?? '').toLowerCase().includes(texto) ||
+                              String(p.categoria ?? '').toLowerCase().includes(texto);
+        const coincideCat = cat === 'Todas' || p.categoria === cat;
+        return coincideTexto && coincideCat;
+      });
+    }
+
+    function pintar() {
+      const cuerpo = $('cuerpo');
+      const vacio = $('estadoVacio');
+      const lista = filtrados();
+
+      if (errorCarga) {
+        cuerpo.innerHTML = '';
+        $('contador').textContent = '—';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = `<span class="icon" data-bp-icon="warning"></span><br>
+          <span class="scm-error">No se pudo cargar el catálogo.</span><br>
+          <small>${esc(errorCarga)}</small>`;
+        pintarIconosBP();
+        return;
+      }
+
+      if (!cargado) {
+        cuerpo.innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = 'Cargando productos…';
+        return;
+      }
+
+      $('contador').textContent = `${lista.length} producto${lista.length === 1 ? '' : 's'}`;
+
+      cuerpo.innerHTML = lista.map(p => {
+        const esPush = p.estrategia === 'PUSH';
+        return `
+          <tr data-id="${esc(p.id)}">
+            <td><img class="scm-thumb" src="${esc(urlImagen(p.img))}" alt="${esc(p.nombre)}" loading="lazy" /></td>
+            <td><strong>${esc(p.nombre)}</strong></td>
+            <td>${esc(p.categoria)}</td>
+            <td class="scm-num">${Number(p.stock) || 0}</td>
+            <td class="scm-num" style="color:var(--gray);">${Number(p.stockMin) || 0}</td>
+            <td><span class="admin-tag ${esPush ? 'ok' : 'info'}">${esc(p.estrategia)}</span></td>
+            <td>
+              <div class="admin-table-actions">
+                <button type="button" title="Editar" aria-label="Editar" data-accion="editar">${bpIcon('pencil')}</button>
+                <button type="button" title="Eliminar" aria-label="Eliminar" class="danger" data-accion="eliminar">${bpIcon('trash')}</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+      // Imagen rota → recuadro por defecto
+      cuerpo.querySelectorAll('img.scm-thumb').forEach(img => {
+        img.addEventListener('error', () => { img.src = IMG_VACIA; }, { once: true });
+      });
+
+      if (lista.length === 0) {
+        vacio.classList.remove('hidden');
+        if (productos.length === 0) {
+          vacio.innerHTML = `<span class="icon" data-bp-icon="package"></span><br>
+            Todavía no hay productos en el catálogo.
+            <div class="scm-empty-actions">
+              <button type="button" class="admin-btn-secondary" id="btnEjemplos">Cargar productos de ejemplo</button>
+            </div>`;
+          $('btnEjemplos').addEventListener('click', cargarEjemplos);
+        } else {
+          vacio.innerHTML = `<span class="icon" data-bp-icon="search"></span><br>
+            No se encontraron productos con los criterios de búsqueda.`;
+        }
+        pintarIconosBP();
+      } else {
+        vacio.classList.add('hidden');
+      }
+    }
+
+    $('buscar').addEventListener('input', pintar);
+    $('filtroCategoria').addEventListener('change', pintar);
+
+    // ─────────────────────────────────────────────
+    //  Modal (alta / edición)
+    // ─────────────────────────────────────────────
+    function abrirModal(producto) {
+      $('form').reset();
+      $('productoId').value = producto ? producto.id : '';
+      $('modalTitulo').textContent = producto ? 'Editar producto' : 'Nuevo producto';
+      $('f-stock').value = 0;
+      $('f-stockMin').value = 0;
+      $('f-costo').value = '0.000';
+
+      // Qué proveedor tiene seleccionado el producto (por id; o por nombre en productos antiguos)
+      let seleccion = '';
+      nombreSinRegistrar = '';
+      if (producto) {
+        if (producto.proveedorId && proveedores.some(p => p.id === producto.proveedorId)) {
+          seleccion = producto.proveedorId;
+        } else if (producto.proveedor) {
+          const porNombre = proveedores.find(p => p.nombre === producto.proveedor);
+          if (porNombre) seleccion = porNombre.id;
+          else { nombreSinRegistrar = producto.proveedor; seleccion = SIN_REGISTRAR; }
+        }
+      }
+      pintarOpcionesProveedor(seleccion);
+
+      if (producto) {
+        asegurarOpcion($('f-categoria'), producto.categoria);
+        $('f-nombre').value = producto.nombre ?? '';
+        $('f-descripcion').value = producto.descripcion ?? '';
+        $('f-categoria').value = producto.categoria ?? '';
+        $('f-stock').value = producto.stock ?? 0;
+        $('f-stockMin').value = producto.stockMin ?? 0;
+        $('f-estrategia').value = producto.estrategia === 'PULL' ? 'PULL' : 'PUSH';
+        $('f-costo').value = producto.costo ?? 0;
+      }
+      $('modal').classList.remove('hidden');
+      $('f-nombre').focus();
+    }
+
+    function cerrarModal() {
+      $('modal').classList.add('hidden');
+      $('form').reset();
+      nombreSinRegistrar = '';
+    }
+
+    $('btnNuevo').addEventListener('click', () => abrirModal(null));
+    $('btnCerrar').addEventListener('click', cerrarModal);
+    $('btnCancelar').addEventListener('click', cerrarModal);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('modal').classList.contains('hidden')) cerrarModal();
+    });
+
+    $('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = $('productoId').value;
+      const nombre = $('f-nombre').value.trim();
+      if (!nombre) { mostrarToast('Escribe el nombre del producto'); $('f-nombre').focus(); return; }
+      if (!$('f-categoria').value) { mostrarToast('Selecciona una categoría'); $('f-categoria').focus(); return; }
+
+      // Proveedor: se guarda su id (referencia) y su nombre (para verlo en la base y en reportes)
+      const elegido = $('f-proveedor').value;
+      let proveedorId = '', proveedor = '';
+      if (elegido === SIN_REGISTRAR) {
+        proveedor = nombreSinRegistrar;               // se conserva tal cual, sin perder el dato
+      } else if (elegido) {
+        const pv = proveedores.find(x => x.id === elegido);
+        if (pv) { proveedorId = pv.id; proveedor = pv.nombre; }
+      }
+
+      const datos = {
+        nombre,
+        descripcion: $('f-descripcion').value.trim(),
+        categoria: $('f-categoria').value,
+        proveedor,
+        proveedorId,
+        stock: Math.max(0, parseInt($('f-stock').value, 10) || 0),
+        stockMin: Math.max(0, parseInt($('f-stockMin').value, 10) || 0),
+        estrategia: $('f-estrategia').value === 'PULL' ? 'PULL' : 'PUSH',
+        costo: Math.max(0, parseFloat($('f-costo').value) || 0),
+      };
+
+      const boton = $('btnGuardar');
+      boton.disabled = true;
+      try {
+        if (id) {
+          await actualizarProductoScm(id, datos);
+          mostrarToast('Producto actualizado con éxito');
+        } else {
+          await crearProductoScm(datos);
+          mostrarToast('Nuevo producto guardado con éxito');
+        }
+        cerrarModal();
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
+      }
+      boton.disabled = false;
+    });
+
+    // ─────────────────────────────────────────────
+    //  Acciones de la tabla (editar / eliminar)
+    // ─────────────────────────────────────────────
+    $('cuerpo').addEventListener('click', async (e) => {
+      const boton = e.target.closest('button[data-accion]');
+      if (!boton) return;
+      const id = boton.closest('tr').dataset.id;
+      const producto = productos.find(p => p.id === id);
+      if (!producto) return;
+
+      if (boton.dataset.accion === 'editar') {
+        abrirModal(producto);
+      } else if (boton.dataset.accion === 'eliminar') {
+        if (!confirm(`¿Eliminar "${producto.nombre}" del catálogo? Esta acción no se puede deshacer.`)) return;
+        try {
+          await eliminarProductoScm(id);
+          mostrarToast(`Producto "${producto.nombre}" eliminado`);
+        } catch (err) {
+          console.error(err);
+          mostrarToast('No se pudo eliminar. Revisa tu conexión y los permisos en Firebase.');
+        }
+      }
+    });
+
+    // Los productos de ejemplo necesitan proveedores: si aún no hay ninguno, se cargan también.
+    async function cargarEjemplos() {
+      const boton = $('btnEjemplos');
+      if (boton) boton.disabled = true;
+      try {
+        let lista = proveedores;
+        const creoProveedores = lista.length === 0;
+        if (creoProveedores) lista = await cargarProveedoresScmEjemplo(EJEMPLOS_PROVEEDORES);
+        const idPorNombre = new Map(lista.map(p => [p.nombre, p.id]));
+        await cargarProductosScmEjemplo(EJEMPLOS_PRODUCTOS.map(p => ({
+          ...p, proveedorId: idPorNombre.get(p.proveedor) || '',
+        })));
+        mostrarToast(creoProveedores ? 'Productos y proveedores de ejemplo cargados' : 'Productos de ejemplo cargados');
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudieron cargar los ejemplos. Revisa los permisos en Firebase.');
+        if (boton) boton.disabled = false;
+      }
+    }
+
+    // ─────────────────────────────────────────────
+    //  Arranque: solo si la sesión es de administrador.
+    //  (El guard ya redirige a los demás; esto evita además que
+    //   se pida nada a Firestore antes de confirmar el rol.)
+    // ─────────────────────────────────────────────
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      iniciado = true;
+      pintar();
+      escucharProveedoresScm(
+        (lista) => {
+          proveedores = lista;
+          // Si el modal está abierto, refresca el select sin perder la selección actual
+          if (!$('modal').classList.contains('hidden')) pintarOpcionesProveedor($('f-proveedor').value);
+        },
+        (err) => console.error(err)
+      );
+      escucharProductosScm(
+        (lista) => { productos = lista; cargado = true; errorCarga = null; pintar(); },
+        (err) => {
+          console.error(err);
+          cargado = true;
+          errorCarga = err && err.code === 'permission-denied'
+            ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'
+            : 'Revisa tu conexión con Firebase.';
+          pintar();
+        }
+      );
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

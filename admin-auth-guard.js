@@ -36,16 +36,18 @@ observarSesion(async (user) => {
     return;
   }
 
-  window.BP_SESION = { uid: user.uid, correo: perfil.correo || user.email, nombre: perfil.nombre, rol: perfil.rol };
-
-  document.documentElement.classList.add('admin-autenticado');
-  document.documentElement.classList.add('rol-' + perfil.rol);
-
-  // Bloquea páginas marcadas <body data-solo-admin> para quien no sea administrador
+  // Bloquea páginas marcadas <body data-solo-admin> para quien no sea administrador.
+  // Se revisa ANTES de mostrar el panel y de publicar la sesión, para que un vendedor
+  // no llegue a ver ni un parpadeo del contenido y las páginas no arranquen sus consultas.
   if (document.body.hasAttribute('data-solo-admin') && perfil.rol !== 'administrador') {
     window.location.href = 'admin.html';
     return;
   }
+
+  window.BP_SESION = { uid: user.uid, correo: perfil.correo || user.email, nombre: perfil.nombre, rol: perfil.rol };
+
+  document.documentElement.classList.add('admin-autenticado');
+  document.documentElement.classList.add('rol-' + perfil.rol);
 
   const chip = document.querySelector('.admin-profile-chip span');
   if (chip) chip.textContent = perfil.nombre || user.email.split('@')[0];

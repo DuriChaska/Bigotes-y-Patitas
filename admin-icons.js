@@ -29,6 +29,13 @@ const ADMIN_ICONS = {
   arrow_left:  '<path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>',
   shield:      '<path d="M12 3.5 5 6v5.5c0 4.6 3 7.6 7 9 4-1.4 7-4.4 7-9V6z"/><path d="m9 12 2 2 4-4.3"/>',
   key:         '<circle cx="8" cy="15" r="4"/><path d="m11 12 8.5-8.5"/><path d="m16 6 2.5 2.5"/><path d="m18.5 3.5 2.5 2.5"/>',
+  // --- SCM (cadena de suministros) ---
+  layers:      '<path d="m12 3.5 9 4.7-9 4.7-9-4.7z"/><path d="m3 12.2 9 4.7 9-4.7"/><path d="m3 16.2 9 4.7 9-4.7"/>',
+  package:     '<path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9z"/><path d="m3.5 7.5 8.5 4.5 8.5-4.5"/><path d="M12 12v9"/>',
+  boxes:       '<rect x="3.5" y="12" width="7" height="8" rx="1"/><rect x="13.5" y="12" width="7" height="8" rx="1"/><rect x="8.5" y="4" width="7" height="8" rx="1"/>',
+  clipboard:   '<rect x="5" y="4.5" width="14" height="16" rx="1.5"/><path d="M9 4.5v-1h6v1"/><path d="M8.5 10h7"/><path d="M8.5 13.5h7"/><path d="M8.5 17h4"/>',
+  refresh:     '<path d="M20 11a8 8 0 0 0-14-4.5L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4.5L20 15"/><path d="M20 20v-5h-5"/>',
+  arrow_right: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
 };
 
 function bpIcon(name, cls) {

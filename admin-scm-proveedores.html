@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proveedores SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
+<body data-solo-admin>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Proveedores</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Visualiza y administra proveedores</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn primary" id="btnNuevo">
+            <span data-bp-icon="plus"></span><span>Nuevo proveedor</span>
+          </button>
+        </div>
+      </div>
+
+      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+
+      <!-- Búsqueda -->
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscar" placeholder="Buscar proveedor..." aria-label="Buscar proveedor" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Listado de proveedores</h2>
+          <span class="admin-count-pill" id="contador">0 proveedores</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Contacto</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th style="text-align:right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo"></tbody>
+          </table>
+          <div id="estadoVacio" class="admin-empty-state hidden" style="padding:34px 20px;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Nuevo / Editar proveedor -->
+  <div id="modal" class="admin-modal-overlay hidden">
+    <div class="admin-modal scm-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <div class="admin-modal-head">
+        <h3><span data-bp-icon="users"></span><span id="modalTitulo">Nuevo proveedor</span></h3>
+        <button type="button" class="admin-modal-close" id="btnCerrar" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <form id="form">
+        <input type="hidden" id="proveedorId" value="" />
+
+        <div class="admin-form-group">
+          <label for="f-nombre">Nombre</label>
+          <input type="text" id="f-nombre" maxlength="120" placeholder="Nombre del proveedor" required />
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-contacto">Contacto</label>
+          <input type="text" id="f-contacto" maxlength="120" placeholder="Nombre de contacto" required />
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-correo">Correo</label>
+            <input type="email" id="f-correo" maxlength="200" placeholder="correo@ejemplo.com" required />
+          </div>
+          <div class="admin-form-group">
+            <label for="f-telefono">Teléfono</label>
+            <input type="text" id="f-telefono" maxlength="40" placeholder="Teléfono" required />
+          </div>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-direccion">Dirección</label>
+          <textarea id="f-direccion" rows="3" maxlength="300" placeholder="Dirección..."></textarea>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="admin-btn-primary" id="btnGuardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      escucharProveedoresScm, crearProveedorScm, actualizarProveedorScm,
+      eliminarProveedorScm, contarProductosDeProveedorScm, cargarProveedoresScmEjemplo,
+    } from './firebase-db.js';
+    import { EJEMPLOS_PROVEEDORES } from './scm-config.js';
+
+    // ─────────────────────────────────────────────
+    //  Utilidades
+    // ─────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+
+    // Todo lo que viene de la base se escapa antes de meterlo en innerHTML (evita XSS).
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    let temporizadorToast;
+    function mostrarToast(msg, ms = 2800) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      clearTimeout(temporizadorToast);
+      temporizadorToast = setTimeout(() => $('toast').classList.remove('show'), ms);
+    }
+
+    // ─────────────────────────────────────────────
+    //  Estado y tabla
+    // ─────────────────────────────────────────────
+    let proveedores = [];
+    let cargado = false;
+    let errorCarga = null;
+
+    function filtrados() {
+      const texto = $('buscar').value.trim().toLowerCase();
+      if (!texto) return proveedores;
+      return proveedores.filter(p =>
+        [p.nombre, p.contacto, p.correo, p.telefono]
+          .some(v => String(v ?? '').toLowerCase().includes(texto)));
+    }
+
+    function pintar() {
+      const cuerpo = $('cuerpo');
+      const vacio = $('estadoVacio');
+      const lista = filtrados();
+
+      if (errorCarga) {
+        cuerpo.innerHTML = '';
+        $('contador').textContent = '—';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = `<span class="icon" data-bp-icon="warning"></span><br>
+          <span class="scm-error">No se pudo cargar la lista de proveedores.</span><br>
+          <small>${esc(errorCarga)}</small>`;
+        pintarIconosBP();
+        return;
+      }
+
+      if (!cargado) {
+        cuerpo.innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = 'Cargando proveedores…';
+        return;
+      }
+
+      $('contador').textContent = `${lista.length} proveedor${lista.length === 1 ? '' : 'es'}`;
+
+      cuerpo.innerHTML = lista.map(p => `
+        <tr data-id="${esc(p.id)}">
+          <td><strong>${esc(p.nombre)}</strong></td>
+          <td>${esc(p.contacto)}</td>
+          <td>${esc(p.correo)}</td>
+          <td>${esc(p.telefono)}</td>
+          <td>
+            <div class="admin-table-actions">
+              <button type="button" title="Editar" aria-label="Editar" data-accion="editar">${bpIcon('pencil')}</button>
+              <button type="button" title="Eliminar" aria-label="Eliminar" class="danger" data-accion="eliminar">${bpIcon('trash')}</button>
+            </div>
+          </td>
+        </tr>`).join('');
+
+      if (lista.length === 0) {
+        vacio.classList.remove('hidden');
+        if (proveedores.length === 0) {
+          vacio.innerHTML = `<span class="icon" data-bp-icon="users"></span><br>
+            Todavía no hay proveedores registrados.
+            <div class="scm-empty-actions">
+              <button type="button" class="admin-btn-secondary" id="btnEjemplos">Cargar proveedores de ejemplo</button>
+            </div>`;
+          $('btnEjemplos').addEventListener('click', cargarEjemplos);
+        } else {
+          vacio.innerHTML = `<span class="icon" data-bp-icon="search"></span><br>
+            No se encontraron proveedores con el criterio de búsqueda.`;
+        }
+        pintarIconosBP();
+      } else {
+        vacio.classList.add('hidden');
+      }
+    }
+
+    $('buscar').addEventListener('input', pintar);
+
+    // ─────────────────────────────────────────────
+    //  Modal (alta / edición)
+    // ─────────────────────────────────────────────
+    function abrirModal(prov) {
+      $('form').reset();
+      $('proveedorId').value = prov ? prov.id : '';
+      $('modalTitulo').textContent = prov ? 'Editar proveedor' : 'Nuevo proveedor';
+      if (prov) {
+        $('f-nombre').value = prov.nombre ?? '';
+        $('f-contacto').value = prov.contacto ?? '';
+        $('f-correo').value = prov.correo ?? '';
+        $('f-telefono').value = prov.telefono ?? '';
+        $('f-direccion').value = prov.direccion ?? '';
+      }
+      $('modal').classList.remove('hidden');
+      $('f-nombre').focus();
+    }
+
+    function cerrarModal() {
+      $('modal').classList.add('hidden');
+      $('form').reset();
+    }
+
+    $('btnNuevo').addEventListener('click', () => abrirModal(null));
+    $('btnCerrar').addEventListener('click', cerrarModal);
+    $('btnCancelar').addEventListener('click', cerrarModal);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('modal').classList.contains('hidden')) cerrarModal();
+    });
+
+    $('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = $('proveedorId').value;
+      const datos = {
+        nombre: $('f-nombre').value.trim(),
+        contacto: $('f-contacto').value.trim(),
+        correo: $('f-correo').value.trim(),
+        telefono: $('f-telefono').value.trim(),
+        direccion: $('f-direccion').value.trim(),
+      };
+      if (!datos.nombre || !datos.contacto || !datos.telefono) {
+        mostrarToast('Completa nombre, contacto y teléfono');
+        return;
+      }
+
+      // No permitir dos proveedores con el mismo nombre (los productos se enlazan por proveedor)
+      const repetido = proveedores.some(p => p.id !== id &&
+        String(p.nombre).trim().toLowerCase() === datos.nombre.toLowerCase());
+      if (repetido) { mostrarToast('Ya existe un proveedor con ese nombre'); $('f-nombre').focus(); return; }
+
+      const boton = $('btnGuardar');
+      boton.disabled = true;
+      try {
+        if (id) {
+          const anterior = proveedores.find(p => p.id === id);
+          await actualizarProveedorScm(id, datos, anterior ? anterior.nombre : '');
+          mostrarToast('Proveedor actualizado con éxito');
+        } else {
+          await crearProveedorScm(datos);
+          mostrarToast('Nuevo proveedor guardado con éxito');
+        }
+        cerrarModal();
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
+      }
+      boton.disabled = false;
+    });
+
+    // ─────────────────────────────────────────────
+    //  Acciones de la tabla (editar / eliminar)
+    // ─────────────────────────────────────────────
+    $('cuerpo').addEventListener('click', async (e) => {
+      const boton = e.target.closest('button[data-accion]');
+      if (!boton) return;
+      const id = boton.closest('tr').dataset.id;
+      const prov = proveedores.find(p => p.id === id);
+      if (!prov) return;
+
+      if (boton.dataset.accion === 'editar') {
+        abrirModal(prov);
+        return;
+      }
+
+      // Eliminar: no se permite si todavía hay productos de este proveedor
+      boton.disabled = true;
+      try {
+        const n = await contarProductosDeProveedorScm(id, prov.nombre);
+        if (n > 0) {
+          mostrarToast(`No se puede eliminar "${prov.nombre}": tiene ${n} producto${n === 1 ? '' : 's'} asociado${n === 1 ? '' : 's'}. Cámbialos de proveedor primero.`, 5500);
+          return;
+        }
+        if (!confirm(`¿Eliminar a "${prov.nombre}" de la lista de proveedores? Esta acción no se puede deshacer.`)) return;
+        await eliminarProveedorScm(id);
+        mostrarToast(`Proveedor "${prov.nombre}" eliminado`);
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo eliminar. Revisa tu conexión y los permisos en Firebase.');
+      } finally {
+        boton.disabled = false;
+      }
+    });
+
+    async function cargarEjemplos() {
+      const boton = $('btnEjemplos');
+      if (boton) boton.disabled = true;
+      try {
+        await cargarProveedoresScmEjemplo(EJEMPLOS_PROVEEDORES);
+        mostrarToast('Proveedores de ejemplo cargados');
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudieron cargar los ejemplos. Revisa los permisos en Firebase.');
+        if (boton) boton.disabled = false;
+      }
+    }
+
+    // ─────────────────────────────────────────────
+    //  Arranque: solo si la sesión es de administrador.
+    // ─────────────────────────────────────────────
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      iniciado = true;
+      pintar();
+      escucharProveedoresScm(
+        (lista) => { proveedores = lista; cargado = true; errorCarga = null; pintar(); },
+        (err) => {
+          console.error(err);
+          cargado = true;
+          errorCarga = err && err.code === 'permission-denied'
+            ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'
+            : 'Revisa tu conexión con Firebase.';
+          pintar();
+        }
+      );
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

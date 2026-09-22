@@ -1479,3 +1479,52 @@ html.rol-vendedor .solo-admin { display: none !important; }
 
 .admin-tag.rol-administrador { background: #e6ddfa; color: #5b3fae; }
 .admin-tag.rol-vendedor { background: #dcecf8; color: #2b6690; }
+
+/* ===========================
+   Admin - SCM / Cadena de suministros
+   (admin-scm.html, admin-scm-productos.html)
+=========================== */
+.scm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
+.scm-card {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; text-align: center;
+  background: #fff; border: 1px solid #f0e9dc; border-radius: var(--admin-radius);
+  padding: 28px 20px 22px; box-shadow: 0 2px 10px rgba(74,56,38,.06);
+  cursor: pointer; font-family: inherit; color: inherit;
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.scm-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(74,56,38,.12); border-color: var(--admin-green); }
+.scm-card:focus-visible { outline: 2px solid var(--admin-green); outline-offset: 2px; }
+.scm-card-icon {
+  width: 60px; height: 60px; border-radius: 16px; margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.scm-card-icon .bp-icon { width: 28px; height: 28px; }
+.scm-card-icon.green  { background: #e5efe4; color: var(--admin-green-dk); }
+.scm-card-icon.blue   { background: #dfe9f6; color: #3b6ea5; }
+.scm-card-icon.teal   { background: #dcefee; color: #2f7f7a; }
+.scm-card-icon.yellow { background: #fcefd0; color: var(--yellow-dk); }
+.scm-card-icon.orange { background: #fbe6d8; color: var(--pink-fuerte); }
+.scm-card-icon.purple { background: #e6ddfa; color: #5b3fae; }
+.scm-card h3 { font-size: 1.05rem; color: var(--text); margin-bottom: 2px; }
+.scm-card p { font-size: .82rem; color: var(--gray); }
+.scm-card-cta {
+  margin-top: 14px; display: inline-flex; align-items: center; gap: 5px;
+  font-size: .78rem; font-weight: 700; color: var(--admin-green);
+}
+.scm-card-cta .bp-icon { width: 14px; height: 14px; }
+.scm-card.proximamente { cursor: default; }
+.scm-card.proximamente:hover { transform: none; box-shadow: 0 2px 10px rgba(74,56,38,.06); border-color: #f0e9dc; }
+.scm-card.proximamente .scm-card-cta { color: var(--gray); font-weight: 600; }
+
+.scm-thumb {
+  width: 40px; height: 40px; border-radius: 8px; object-fit: cover;
+  border: 1px solid #ece3d5; background: var(--bg); display: block;
+}
+.scm-num { font-variant-numeric: tabular-nums; }
+.scm-modal { max-width: 640px; }
+.scm-modal .admin-form-group input,
+.scm-modal .admin-form-group select,
+.scm-modal .admin-form-group textarea { box-sizing: border-box; }
+.scm-error { color: var(--admin-danger); }
+.scm-empty-actions { margin-top: 14px; }

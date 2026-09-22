@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
+<body data-solo-admin>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>SCM</h1>
+          <p class="admin-breadcrumb">Panel de administración · Cadena de suministros</p>
+        </div>
+        <div class="admin-topbar-right">
+          <span class="admin-tag rol-administrador">Solo administradores</span>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <p style="color:var(--gray); font-size:.85rem; margin:0;">
+          <strong>Módulo 1 · Acceso al módulo de cadena de suministros.</strong>
+          Haz clic en un módulo para ingresar a la gestión correspondiente.
+        </p>
+      </div>
+
+      <div class="scm-grid">
+
+        <a href="admin-scm-productos.html" class="scm-card">
+          <div class="scm-card-icon green" data-bp-icon="package"></div>
+          <h3>Productos</h3>
+          <p>Gestión de catálogo</p>
+          <span class="scm-card-cta">Ver productos <span data-bp-icon="arrow_right"></span></span>
+        </a>
+
+        <a href="admin-scm-proveedores.html" class="scm-card">
+          <div class="scm-card-icon blue" data-bp-icon="users"></div>
+          <h3>Proveedores</h3>
+          <p>Administrar proveedores</p>
+          <span class="scm-card-cta">Gestionar <span data-bp-icon="arrow_right"></span></span>
+        </a>
+
+        <button type="button" class="scm-card proximamente" data-modulo="Inventario">
+          <div class="scm-card-icon teal" data-bp-icon="boxes"></div>
+          <h3>Inventario</h3>
+          <p>Control de existencias</p>
+          <span class="scm-card-cta">Próximamente</span>
+        </button>
+
+        <button type="button" class="scm-card proximamente" data-modulo="Pedidos">
+          <div class="scm-card-icon yellow" data-bp-icon="clipboard"></div>
+          <h3>Pedidos</h3>
+          <p>Reposición y suministro</p>
+          <span class="scm-card-cta">Próximamente</span>
+        </button>
+
+        <button type="button" class="scm-card proximamente" data-modulo="Logística">
+          <div class="scm-card-icon orange" data-bp-icon="refresh"></div>
+          <h3>Logística</h3>
+          <p>Push / Pull</p>
+          <span class="scm-card-cta">Próximamente</span>
+        </button>
+
+        <button type="button" class="scm-card proximamente" data-modulo="Reportes">
+          <div class="scm-card-icon purple" data-bp-icon="chart"></div>
+          <h3>Reportes</h3>
+          <p>Métricas y análisis</p>
+          <span class="scm-card-cta">Próximamente</span>
+        </button>
+
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+    document.querySelectorAll('.scm-card[data-modulo]').forEach(card => {
+      card.addEventListener('click', () => {
+        mostrarToast('El módulo de ' + card.dataset.modulo + ' estará disponible próximamente');
+      });
+    });
+  </script>
+</body>
+</html>
