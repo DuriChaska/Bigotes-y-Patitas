@@ -27,6 +27,15 @@ const ADMIN_ICONS = {
   paw:         '<circle cx="7" cy="9" r="1.8"/><circle cx="12" cy="6.5" r="1.8"/><circle cx="17" cy="9" r="1.8"/><path d="M12 12c-3.3 0-5.7 2.2-5.7 4.6 0 1.7 1.5 2.9 3.2 2.4a5 5 0 0 1 5 0c1.7.5 3.2-.7 3.2-2.4 0-2.4-2.4-4.6-5.7-4.6z"/>',
   hourglass:   '<path d="M6 3.5h12"/><path d="M6 20.5h12"/><path d="M7 3.5v3.2c0 1.6 5 4.3 5 5.3s-5 3.7-5 5.3v3.2"/><path d="M17 3.5v3.2c0 1.6-5 4.3-5 5.3s5 3.7 5 5.3v3.2"/>',
   arrow_left:  '<path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>',
+  shield:      '<path d="M12 3.5 5 6v5.5c0 4.6 3 7.6 7 9 4-1.4 7-4.4 7-9V6z"/><path d="m9 12 2 2 4-4.3"/>',
+  key:         '<circle cx="8" cy="15" r="4"/><path d="m11 12 8.5-8.5"/><path d="m16 6 2.5 2.5"/><path d="m18.5 3.5 2.5 2.5"/>',
+  // --- SCM (cadena de suministros) ---
+  layers:      '<path d="m12 3.5 9 4.7-9 4.7-9-4.7z"/><path d="m3 12.2 9 4.7 9-4.7"/><path d="m3 16.2 9 4.7 9-4.7"/>',
+  package:     '<path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9z"/><path d="m3.5 7.5 8.5 4.5 8.5-4.5"/><path d="M12 12v9"/>',
+  boxes:       '<rect x="3.5" y="12" width="7" height="8" rx="1"/><rect x="13.5" y="12" width="7" height="8" rx="1"/><rect x="8.5" y="4" width="7" height="8" rx="1"/>',
+  clipboard:   '<rect x="5" y="4.5" width="14" height="16" rx="1.5"/><path d="M9 4.5v-1h6v1"/><path d="M8.5 10h7"/><path d="M8.5 13.5h7"/><path d="M8.5 17h4"/>',
+  refresh:     '<path d="M20 11a8 8 0 0 0-14-4.5L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4.5L20 15"/><path d="M20 20v-5h-5"/>',
+  arrow_right: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
 };
 
 function bpIcon(name, cls) {
