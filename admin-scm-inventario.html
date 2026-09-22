@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventario SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
+<body data-solo-admin>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Inventario</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Consulta de existencias y estado de stock</p>
+        </div>
+        <div class="admin-topbar-right">
+          <a class="admin-quick-btn primary" href="admin-scm-movimientos.html">
+            <span data-bp-icon="swap"></span><span>Registrar movimiento</span>
+          </a>
+        </div>
+      </div>
+
+      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+
+      <!-- Resumen rápido -->
+      <div class="admin-stats" style="grid-template-columns:repeat(4,1fr); margin:18px 0;">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon green"><span data-bp-icon="package"></span></div></div>
+          <span class="stat-num" id="statTotal">0</span>
+          <span class="stat-label">Productos en catálogo</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon orange"><span data-bp-icon="warning"></span></div></div>
+          <span class="stat-num" id="statBajo">0</span>
+          <span class="stat-label">Con stock bajo mínimo</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon blue"><span data-bp-icon="chart"></span></div></div>
+          <span class="stat-num" id="statPush">0</span>
+          <span class="stat-label">Con estrategia PUSH</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon yellow"><span data-bp-icon="hourglass"></span></div></div>
+          <span class="stat-num" id="statPull">0</span>
+          <span class="stat-label">Con estrategia PULL</span>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscarProducto" placeholder="Buscar producto..." oninput="filtrarInventario()">
+          </div>
+          <select id="filtroCategoria" class="admin-select" onchange="filtrarInventario()">
+            <option value="">Todas las categorías</option>
+            <option value="Alimento">Alimento</option>
+            <option value="Accesorios">Accesorios</option>
+            <option value="Juguetes">Juguetes</option>
+          </select>
+          <select id="filtroEstado" class="admin-select" onchange="filtrarInventario()">
+            <option value="">Todos los estados</option>
+            <option value="Normal">Normal</option>
+            <option value="Stock bajo">Stock bajo</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla de inventario -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Existencias por producto</h2>
+          <span class="admin-count-pill" id="contadorInventario">0 productos</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="tablaInventario">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Categoría</th>
+                <th>Stock actual</th>
+                <th>Stock mínimo</th>
+                <th>Estado</th>
+                <th>Estrategia</th>
+                <th style="text-align:right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpoInventario"></tbody>
+          </table>
+          <p id="sinResultadosInv" class="admin-empty-state hidden" style="padding:34px 20px;">
+            <span class="icon" data-bp-icon="paw"></span>
+            <br>No se encontraron productos con ese criterio.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    // TODO (conexión a Firebase): cuando el catálogo real de admin-scm-productos.html
+    // tenga datos, reemplazar este arreglo local por un listener en tiempo real,
+    // igual que hace esa pantalla con escucharProductosScm() en firebase-db.js.
+    // Por ahora se deja como datos de ejemplo para poder construir y probar el
+    // flujo completo de Inventario / Movimientos / Logística sin depender de la base.
+    let productos = [
+      { id: 1, nombre: "Croquetas para perro adulto 15kg", categoria: "Alimento",   stock: 40, stockMin: 10, estrategia: "PUSH" },
+      { id: 2, nombre: "Croquetas para gato interior 3kg",  categoria: "Alimento",   stock: 8,  stockMin: 10, estrategia: "PULL" },
+      { id: 3, nombre: "Arena sanitaria aglomerante 10kg",  categoria: "Accesorios", stock: 25, stockMin: 8,  estrategia: "PUSH" },
+      { id: 4, nombre: "Correa retráctil 5m",               categoria: "Accesorios", stock: 15, stockMin: 5,  estrategia: "PULL" },
+      { id: 5, nombre: "Pelota mordedora de goma",          categoria: "Juguetes",   stock: 6,  stockMin: 10, estrategia: "PULL" },
+      { id: 6, nombre: "Cama acolchada para perro mediano", categoria: "Accesorios", stock: 12, stockMin: 4,  estrategia: "PUSH" },
+      { id: 7, nombre: "Snacks dentales para perro",        categoria: "Alimento",   stock: 30, stockMin: 12, estrategia: "PUSH" },
+      { id: 8, nombre: "Ratón de peluche con cascabel",     categoria: "Juguetes",   stock: 20, stockMin: 6,  estrategia: "PULL" },
+    ];
+
+    const claseEstrategia = { "PUSH": "info", "PULL": "warn" };
+    function estadoStock(p) { return p.stock <= p.stockMin ? "Stock bajo" : "Normal"; }
+    function claseEstado(p) { return p.stock <= p.stockMin ? "warn" : "ok"; }
+
+    function pintarInventario() {
+      const cuerpo = document.getElementById('cuerpoInventario');
+      cuerpo.innerHTML = productos.map(p => `
+        <tr data-id="${p.id}" data-nombre="${p.nombre}" data-categoria="${p.categoria}" data-estado="${estadoStock(p)}">
+          <td>${p.nombre}</td>
+          <td>${p.categoria}</td>
+          <td>${p.stock}</td>
+          <td>${p.stockMin}</td>
+          <td><span class="admin-tag ${claseEstado(p)}">${estadoStock(p)}</span></td>
+          <td><span class="admin-tag ${claseEstrategia[p.estrategia]}">${p.estrategia}</span></td>
+          <td class="admin-table-actions">
+            <button title="Ver movimientos" onclick="verMovimientos('${p.nombre}')">${bpIcon('eye')}</button>
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('statTotal').textContent = productos.length;
+      document.getElementById('statBajo').textContent = productos.filter(p => p.stock <= p.stockMin).length;
+      document.getElementById('statPush').textContent = productos.filter(p => p.estrategia === "PUSH").length;
+      document.getElementById('statPull').textContent = productos.filter(p => p.estrategia === "PULL").length;
+
+      filtrarInventario();
+    }
+
+    function verMovimientos(nombre) {
+      window.location.href = 'admin-scm-movimientos.html?producto=' + encodeURIComponent(nombre);
+    }
+
+    function filtrarInventario() {
+      const texto = document.getElementById('buscarProducto').value.trim().toLowerCase();
+      const categoria = document.getElementById('filtroCategoria').value;
+      const estado = document.getElementById('filtroEstado').value;
+      const filas = document.querySelectorAll('#tablaInventario tbody tr');
+      let visibles = 0;
+
+      filas.forEach(fila => {
+        const coincideTexto = fila.dataset.nombre.toLowerCase().includes(texto);
+        const coincideCategoria = !categoria || fila.dataset.categoria === categoria;
+        const coincideEstado = !estado || fila.dataset.estado === estado;
+        const mostrar = coincideTexto && coincideCategoria && coincideEstado;
+        fila.classList.toggle('hidden', !mostrar);
+        if (mostrar) visibles++;
+      });
+
+      document.getElementById('contadorInventario').textContent = `${visibles} producto${visibles === 1 ? '' : 's'}`;
+      document.getElementById('sinResultadosInv').classList.toggle('hidden', visibles !== 0);
+    }
+
+    pintarInventario();
+  </script>
+</body>
+</html>

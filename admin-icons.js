@@ -35,6 +35,7 @@ const ADMIN_ICONS = {
   boxes:       '<rect x="3.5" y="12" width="7" height="8" rx="1"/><rect x="13.5" y="12" width="7" height="8" rx="1"/><rect x="8.5" y="4" width="7" height="8" rx="1"/>',
   clipboard:   '<rect x="5" y="4.5" width="14" height="16" rx="1.5"/><path d="M9 4.5v-1h6v1"/><path d="M8.5 10h7"/><path d="M8.5 13.5h7"/><path d="M8.5 17h4"/>',
   refresh:     '<path d="M20 11a8 8 0 0 0-14-4.5L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4.5L20 15"/><path d="M20 20v-5h-5"/>',
+  swap:        '<path d="M4 8h12"/><path d="M13 4l4 4-4 4"/><path d="M20 16H8"/><path d="M11 12l-4 4 4 4"/>',
   arrow_right: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
 };
 

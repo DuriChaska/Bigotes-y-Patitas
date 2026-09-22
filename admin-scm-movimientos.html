@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movimientos de inventario SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
+<body data-solo-admin>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Movimientos de inventario</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Registro de entradas y salidas</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn primary" id="btnNuevo">
+            <span data-bp-icon="plus"></span><span>Nuevo movimiento</span>
+          </button>
+        </div>
+      </div>
+
+      <a href="admin-scm-inventario.html" class="admin-volver">← Volver a Inventario</a>
+
+      <!-- Filtros -->
+      <div class="admin-panel" style="margin:18px 0;">
+        <div class="admin-filters-row">
+          <select id="filtroTipo" class="admin-select" onchange="filtrarMovimientos()">
+            <option value="">Todos los tipos</option>
+            <option value="Entrada">Entrada</option>
+            <option value="Salida">Salida</option>
+          </select>
+          <select id="filtroProducto" class="admin-select" onchange="filtrarMovimientos()">
+            <option value="">Todos los productos</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla de movimientos -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Historial de movimientos</h2>
+          <span class="admin-count-pill" id="contadorMovimientos">0 movimientos</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="tablaMovimientos">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Tipo</th>
+                <th>Cantidad</th>
+                <th>Motivo</th>
+                <th>Usuario</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpoMovimientos"></tbody>
+          </table>
+          <p id="sinResultadosMov" class="admin-empty-state hidden" style="padding:34px 20px;">
+            <span class="icon" data-bp-icon="paw"></span>
+            <br>No se encontraron movimientos con ese criterio.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: pantalla 8 - Nuevo movimiento -->
+  <div id="modal" class="admin-modal-overlay hidden">
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <div class="admin-modal-head">
+        <h3><span data-bp-icon="swap"></span><span id="modalTitulo">Nuevo movimiento</span></h3>
+        <button type="button" class="admin-modal-close" id="btnCerrar" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <form id="form" novalidate>
+        <div class="admin-form-group">
+          <label for="movProducto">Producto</label>
+          <select id="movProducto" class="admin-select" style="width:100%;" required></select>
+        </div>
+
+        <div class="admin-form-group">
+          <label>Tipo de movimiento</label>
+          <div style="display:flex; gap:18px; margin-top:4px;">
+            <label style="display:flex; align-items:center; gap:6px; font-weight:500; font-size:.88rem; color:var(--text);">
+              <input type="radio" name="movTipo" value="Entrada" checked> Entrada
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-weight:500; font-size:.88rem; color:var(--text);">
+              <input type="radio" name="movTipo" value="Salida"> Salida
+            </label>
+          </div>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="movCantidad">Cantidad</label>
+            <input type="number" id="movCantidad" min="1" value="1" required>
+          </div>
+          <div class="admin-form-group">
+            <label for="movFecha">Fecha</label>
+            <input type="date" id="movFecha" required>
+          </div>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="movMotivo">Motivo</label>
+            <select id="movMotivo" class="admin-select" style="width:100%;">
+              <option value="Compra">Compra</option>
+              <option value="Pedido">Pedido</option>
+              <option value="Venta">Venta</option>
+              <option value="Ajuste">Ajuste</option>
+              <option value="Devolución">Devolución</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="movUsuario">Usuario</label>
+            <select id="movUsuario" class="admin-select" style="width:100%;">
+              <option value="Admin">Admin</option>
+              <option value="Usuario1">Usuario1</option>
+              <option value="Usuario2">Usuario2</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="admin-btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    // TODO (conexión a Firebase): mismo catálogo mock que admin-scm-inventario.html.
+    // Cuando se conecte todo a Firestore, este arreglo se reemplaza por el listener
+    // real de productos y los movimientos se guardan en su propia colección
+    // (por ejemplo scm_movimientos), igual que hace admin-scm-productos.html con
+    // crearProductoScm / escucharProductosScm en firebase-db.js.
+    let productos = [
+      { id: 1, nombre: "Croquetas para perro adulto 15kg", categoria: "Alimento",   stock: 40, stockMin: 10, estrategia: "PUSH" },
+      { id: 2, nombre: "Croquetas para gato interior 3kg",  categoria: "Alimento",   stock: 8,  stockMin: 10, estrategia: "PULL" },
+      { id: 3, nombre: "Arena sanitaria aglomerante 10kg",  categoria: "Accesorios", stock: 25, stockMin: 8,  estrategia: "PUSH" },
+      { id: 4, nombre: "Correa retráctil 5m",               categoria: "Accesorios", stock: 15, stockMin: 5,  estrategia: "PULL" },
+      { id: 5, nombre: "Pelota mordedora de goma",          categoria: "Juguetes",   stock: 6,  stockMin: 10, estrategia: "PULL" },
+      { id: 6, nombre: "Cama acolchada para perro mediano", categoria: "Accesorios", stock: 12, stockMin: 4,  estrategia: "PUSH" },
+      { id: 7, nombre: "Snacks dentales para perro",        categoria: "Alimento",   stock: 30, stockMin: 12, estrategia: "PUSH" },
+      { id: 8, nombre: "Ratón de peluche con cascabel",     categoria: "Juguetes",   stock: 20, stockMin: 6,  estrategia: "PULL" },
+    ];
+
+    let movimientos = [
+      { id: 1, fecha: "2026-09-15", producto: "Croquetas para perro adulto 15kg", tipo: "Entrada", cantidad: 20, motivo: "Compra",  usuario: "Admin" },
+      { id: 2, fecha: "2026-09-16", producto: "Croquetas para gato interior 3kg",  tipo: "Salida",  cantidad: 5,  motivo: "Venta",   usuario: "Usuario1" },
+      { id: 3, fecha: "2026-09-17", producto: "Pelota mordedora de goma",          tipo: "Salida",  cantidad: 4,  motivo: "Venta",   usuario: "Usuario2" },
+      { id: 4, fecha: "2026-09-18", producto: "Arena sanitaria aglomerante 10kg",  tipo: "Entrada", cantidad: 15, motivo: "Compra",  usuario: "Admin" },
+      { id: 5, fecha: "2026-09-19", producto: "Correa retráctil 5m", tipo: "Salida", cantidad: 2, motivo: "Ajuste", usuario: "Admin" }
+    ];
+    let siguienteIdMov = 6;
+    const claseTipo = { "Entrada": "ok", "Salida": "warn" };
+    const $ = (id) => document.getElementById(id);
+
+    function llenarSelectProductos() {
+      const opciones = productos.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
+      $('movProducto').innerHTML = opciones;
+      $('filtroProducto').innerHTML = '<option value="">Todos los productos</option>' + opciones;
+    }
+
+    function formatearFecha(iso) {
+      const [y, m, d] = iso.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function pintarMovimientos() {
+      const cuerpo = $('cuerpoMovimientos');
+      const ordenados = [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+      cuerpo.innerHTML = ordenados.map(m => `
+        <tr data-tipo="${m.tipo}" data-producto="${m.producto}">
+          <td>${formatearFecha(m.fecha)}</td>
+          <td>${m.producto}</td>
+          <td><span class="admin-tag ${claseTipo[m.tipo] || 'info'}">${m.tipo}</span></td>
+          <td>${m.cantidad}</td>
+          <td>${m.motivo}</td>
+          <td>${m.usuario}</td>
+        </tr>
+      `).join('');
+      filtrarMovimientos();
+    }
+
+    function abrirModal() {
+      $('form').reset();
+      $('movFecha').value = new Date().toISOString().slice(0, 10);
+      $('modal').classList.remove('hidden');
+    }
+    function cerrarModal() {
+      $('modal').classList.add('hidden');
+    }
+    $('btnNuevo').addEventListener('click', abrirModal);
+    $('btnCerrar').addEventListener('click', cerrarModal);
+    $('btnCancelar').addEventListener('click', cerrarModal);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('modal').classList.contains('hidden')) cerrarModal();
+    });
+
+    $('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nombreProducto = $('movProducto').value;
+      const tipo = document.querySelector('input[name="movTipo"]:checked').value;
+      const cantidad = Number($('movCantidad').value);
+      const fecha = $('movFecha').value;
+      const motivo = $('movMotivo').value;
+      const usuario = $('movUsuario').value;
+
+      movimientos.push({ id: siguienteIdMov++, fecha, producto: nombreProducto, tipo, cantidad, motivo, usuario });
+
+      // Refleja el movimiento en el stock del producto (mismo patrón que Inventario)
+      const prod = productos.find(p => p.nombre === nombreProducto);
+      if (prod) {
+        prod.stock += (tipo === "Entrada") ? cantidad : -cantidad;
+        if (prod.stock < 0) prod.stock = 0;
+      }
+
+      pintarMovimientos();
+      cerrarModal();
+      mostrarToast(`Movimiento de ${tipo.toLowerCase()} registrado para ${nombreProducto}`);
+    });
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2600);
+    }
+
+    function filtrarMovimientos() {
+      const tipo = $('filtroTipo').value;
+      const producto = $('filtroProducto').value;
+      const filas = document.querySelectorAll('#tablaMovimientos tbody tr');
+      let visibles = 0;
+
+      filas.forEach(fila => {
+        const coincideTipo = !tipo || fila.dataset.tipo === tipo;
+        const coincideProducto = !producto || fila.dataset.producto === producto;
+        const mostrar = coincideTipo && coincideProducto;
+        fila.classList.toggle('hidden', !mostrar);
+        if (mostrar) visibles++;
+      });
+
+      $('contadorMovimientos').textContent = `${visibles} movimiento${visibles === 1 ? '' : 's'}`;
+      $('sinResultadosMov').classList.toggle('hidden', visibles !== 0);
+    }
+
+    llenarSelectProductos();
+    pintarMovimientos();
+
+    // Si se llegó desde "Ver movimientos" en Inventario, preseleccionar el filtro de producto
+    const paramsUrl = new URLSearchParams(window.location.search);
+    const productoUrl = paramsUrl.get('producto');
+    if (productoUrl) {
+      $('filtroProducto').value = productoUrl;
+      filtrarMovimientos();
+    }
+  </script>
+</body>
+</html>
