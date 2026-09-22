@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reportes y métricas - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Reportes y métricas</h1>
+          <p class="admin-breadcrumb">Panel de administración · Indicadores para evaluar el desempeño del CRM</p>
+        </div>
+      </div>
+
+      <!-- Tarjetas de indicadores -->
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span class="stat-label">Total de clientes</span>
+            <div class="admin-stat-icon green" data-bp-icon="users"></div>
+          </div>
+          <span class="stat-num">128</span>
+          <span class="stat-delta">Todos los clientes registrados</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span class="stat-label">Clientes activos</span>
+            <div class="admin-stat-icon orange" data-bp-icon="paw"></div>
+          </div>
+          <span class="stat-num">96</span>
+          <span class="stat-delta up">75% del total</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span class="stat-label">Interacciones (este mes)</span>
+            <div class="admin-stat-icon yellow" data-bp-icon="chat"></div>
+          </div>
+          <span class="stat-num">48</span>
+          <span class="stat-delta up">+12% vs. mes anterior</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span class="stat-label">Clientes sin interacción</span>
+            <div class="admin-stat-icon blue" data-bp-icon="hourglass"></div>
+          </div>
+          <span class="stat-num">15</span>
+          <span class="stat-delta warn">Últimos 30 días</span>
+        </div>
+      </div>
+
+      <!-- Gráficas -->
+      <div class="admin-panels">
+        <div class="admin-panel">
+          <h2>Interacciones por tipo</h2>
+          <p class="panel-sub">Distribución de contactos con clientes este mes</p>
+          <div class="admin-bars">
+            <div class="admin-bar-col">
+              <span class="bar-num">22</span>
+              <div class="admin-bar" style="height: 100%; background: var(--admin-green);"></div>
+              <span class="bar-label">Llamada</span>
+            </div>
+            <div class="admin-bar-col">
+              <span class="bar-num">14</span>
+              <div class="admin-bar" style="height: 64%; background: var(--pink-medio);"></div>
+              <span class="bar-label">Correo</span>
+            </div>
+            <div class="admin-bar-col">
+              <span class="bar-num">8</span>
+              <div class="admin-bar" style="height: 36%; background: var(--yellow);"></div>
+              <span class="bar-label">Visita</span>
+            </div>
+            <div class="admin-bar-col">
+              <span class="bar-num">4</span>
+              <div class="admin-bar" style="height: 18%; background: var(--gray);"></div>
+              <span class="bar-label">Compra</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <h2>Clientes por etapa CRM</h2>
+          <p class="panel-sub">Estado actual de la cartera de clientes</p>
+          <div class="admin-donut-wrap">
+            <div class="admin-donut" style="background: conic-gradient(
+              var(--admin-green) 0% 44%,
+              var(--pink-medio) 44% 66%,
+              var(--yellow) 66% 82%,
+              var(--gray) 82% 100%);">
+              <span>128<small>clientes</small></span>
+            </div>
+            <ul class="admin-legend">
+              <li><span class="dot" style="background: var(--admin-green);"></span>Activo · 56</li>
+              <li><span class="dot" style="background: var(--pink-medio);"></span>Frecuente · 28</li>
+              <li><span class="dot" style="background: var(--yellow);"></span>Prospecto · 20</li>
+              <li><span class="dot" style="background: var(--gray);"></span>Inactivo · 24</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clientes en riesgo -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Clientes en riesgo</h2>
+          <span class="admin-count-pill">Sin interacción reciente</span>
+        </div>
+        <ul class="admin-list">
+          <li>
+            <div>
+              <div class="item-name">María López</div>
+              <div class="item-sub">Sin interacción desde hace 45 días</div>
+            </div>
+            <span class="item-tag low">Atender</span>
+          </li>
+          <li>
+            <div>
+              <div class="item-name">Carlos Ruiz</div>
+              <div class="item-sub">Sin interacción desde hace 38 días</div>
+            </div>
+            <span class="item-tag low">Atender</span>
+          </li>
+          <li>
+            <div>
+              <div class="item-name">Ana García</div>
+              <div class="item-sub">Sin interacción desde hace 35 días</div>
+            </div>
+            <span class="item-tag ok">Seguimiento</span>
+          </li>
+        </ul>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+</body>
+</html>

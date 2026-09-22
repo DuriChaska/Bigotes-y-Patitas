@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detalle de cliente - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <a href="admin-clientes.html" class="admin-volver"><span data-bp-icon="arrow_left" style="margin-right:4px;"></span>Volver a clientes</a>
+
+      <div class="admin-topbar">
+        <div>
+          <h1 id="cd-titulo">Detalle de cliente</h1>
+          <p class="admin-breadcrumb">Panel de administración · Información completa del cliente</p>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <!-- Encabezado con Avatar y Nombre -->
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+          <div class="avatar" id="cd-avatar" style="width:60px; height:60px; font-size:1.3rem; border-radius:50%;">ML</div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <h2 style="margin:0; font-size:24px;" id="cd-nombre">María López</h2>
+            <span class="admin-tag ok" id="cd-estado">Activo</span>
+          </div>
+        </div>
+
+        <!-- Rejilla de Información del Cliente -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px 32px; margin-bottom:24px;">
+          <div><span style="color:var(--gray); display:inline-block; width:110px;">Mascota</span><strong id="cd-mascota">Luna (Golden Retriever)</strong></div>
+          <div><span style="color:var(--gray); display:inline-block; width:120px;">Etapa CRM</span><span class="admin-tag warn" id="cd-etapa">Activo</span></div>
+          <div><span style="color:var(--gray); display:inline-block; width:110px;">Correo</span><span id="cd-correo">maria@correo.com</span></div>
+          <div><span style="color:var(--gray); display:inline-block; width:120px;">Fecha de registro</span><span id="cd-fecha">12/04/2024</span></div>
+          <div><span style="color:var(--gray); display:inline-block; width:110px;">Teléfono</span><span id="cd-telefono">449-123-4567</span></div>
+          <div><span style="color:var(--gray); display:inline-block; width:120px;">Estado</span><span class="admin-tag ok" id="cd-estado2">Activo</span></div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="admin-quick" style="margin-bottom:24px;">
+          <a href="#" class="secondary" id="cd-btn-editar"><span data-bp-icon="pencil" style="margin-right:6px;"></span>Editar cliente</a>
+          <a href="#" class="primary" id="cd-btn-etapa">Cambiar etapa CRM</a>
+        </div>
+
+        <!-- Pestañas de Navegación -->
+        <div style="display:flex; gap:24px; border-bottom:1px solid #e6ddd0;">
+          <button class="admin-tab-btn active" data-tab="info">Información</button>
+          <button class="admin-tab-btn" data-tab="inter">Interacciones</button>
+          <button class="admin-tab-btn" data-tab="eval">Evaluaciones</button>
+        </div>
+
+        <div class="admin-tab-panel" id="tab-info" style="padding-top:18px;">
+          <p style="color:var(--gray);">Información general y de contacto del cliente, mostrada arriba.</p>
+        </div>
+        <div class="admin-tab-panel" id="tab-inter" style="padding-top:18px; display:none;">
+          <p style="color:var(--gray); margin-bottom:12px;">Consulta la línea de tiempo completa de interacciones con este cliente.</p>
+          <a href="#" class="admin-quick-btn primary" id="cd-link-historial" style="display:inline-flex; text-decoration:none;"><span data-bp-icon="chat" style="margin-right:6px;"></span>Ver historial de interacciones</a>
+        </div>
+        <div class="admin-tab-panel" id="tab-eval" style="padding-top:18px; display:none;">
+          <p style="color:var(--gray);">Aún no hay evaluaciones registradas para este cliente.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    // Datos de ejemplo (mismos clientes que admin-clientes.html); en producción vendrían de la base de datos.
+    const clientesDB = {
+      "María López":   { mascota: "Luna (Golden Retriever)", correo: "maria@correo.com",  telefono: "449-123-4567", etapa: "Activo",    fecha: "12/04/2024" },
+      "Juan Pérez":     { mascota: "Firulais (Mestizo)",      correo: "juan@email.com",    telefono: "449-987-6543", etapa: "Frecuente", fecha: "03/02/2024" },
+      "Ana García":     { mascota: "Michi (Gato Siamés)",     correo: "ana@correo.com",    telefono: "449-456-7890", etapa: "Prospecto", fecha: "20/06/2024" },
+      "Carlos Ruiz":    { mascota: "Toby (Bulldog Francés)",  correo: "carlos@correo.com", telefono: "449-321-6547", etapa: "Inactivo",  fecha: "15/01/2024" },
+      "Luisa Morales":  { mascota: "Nube (Conejo)",           correo: "luisa@correo.com",  telefono: "449-654-3210", etapa: "Activo",    fecha: "28/05/2024" },
+    };
+
+    const tagClase = { "Activo": "ok", "Frecuente": "warn", "Prospecto": "info", "Inactivo": "muted" };
+
+    const params = new URLSearchParams(window.location.search);
+    const nombre = params.get('cliente') || 'María López';
+    const c = clientesDB[nombre] || clientesDB["María López"];
+    const iniciales = nombre.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+
+    document.getElementById('cd-titulo').textContent = nombre;
+    document.getElementById('cd-nombre').textContent = nombre;
+    document.getElementById('cd-avatar').textContent = iniciales;
+    document.getElementById('cd-mascota').textContent = c.mascota;
+    document.getElementById('cd-correo').textContent = c.correo;
+    document.getElementById('cd-telefono').textContent = c.telefono;
+    document.getElementById('cd-fecha').textContent = c.fecha;
+
+    ['cd-etapa'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = c.etapa;
+      el.className = 'admin-tag ' + (tagClase[c.etapa] || 'muted');
+    });
+    ['cd-estado', 'cd-estado2'].forEach(id => {
+      const el = document.getElementById(id);
+      const activo = c.etapa !== 'Inactivo';
+      el.textContent = activo ? 'Activo' : 'Inactivo';
+      el.className = 'admin-tag ' + (activo ? 'ok' : 'muted');
+    });
+
+    document.getElementById('cd-btn-etapa').href = 'admin-cliente-etapa.html?cliente=' + encodeURIComponent(nombre);
+    document.getElementById('cd-link-historial').href = 'admin-interacciones.html?cliente=' + encodeURIComponent(nombre);
+    document.getElementById('cd-btn-editar').addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = 'admin-clientes.html?editar=' + encodeURIComponent(nombre);
+    });
+
+    // Pestañas
+    document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.admin-tab-panel').forEach(p => p.style.display = 'none');
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+      });
+    });
+  </script>
+</body>
+</html>
