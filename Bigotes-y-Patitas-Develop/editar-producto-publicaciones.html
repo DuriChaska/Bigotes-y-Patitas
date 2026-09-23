@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Editar producto</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="header"></div>
+
+<section class="seller-interface">
+
+  <!-- PREVIEW -->
+  <div class="product-preview">
+    <img id="previewImg" src="" alt="Preview">
+
+    <div class="product-thumbnails">
+      <img id="miniPreview" src="">
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <form id="formEditar" class="product-form">
+    <h2>EDITAR PRODUCTO</h2>
+
+    <label>Nombre:</label>
+    <input id="nombre" type="text" required>
+
+    <label>Precio:</label>
+    <input id="precio" type="number" required>
+
+    <label>Descripción:</label>
+    <textarea id="descripcion" required></textarea>
+
+    <label>Actualizar imagen:</label>
+    <input id="fotoFile" type="file" accept="image/*">
+
+    <button type="submit" class="submit-product btn-pro">
+      Guardar cambios
+    </button>
+
+  </form>
+
+</section>
+
+<div id="footer"></div>
+
+<script src="components.js"></script>
+
+<script>
+let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
+let idEditar = localStorage.getItem("productoEditar");
+
+let index = productos.findIndex(p => p.id == idEditar);
+let producto = productos[index];
+
+// llenar datos
+document.getElementById("nombre").value = producto.nombre;
+document.getElementById("precio").value = producto.precio;
+document.getElementById("descripcion").value = producto.descripcion;
+
+document.getElementById("previewImg").src = producto.foto;
+document.getElementById("miniPreview").src = producto.foto;
+
+let nuevaImagen = producto.foto;
+
+// cambiar imagen
+document.getElementById("fotoFile").addEventListener("change", function(){
+  const file = this.files[0];
+  if(file){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      nuevaImagen = e.target.result;
+      previewImg.src = nuevaImagen;
+      miniPreview.src = nuevaImagen;
+    }
+    reader.readAsDataURL(file);
+  }
+});
+
+// guardar cambios
+document.getElementById("formEditar").addEventListener("submit", function(e){
+  e.preventDefault();
+
+  producto.nombre = nombre.value;
+  producto.precio = precio.value;
+  producto.descripcion = descripcion.value;
+  producto.foto = nuevaImagen;
+
+  productos[index] = producto;
+
+  localStorage.setItem("misProductos", JSON.stringify(productos));
+
+  alert("✨ Producto actualizado");
+
+  window.location.href = "mis-publicaciones.html";
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logística SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
+<body data-solo-admin>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Logística</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Estrategia de reposición Push / Pull</p>
+        </div>
+      </div>
+
+      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+
+      <!-- Pestañas -->
+      <div style="display:flex; gap:22px; border-bottom:1.5px solid #f1ece1; margin:18px 0 22px;">
+        <button class="admin-tab-btn active" id="tabBtnEstrategia" onclick="cambiarTab('estrategia')">Configurar estrategia</button>
+        <button class="admin-tab-btn" id="tabBtnComparativa" onclick="cambiarTab('comparativa')">Comparativa Push vs Pull</button>
+      </div>
+
+      <!-- Tab 9: Configurar estrategia -->
+      <div id="tabEstrategia">
+        <div class="admin-panels" style="grid-template-columns:1fr 1.4fr;">
+          <div class="admin-panel">
+            <h2>Configurar estrategia</h2>
+            <p class="panel-sub">Define cómo se repone cada producto.</p>
+
+            <form id="formEstrategia">
+              <div class="admin-form-group">
+                <label for="estProducto">Producto</label>
+                <select id="estProducto" class="admin-select" style="width:100%;" onchange="mostrarEstrategiaActual()"></select>
+              </div>
+
+              <div class="admin-form-group">
+                <label>Estrategia</label>
+                <div style="display:flex; flex-direction:column; gap:10px; margin-top:6px;">
+                  <label style="display:flex; align-items:flex-start; gap:10px; font-size:.86rem; color:var(--text); cursor:pointer;">
+                    <input type="radio" name="estTipo" value="PUSH" style="margin-top:3px;">
+                    <span><strong>PUSH</strong> (producción / compra anticipada)<br>
+                      <span style="color:var(--gray); font-size:.8rem;">Se genera pedido automáticamente cuando el stock llega al mínimo.</span>
+                    </span>
+                  </label>
+                  <label style="display:flex; align-items:flex-start; gap:10px; font-size:.86rem; color:var(--text); cursor:pointer;">
+                    <input type="radio" name="estTipo" value="PULL" style="margin-top:3px;">
+                    <span><strong>PULL</strong> (según demanda real)<br>
+                      <span style="color:var(--gray); font-size:.8rem;">Se genera pedido solo bajo pedido o demanda confirmada.</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <button type="submit" class="admin-btn-primary" style="margin-top:6px;">Guardar</button>
+            </form>
+          </div>
+
+          <div class="admin-panel">
+            <div class="admin-panel-head">
+              <h2>Estrategia asignada por producto</h2>
+              <span class="admin-count-pill" id="contadorEstrategia">0 productos</span>
+            </div>
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="tablaEstrategia">
+                <thead>
+                  <tr><th>Producto</th><th>Categoría</th><th>Estrategia</th></tr>
+                </thead>
+                <tbody id="cuerpoEstrategia"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 10: Comparativa Push vs Pull -->
+      <div id="tabComparativa" class="hidden">
+        <div class="admin-stats" style="grid-template-columns:repeat(2,1fr); margin-bottom:20px;">
+          <div class="admin-stat-card">
+            <div class="admin-stat-top"><div class="admin-stat-icon orange"><span data-bp-icon="package"></span></div></div>
+            <span class="stat-num" id="statPushCount">0</span>
+            <span class="stat-label">Productos en estrategia PUSH</span>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-top"><div class="admin-stat-icon blue"><span data-bp-icon="hourglass"></span></div></div>
+            <span class="stat-num" id="statPullCount">0</span>
+            <span class="stat-label">Productos en estrategia PULL</span>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Productos por estrategia</h2></div>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="tablaComparativa">
+              <thead>
+                <tr><th>Producto</th><th>Categoría</th><th>Stock</th><th>Stock mín.</th><th>Estrategia</th></tr>
+              </thead>
+              <tbody id="cuerpoComparativa"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script>
+    // TODO (conexión a Firebase): mismo catálogo mock que admin-scm-inventario.html
+    // y admin-scm-movimientos.html. Al conectar, guardar la estrategia directamente
+    // en el documento del producto (actualizarProductoScm) igual que hace el campo
+    // "Estrategia logística" del formulario en admin-scm-productos.html.
+    let productos = [
+      { id: 1, nombre: "Croquetas para perro adulto 15kg", categoria: "Alimento",   stock: 40, stockMin: 10, estrategia: "PUSH" },
+      { id: 2, nombre: "Croquetas para gato interior 3kg",  categoria: "Alimento",   stock: 8,  stockMin: 10, estrategia: "PULL" },
+      { id: 3, nombre: "Arena sanitaria aglomerante 10kg",  categoria: "Accesorios", stock: 25, stockMin: 8,  estrategia: "PUSH" },
+      { id: 4, nombre: "Correa retráctil 5m",               categoria: "Accesorios", stock: 15, stockMin: 5,  estrategia: "PULL" },
+      { id: 5, nombre: "Pelota mordedora de goma",          categoria: "Juguetes",   stock: 6,  stockMin: 10, estrategia: "PULL" },
+      { id: 6, nombre: "Cama acolchada para perro mediano", categoria: "Accesorios", stock: 12, stockMin: 4,  estrategia: "PUSH" },
+      { id: 7, nombre: "Snacks dentales para perro",        categoria: "Alimento",   stock: 30, stockMin: 12, estrategia: "PUSH" },
+      { id: 8, nombre: "Ratón de peluche con cascabel",     categoria: "Juguetes",   stock: 20, stockMin: 6,  estrategia: "PULL" },
+    ];
+
+    const claseEstrategia = { "PUSH": "info", "PULL": "warn" };
+    const $ = (id) => document.getElementById(id);
+
+    function cambiarTab(tab) {
+      $('tabEstrategia').classList.toggle('hidden', tab !== 'estrategia');
+      $('tabComparativa').classList.toggle('hidden', tab !== 'comparativa');
+      $('tabBtnEstrategia').classList.toggle('active', tab === 'estrategia');
+      $('tabBtnComparativa').classList.toggle('active', tab === 'comparativa');
+      if (tab === 'comparativa') pintarComparativa();
+    }
+
+    function llenarSelectProductosEst() {
+      $('estProducto').innerHTML = productos.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
+      mostrarEstrategiaActual();
+    }
+
+    function mostrarEstrategiaActual() {
+      const nombre = $('estProducto').value;
+      const prod = productos.find(p => p.nombre === nombre);
+      if (!prod) return;
+      document.querySelectorAll('input[name="estTipo"]').forEach(r => r.checked = (r.value === prod.estrategia));
+    }
+
+    $('formEstrategia').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nombre = $('estProducto').value;
+      const tipo = document.querySelector('input[name="estTipo"]:checked')?.value;
+      if (!tipo) { mostrarToast('Selecciona una estrategia'); return; }
+      const prod = productos.find(p => p.nombre === nombre);
+      if (prod) prod.estrategia = tipo;
+      pintarTablaEstrategia();
+      mostrarToast(`Estrategia ${tipo} guardada para ${nombre}`);
+    });
+
+    function pintarTablaEstrategia() {
+      $('cuerpoEstrategia').innerHTML = productos.map(p => `
+        <tr>
+          <td>${p.nombre}</td>
+          <td>${p.categoria}</td>
+          <td><span class="admin-tag ${claseEstrategia[p.estrategia]}">${p.estrategia}</span></td>
+        </tr>
+      `).join('');
+      $('contadorEstrategia').textContent = `${productos.length} productos`;
+    }
+
+    function pintarComparativa() {
+      $('statPushCount').textContent = productos.filter(p => p.estrategia === "PUSH").length;
+      $('statPullCount').textContent = productos.filter(p => p.estrategia === "PULL").length;
+      $('cuerpoComparativa').innerHTML = productos.map(p => `
+        <tr>
+          <td>${p.nombre}</td>
+          <td>${p.categoria}</td>
+          <td>${p.stock}</td>
+          <td>${p.stockMin}</td>
+          <td><span class="admin-tag ${claseEstrategia[p.estrategia]}">${p.estrategia}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2600);
+    }
+
+    llenarSelectProductosEst();
+    pintarTablaEstrategia();
+  </script>
+</body>
+</html>

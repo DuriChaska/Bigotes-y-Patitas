@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carrito - Bigotes y Patitas</title>
+  <style>
+    .badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background-color: #ff4d4d; /* Rojo */
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+  </style>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="cart-page">
+    <nav class="breadcrumb">
+      <a href="index.html">Inicio</a> / <span>Carrito</span>
+    </nav>
+
+    <h2 id="cart-title">Carrito (0 productos)</h2>
+
+    <div id="cart-empty" style="display:none; text-align:center; padding: 3rem 1rem;">
+      <h3>Tu carrito está vacío 😔</h3>
+      <p>¡Explora nuestro catálogo y encuentra algo que te encante!</p>
+      <button class="add-to-cart" onclick="window.location.href='shop.html'">Ver catálogo</button>
+    </div>
+
+    <table class="cart-table" id="cart-table" style="display:none;">
+      <thead>
+        <tr>
+          <th>Fotografía</th>
+          <th>Producto</th>
+          <th>Precio</th>
+          <th>Cantidad</th>
+          <th>Subtotal</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="cart-items"></tbody>
+    </table>
+
+    <div class="cart-actions" id="cart-actions" style="display:none;">
+      <input type="text" placeholder="Código de descuento" id="coupon-code" />
+      <button class="apply-coupon" onclick="aplicarCuponDesdeCarrito()">Aplicar Cupón</button>
+      <button class="update-cart" onclick="renderCart()">Actualizar Carrito</button>
+    </div>
+
+    <div class="cart-totals" id="cart-totals" style="display:none;">
+      <p>Subtotal: <span id="subtotal">$0.00</span></p>
+      <p id="discount-line" style="display:none;">Descuento: <span id="discount">-$0.00</span></p>
+      <p id="coupon-line" style="display:none;"><span id="coupon-message"></span></p>
+      <p><strong>Total: <span id="total">$0.00</span></strong></p>
+      <button class="checkout-btn" onclick="window.location.href='checkout.html'">Proceder a pagar</button>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script>
+  // 1. Configuración de Cupones
+  const codigosDisponibles = {
+    "CUTECANDY50": { codigo: "CUTECANDY50", tipo: "porcentaje", valor: 50 },
+    "CUTECANDY10": { codigo: "CUTECANDY10", tipo: "tercera_prenda", valor: 10 },
+    "CUTENVIO1":   { codigo: "CUTENVIO1",   tipo: "envio_gratis",   valor: 0 }
+  };
+
+  // 2. Funciones de Utilidad (Storage)
+  function obtenerCarrito() {
+    return JSON.parse(localStorage.getItem("carrito") || "[]");
+  }
+
+  function guardarCarrito(carrito) {
+    localStorage.setItem("carrito", JSON.stringify(carrito));
+  }
+
+  function obtenerCupon() {
+    return JSON.parse(localStorage.getItem("cuponAplicado") || "null");
+  }
+
+  function guardarCupon(cupon) {
+    localStorage.setItem("cuponAplicado", JSON.stringify(cupon));
+  }
+
+  function formatearMoneda(valor) {
+    return `$${Number(valor).toFixed(2)}`;
+  }
+
+  // 3. Lógica de Cálculos
+  function calcularDescuento(carrito, subtotal, cupon) {
+    if (!cupon) return { descuento: 0, descripcion: "" };
+
+    let descuento = 0;
+    let descripcion = "";
+    const cantidadTotal = carrito.reduce((t, i) => t + Number(i.cantidad), 0);
+
+    switch (cupon.tipo) {
+      case "porcentaje":
+        descuento = subtotal * (Number(cupon.valor) / 100);
+        descripcion = `${cupon.codigo} aplicado (${cupon.valor}% de descuento)`;
+        break;
+
+      case "tercera_prenda":
+        if (cantidadTotal >= 3) {
+          // Obtenemos todos los precios individuales para encontrar el de la tercera prenda
+          const precios = [];
+          carrito.forEach(item => {
+            for (let i = 0; i < item.cantidad; i++) precios.push(Number(item.precio));
+          });
+          precios.sort((a, b) => b - a); // Opcional: ordenar de mayor a menor
+          const terceraPrendaPrecio = precios[2]; 
+          descuento = terceraPrendaPrecio * (Number(cupon.valor) / 100);
+          descripcion = `${cupon.codigo} aplicado (${cupon.valor}% en la 3ra prenda)`;
+        } else {
+          descripcion = `${cupon.codigo} requiere al menos 3 prendas`;
+        }
+        break;
+
+      case "envio_gratis":
+        descripcion = `${cupon.codigo} aplicado (envío gratis al pagar)`;
+        break;
+    }
+    return { descuento, descripcion };
+  }
+
+  // 4. Funciones de Interfaz (Render)
+  function aplicarCuponDesdeCarrito() {
+    const input = document.getElementById("coupon-code");
+    const codigo = input.value.trim().toUpperCase();
+    if (!codigo) { alert("Ingresa un código."); return; }
+
+    const cupon = codigosDisponibles[codigo];
+    if (!cupon) { alert("Código inválido."); return; }
+
+    guardarCupon(cupon);
+    renderCart();
+    alert("Cupón aplicado correctamente.");
+  }
+
+  function renderCart() {
+    const carrito = obtenerCarrito();
+    const cupon = obtenerCupon();
+    const tbody = document.getElementById("cart-items");
+    const title = document.getElementById("cart-title");
+    const emptyMsg = document.getElementById("cart-empty");
+    const table = document.getElementById("cart-table");
+    const actions = document.getElementById("cart-actions");
+    const totals = document.getElementById("cart-totals");
+
+    tbody.innerHTML = "";
+    let subtotal = 0;
+
+    if (carrito.length === 0) {
+      title.textContent = "Carrito (0 productos)";
+      emptyMsg.style.display = "block";
+      table.style.display = "none";
+      actions.style.display = "none";
+      totals.style.display = "none";
+      if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
+      return;
+    }
+
+    emptyMsg.style.display = "none";
+    table.style.display = "table";
+    actions.style.display = "flex";
+    totals.style.display = "block";
+
+    carrito.forEach((item, index) => {
+      const itemSubtotal = Number(item.precio) * Number(item.cantidad);
+      subtotal += itemSubtotal;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><img src="${item.imagen}" alt="${item.nombre}" style="width:80px; border-radius:6px;"></td>
+        <td>${item.nombre}</td>
+        <td>${formatearMoneda(item.precio)}</td>
+        <td>
+          <button class="qty-btn" onclick="cambiarCantidad(${index}, -1)">−</button>
+          <input type="number" value="${item.cantidad}" readonly style="width:40px; text-align:center; border:none;">
+          <button class="qty-btn" onclick="cambiarCantidad(${index}, 1)">+</button>
+        </td>
+        <td>${formatearMoneda(itemSubtotal)}</td>
+        <td><button class="remove-item" onclick="eliminarItem(${index})">×</button></td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    const resultado = calcularDescuento(carrito, subtotal, cupon);
+    const total = Math.max(0, subtotal - resultado.descuento);
+
+    title.textContent = `Carrito (${carrito.length} producto${carrito.length !== 1 ? "s" : ""})`;
+    document.getElementById("subtotal").textContent = formatearMoneda(subtotal);
+    document.getElementById("total").textContent = formatearMoneda(total);
+
+    // Manejo visual de líneas de descuento
+    const discLine = document.getElementById("discount-line");
+    const coupLine = document.getElementById("coupon-line");
+
+    if (resultado.descuento > 0) {
+      discLine.style.display = "block";
+      document.getElementById("discount").textContent = `-${formatearMoneda(resultado.descuento)}`;
+    } else {
+      discLine.style.display = "none";
+    }
+
+    if (cupon) {
+      coupLine.style.display = "block";
+      document.getElementById("coupon-message").textContent = resultado.descripcion;
+    } else {
+      coupLine.style.display = "none";
+    }
+
+    // Actualizar el globo del carrito en el header
+    if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
+  }
+
+  // 5. Acciones del Usuario
+  function cambiarCantidad(index, delta) {
+  let carrito = obtenerCarrito();
+  carrito[index].cantidad = Math.max(1, Number(carrito[index].cantidad) + delta);
+  guardarCarrito(carrito);
+  renderCart();
+
+  // ESTO DISPARA EL CAMBIO EN EL LOGO AL INSTANTE:
+  window.dispatchEvent(new Event('actualizarCarrito')); 
+
+}
+
+function eliminarItem(index) {
+  let carrito = obtenerCarrito();
+  carrito.splice(index, 1);
+  guardarCarrito(carrito);
+  renderCart();
+
+  // ESTO DISPARA EL CAMBIO EN EL LOGO AL INSTANTE:
+  window.dispatchEvent(new Event('actualizarCarrito'));
+}
+
+  window.onload = renderCart;
+</script>
+</body>
+</html>

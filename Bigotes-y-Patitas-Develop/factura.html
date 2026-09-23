@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Factura</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .page-container {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px 20px;
+    }
+
+    .invoice-wrapper {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .invoice-box {
+      width: 100%;
+      max-width: 450px;
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      overflow: hidden;
+      border: 1px solid #eee;
+    }
+
+    .invoice-header {
+      background: #b34a8e;
+      color: white;
+      padding: 22px;
+      text-align: center;
+    }
+
+    .invoice-header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .invoice-header p {
+      margin: 8px 0 0;
+      font-size: 14px;
+      opacity: 0.95;
+    }
+
+    .invoice-content {
+      padding: 22px;
+    }
+
+    .invoice-info {
+      margin-bottom: 18px;
+    }
+
+    .invoice-info p {
+      margin: 6px 0;
+      font-size: 14px;
+    }
+
+    .invoice-divider {
+      border: none;
+      border-top: 1px solid #e6e6e6;
+      margin: 18px 0;
+    }
+
+    .product-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-bottom: 14px;
+      color: #b34a8e;
+    }
+
+    .invoice-row,
+    .invoice-subtotal,
+    .invoice-total {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .invoice-row span:first-child {
+      flex: 1;
+    }
+
+    .invoice-subtotal {
+      margin-top: 10px;
+    }
+
+    .invoice-total {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 2px solid #b34a8e;
+      font-size: 20px;
+      font-weight: bold;
+      color: #b34a8e;
+      margin-bottom: 0;
+    }
+
+    .invoice-footer {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 13px;
+      color: #777;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      background: #b34a8e;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 13px 22px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #96387a;
+    }
+
+    .btn-secondary {
+      background: #666;
+    }
+
+    .btn-secondary:hover {
+      background: #444;
+    }
+
+    .empty-message {
+      text-align: center;
+      color: #777;
+      font-size: 14px;
+      padding: 20px 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 480px) {
+      .invoice-header h1 {
+        font-size: 21px;
+      }
+
+      .invoice-content {
+        padding: 18px;
+      }
+
+      .invoice-total {
+        font-size: 18px;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .actions {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-container">
+    <div class="invoice-wrapper">
+
+      <div class="invoice-box" id="invoice">
+        <div class="invoice-header">
+          <h1>Factura de Compra</h1>
+          <p>Cotton Candy Clothing Store</p>
+        </div>
+
+        <div class="invoice-content">
+          <div class="invoice-info">
+            <p><strong>Factura No.:</strong> <span id="factura-numero">FAC-00001</span></p>
+            <p><strong>Pedido No.:</strong> <span id="pedido-numero">CC-00001</span></p>
+            <p><strong>Fecha:</strong> <span id="fecha-factura">00/00/0000</span></p>
+            <p><strong>Cliente:</strong> <span id="cliente-factura">Cliente General</span></p>
+          </div>
+
+          <hr class="invoice-divider" />
+
+          <div class="product-title">Detalle de compra</div>
+
+          <div id="productos-factura"></div>
+
+          <hr class="invoice-divider" />
+
+          <div class="invoice-subtotal">
+            <span><strong>Subtotal</strong></span>
+            <span id="subtotal-factura">$0.00</span>
+          </div>
+
+          <div class="invoice-row hidden" id="cupon-row">
+            <span><strong>Cupón</strong></span>
+            <span id="cupon-factura">-</span>
+          </div>
+
+          <div class="invoice-row hidden" id="descuento-row">
+            <span><strong>Descuento</strong></span>
+            <span id="descuento-factura">-$0.00</span>
+          </div>
+
+          <div class="invoice-row">
+            <span><strong>Envío</strong></span>
+            <span id="envio-factura">$0.00</span>
+          </div>
+
+          <div class="invoice-total">
+            <span>Total</span>
+            <span id="total-factura">$0.00</span>
+          </div>
+
+          <div class="invoice-footer">
+            Gracias por tu compra.
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" onclick="descargarPDF()">DESCARGAR FACTURA PDF</button>
+        <button class="btn btn-secondary" onclick="window.location.href='Interfaz Cliente - Perfil.html'">ATRAS</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> -->
+  <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>-->
+
+  <script>
+    function formatearMoneda(valor) {
+      return `$${Number(valor).toFixed(2)}`;
+    }
+
+    function cargarFactura() {
+      const compra = JSON.parse(localStorage.getItem("ultimaCompra"));
+
+      if (!compra) {
+        document.getElementById("productos-factura").innerHTML = `
+          <div class="empty-message">
+            No hay datos de compra disponibles.
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById("factura-numero").textContent = compra.factura || "FAC-00001";
+      document.getElementById("pedido-numero").textContent = compra.pedido || "CC-00001";
+      document.getElementById("fecha-factura").textContent = compra.fecha || "--/--/----";
+      document.getElementById("cliente-factura").textContent = compra.cliente || "Cliente General";
+      document.getElementById("subtotal-factura").textContent = formatearMoneda(compra.subtotal || 0);
+      document.getElementById("envio-factura").textContent = formatearMoneda(compra.envio || 0);
+      document.getElementById("total-factura").textContent = formatearMoneda(compra.total || 0);
+
+      const cuponRow = document.getElementById("cupon-row");
+      const descuentoRow = document.getElementById("descuento-row");
+
+      if (compra.cupon) {
+        cuponRow.classList.remove("hidden");
+        document.getElementById("cupon-factura").textContent = compra.descripcionCupon || compra.cupon;
+      } else {
+        cuponRow.classList.add("hidden");
+      }
+
+      if (Number(compra.descuento || 0) > 0) {
+        descuentoRow.classList.remove("hidden");
+        document.getElementById("descuento-factura").textContent = `-${formatearMoneda(compra.descuento)}`;
+      } else {
+        descuentoRow.classList.add("hidden");
+      }
+
+      const contenedorProductos = document.getElementById("productos-factura");
+      contenedorProductos.innerHTML = "";
+
+      if (!compra.productos || compra.productos.length === 0) {
+        contenedorProductos.innerHTML = `
+          <div class="empty-message">
+            No hay productos registrados en esta factura.
+          </div>
+        `;
+        return;
+      }
+
+      compra.productos.forEach(item => {
+        const totalProducto = Number(item.precio) * Number(item.cantidad);
+
+        const fila = document.createElement("div");
+        fila.className = "invoice-row";
+        fila.innerHTML = `
+          <span>${item.nombre} x${item.cantidad}</span>
+          <span>${formatearMoneda(totalProducto)}</span>
+        `;
+
+        contenedorProductos.appendChild(fila);
+      });
+    }
+
+    // Función modificada para mostrar solo el mensaje
+    function descargarPDF() {
+      alert("PDF descargado");
+    }
+    
+    /*async function descargarPDF() {
+      const { jsPDF } = window.jspdf;
+      const invoice = document.getElementById('invoice');
+
+      const canvas = await html2canvas(invoice, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff"
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      const pdfWidth = 210;
+      const imgWidth = 160;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = 20;
+
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+      pdf.save('Factura.pdf');
+    }*/
+
+    cargarFactura();
+</script>
+
+
+  
+
+</body>
+</html>
