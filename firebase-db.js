@@ -11,6 +11,10 @@
 //    interacciones/{id} { clienteId, clienteNombre, tipo,
 //                          descripcion, fecha, usuario, creadoEn }
 //    usuarios/{uid}     { nombre, correo, rol: "administrador"|"vendedor" }
+//    scm_productos/{id} { nombre, descripcion, categoria, proveedor, proveedorId,
+//                          stock, stockMin, estrategia: "PUSH"|"PULL", costo, img }
+//    scm_proveedores/{id} { nombre, contacto, correo, telefono, direccion }
+//                          (las dos colecciones SCM: SOLO administradores, ver firestore.rules)
 // ============================================
 
 import { auth, db, firebaseConfig } from "./firebase-config.js";
@@ -30,7 +34,7 @@ import {
 import {
   collection, doc,
   addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  onSnapshot, query, where, orderBy, serverTimestamp,
+  onSnapshot, query, where, orderBy, serverTimestamp, writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const clientesRef = collection(db, "clientes");
@@ -225,4 +229,96 @@ export async function calcularMetricas() {
   const sinInteraccionReciente = clientes.filter(c => !interaccionesPorCliente[c.id]).length;
 
   return { clientes, interacciones, totalClientes, activos, inactivos, porEtapa, porTipo, sinInteraccionReciente };
+}
+
+// ---------- SCM: productos (solo administradores) ----------
+
+const scmProductosRef = collection(db, "scm_productos");
+
+/** Escucha en tiempo real el catálogo del SCM. onError recibe el error (p. ej. permission-denied). */
+export function escucharProductosScm(callback, onError) {
+  const q = query(scmProductosRef, orderBy("nombre"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+export function crearProductoScm(datos) {
+  return addDoc(scmProductosRef, { ...datos, creadoEn: serverTimestamp() });
+}
+
+export function actualizarProductoScm(id, datos) {
+  return updateDoc(doc(db, "scm_productos", id), { ...datos, actualizadoEn: serverTimestamp() });
+}
+
+export function eliminarProductoScm(id) {
+  return deleteDoc(doc(db, "scm_productos", id));
+}
+
+/** Carga una lista de productos de ejemplo (para arrancar con datos). */
+export function cargarProductosScmEjemplo(lista) {
+  return Promise.all(lista.map(crearProductoScm));
+}
+
+// ---------- SCM: proveedores (solo administradores) ----------
+
+const scmProveedoresRef = collection(db, "scm_proveedores");
+
+/** Escucha en tiempo real la lista de proveedores. */
+export function escucharProveedoresScm(callback, onError) {
+  const q = query(scmProveedoresRef, orderBy("nombre"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+export function crearProveedorScm(datos) {
+  return addDoc(scmProveedoresRef, { ...datos, creadoEn: serverTimestamp() });
+}
+
+/**
+ * Productos que dependen de un proveedor: los que guardan su id y, por compatibilidad,
+ * los productos antiguos que solo guardaron el NOMBRE del proveedor (sin proveedorId).
+ */
+async function productosDeProveedorScm(id, nombre) {
+  const consultas = [getDocs(query(scmProductosRef, where("proveedorId", "==", id)))];
+  if (nombre) consultas.push(getDocs(query(scmProductosRef, where("proveedor", "==", nombre))));
+  const resultados = await Promise.all(consultas);
+  const unicos = new Map();
+  resultados.forEach((snap, i) => snap.docs.forEach(d => {
+    // Los encontrados por nombre solo cuentan si no apuntan ya a otro proveedor por id
+    if (i === 0 || !d.data().proveedorId) unicos.set(d.id, d);
+  }));
+  return [...unicos.values()];
+}
+
+/** Cuántos productos usan este proveedor (para impedir borrarlo si aún tiene productos). */
+export async function contarProductosDeProveedorScm(id, nombre) {
+  return (await productosDeProveedorScm(id, nombre)).length;
+}
+
+/**
+ * Guarda los cambios del proveedor. Si cambió su nombre, actualiza también el nombre
+ * guardado en sus productos para que nada quede desincronizado.
+ */
+export async function actualizarProveedorScm(id, datos, nombreAnterior) {
+  await updateDoc(doc(db, "scm_proveedores", id), { ...datos, actualizadoEn: serverTimestamp() });
+  if (!nombreAnterior || nombreAnterior === datos.nombre) return;
+  const productos = await productosDeProveedorScm(id, nombreAnterior);
+  if (productos.length === 0) return;
+  const lote = writeBatch(db);
+  productos.forEach(d => lote.update(d.ref, { proveedor: datos.nombre, proveedorId: id }));
+  await lote.commit();
+}
+
+export function eliminarProveedorScm(id) {
+  return deleteDoc(doc(db, "scm_proveedores", id));
+}
+
+/** Carga proveedores de ejemplo. Devuelve [{ id, nombre }] con los ids recién creados. */
+export function cargarProveedoresScmEjemplo(lista) {
+  return Promise.all(lista.map(async (p) => {
+    const ref = await crearProveedorScm(p);
+    return { id: ref.id, nombre: p.nombre };
+  }));
 }
