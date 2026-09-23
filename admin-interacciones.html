@@ -60,11 +60,8 @@
             <input type="date" id="int-fecha" required>
           </div>
           <div class="admin-form-group">
-            <label for="int-responsable">Responsable</label>
-            <select id="int-responsable" class="admin-select" style="width:100%;">
-              <option value="Admin">Admin</option>
-              <option value="Vendedor">Vendedor</option>
-            </select>
+            <label>Responsable</label>
+            <input type="text" id="int-responsable-display" disabled>
           </div>
         </div>
 
@@ -102,6 +99,7 @@
       lista.innerHTML = interacciones.map(i => {
         const [icono, color] = iconosPorTipo[i.tipo] || ["chat", "gray"];
         const fecha = i.fecha || (i.creadoEn && i.creadoEn.toDate ? i.creadoEn.toDate().toLocaleDateString('es-MX') : '—');
+        const etiquetaRol = i.usuarioRol === 'administrador' ? 'Administrador' : (i.usuarioRol === 'vendedor' ? 'Vendedor' : null);
         return `
         <li class="admin-timeline-item">
           <div class="admin-timeline-icon ${color}">${bpIcon(icono)}</div>
@@ -111,7 +109,7 @@
               <span class="admin-timeline-date">${fecha}</span>
             </div>
             <p>${i.descripcion}</p>
-            <span class="admin-timeline-user">Usuario: ${i.usuario}</span>
+            <span class="admin-timeline-user">Usuario: ${i.usuario}${etiquetaRol ? ` · <span class="admin-tag rol-${i.usuarioRol}" style="padding:1px 8px; font-size:.72rem;">${etiquetaRol}</span>` : ''}</span>
           </div>
         </li>`;
       }).join('');
@@ -129,6 +127,8 @@
     function nuevaInteraccion(e) {
       e.preventDefault();
       document.getElementById('int-fecha').valueAsDate = new Date();
+      const s = window.BP_SESION;
+      document.getElementById('int-responsable-display').value = s ? `${s.nombre} (${s.rol === 'administrador' ? 'Administrador' : 'Vendedor'})` : 'Cargando...';
       document.getElementById('modalInteraccion').classList.remove('hidden');
       return false;
     }
@@ -150,22 +150,25 @@
     async function guardarInteraccion(e) {
       e.preventDefault();
       if (!clienteId) { mostrarToast('No se identificó al cliente.'); return false; }
+      const sesion = window.BP_SESION;
+      if (!sesion) { mostrarToast('Tu sesión aún se está cargando, espera un momento e inténtalo de nuevo.'); return false; }
 
       const tipo = document.getElementById('int-tipo').value;
       const descripcion = document.getElementById('int-desc').value;
       const fechaInput = document.getElementById('int-fecha').value;
-      const usuario = document.getElementById('int-responsable').value;
       const fecha = fechaInput
         ? new Date(fechaInput + 'T00:00:00').toLocaleDateString('es-MX')
         : new Date().toLocaleDateString('es-MX');
 
       try {
-        await crearInteraccion({ clienteId, clienteNombre, tipo, descripcion, usuario, fecha });
+        await crearInteraccion({
+          clienteId, clienteNombre, tipo, descripcion, fecha,
+          usuario: sesion.nombre, usuarioRol: sesion.rol, usuarioUid: sesion.uid,
+        });
         cerrarModalInteraccion();
         mostrarToast('Interacción registrada correctamente');
       } catch (err) {
-        console.error(err);
-        mostrarToast('No se pudo guardar. Revisa tu conexión con Firebase.');
+        mostrarToast('No se pudo guardar: ' + (err.message || 'revisa tu conexión con Firebase.'));
       }
       return false;
     }

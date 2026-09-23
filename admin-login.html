@@ -75,7 +75,6 @@
         await loginAdmin(email, pass);
         window.location.href = 'admin.html';
       } catch (err) {
-        console.error(err);
         errorBox.textContent = mensajeError(err.code);
         errorBox.classList.add('show');
         boton.disabled = false;

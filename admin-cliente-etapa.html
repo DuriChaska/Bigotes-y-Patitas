@@ -131,8 +131,7 @@
         estadoOriginal = selectStage.value;
         mostrarToast(`Etapa de ${nombreCliente} guardada como: ${estadoOriginal}`);
       } catch (err) {
-        console.error(err);
-        mostrarToast('No se pudo guardar. Revisa tu conexión con Firebase.');
+        mostrarToast('No se pudo guardar: ' + (err.message || 'revisa tu conexión con Firebase.'));
       }
       btnGuardar.style.pointerEvents = 'auto';
     });

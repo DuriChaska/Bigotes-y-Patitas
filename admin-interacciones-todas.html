@@ -43,6 +43,7 @@
                 <th>Tipo</th>
                 <th>Descripción</th>
                 <th>Usuario</th>
+                <th>Rol</th>
               </tr>
             </thead>
             <tbody id="inter-lista"></tbody>
@@ -63,17 +64,21 @@
     function pintarInteracciones(lista) {
       const cuerpo = document.getElementById('inter-lista');
       if (lista.length === 0) {
-        cuerpo.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">No hay interacciones registradas todavía.</td></tr>`;
+        cuerpo.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--gray); padding:20px;">No hay interacciones registradas todavía.</td></tr>`;
       } else {
-        cuerpo.innerHTML = lista.map(i => `
+        cuerpo.innerHTML = lista.map(i => {
+          const etiquetaRol = i.usuarioRol === 'administrador' ? 'Administrador' : (i.usuarioRol === 'vendedor' ? 'Vendedor' : '—');
+          return `
           <tr>
             <td>${i.fecha || '—'}</td>
             <td>${i.clienteNombre}</td>
             <td>${i.tipo}</td>
             <td>${i.descripcion}</td>
             <td>${i.usuario}</td>
+            <td>${i.usuarioRol ? `<span class="admin-tag rol-${i.usuarioRol}" style="padding:1px 8px; font-size:.72rem;">${etiquetaRol}</span>` : '—'}</td>
           </tr>
-        `).join('');
+        `;
+        }).join('');
       }
       document.getElementById('inter-conteo').textContent =
         `Mostrando ${lista.length} de ${todasInteracciones.length} interacciones`;
