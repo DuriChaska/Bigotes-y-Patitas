@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clientes - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
-  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -19,8 +18,9 @@
           <p class="admin-breadcrumb">Panel de administración · Listado, búsqueda y seguimiento de clientes</p>
         </div>
         <div class="admin-topbar-right">
+          <!-- Botón cambiado a Nuevo Cliente -->
           <button class="admin-quick-btn primary" onclick="abrirModalCliente()">
-            <span data-bp-icon="plus"></span><span>Nuevo cliente</span>
+            <span>➕</span><span>Nuevo cliente</span>
           </button>
         </div>
       </div>
@@ -29,19 +29,14 @@
       <div class="admin-panel" style="margin-bottom:18px;">
         <div class="admin-filters-row">
           <div class="admin-search" style="flex:1; min-width:220px;">
-            <span data-bp-icon="search"></span>
+            <span>🔍</span>
             <input type="text" id="buscarCliente" placeholder="Buscar por nombre, mascota o correo..." oninput="filtrarClientes()">
           </div>
           <select id="filtroEtapa" class="admin-select" onchange="filtrarClientes()">
-            <option value="">Todas las etapas</option>
+            <option value="">Todos los estados</option>
             <option value="Prospecto">Prospecto</option>
             <option value="Activo">Activo</option>
             <option value="Frecuente">Frecuente</option>
-            <option value="Inactivo">Inactivo</option>
-          </select>
-          <select id="filtroEstado" class="admin-select" onchange="filtrarClientes()">
-            <option value="">Todos los estados</option>
-            <option value="Activo">Activo</option>
             <option value="Inactivo">Inactivo</option>
           </select>
         </div>
@@ -51,26 +46,80 @@
       <div class="admin-panel">
         <div class="admin-panel-head">
           <h2>Listado de clientes</h2>
-          <span class="admin-count-pill" id="contadorClientes">0 clientes</span>
+          <span class="admin-count-pill" id="contadorClientes">5 clientes</span>
         </div>
         <div class="admin-table-wrap">
           <table class="admin-table" id="tablaClientes">
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Nombre</th>
                 <th>Mascota</th>
                 <th>Correo</th>
                 <th>Teléfono</th>
                 <th>Etapa CRM</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th></th>
               </tr>
             </thead>
-            <tbody id="cuerpoClientes"></tbody>
+            <tbody>
+              <tr data-nombre="María López" data-etapa="Activo">
+                <td>María López</td>
+                <td>Luna (Golden Retriever)</td>
+                <td>maria@correo.com</td>
+                <td>449-123-4567</td>
+                <td><span class="admin-tag ok">Activo</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('María López','Luna (Golden Retriever)','maria@correo.com','449-123-4567','Activo')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Juan Pérez" data-etapa="Frecuente">
+                <td>Juan Pérez</td>
+                <td>Firulais (Mestizo)</td>
+                <td>juan@email.com</td>
+                <td>449-987-6543</td>
+                <td><span class="admin-tag warn">Frecuente</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Juan Pérez','Firulais (Mestizo)','juan@email.com','449-987-6543','Frecuente')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Ana García" data-etapa="Prospecto">
+                <td>Ana García</td>
+                <td>Michi (Gato Siamés)</td>
+                <td>ana@correo.com</td>
+                <td>449-456-7890</td>
+                <td><span class="admin-tag info">Prospecto</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Ana García','Michi (Gato Siamés)','ana@correo.com','449-456-7890','Prospecto')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Carlos Ruiz" data-etapa="Inactivo">
+                <td>Carlos Ruiz</td>
+                <td>Toby (Bulldog Francés)</td>
+                <td>carlos@correo.com</td>
+                <td>449-321-6547</td>
+                <td><span class="admin-tag muted">Inactivo</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Carlos Ruiz','Toby (Bulldog Francés)','carlos@correo.com','449-321-6547','Inactivo')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+              <tr data-nombre="Luisa Morales" data-etapa="Activo">
+                <td>Luisa Morales</td>
+                <td>Nube (Conejo)</td>
+                <td>luisa@correo.com</td>
+                <td>449-654-3210</td>
+                <td><span class="admin-tag ok">Activo</span></td>
+                <td class="admin-table-actions">
+                  <button title="Ver cliente" onclick="verCliente('Luisa Morales','Nube (Conejo)','luisa@correo.com','449-654-3210','Activo')">👁️</button>
+                  <button title="Editar cliente">✏️</button>
+                </td>
+              </tr>
+            </tbody>
           </table>
           <p id="sinResultados" class="admin-empty-state hidden" style="padding:34px 20px;">
-            <span class="icon" data-bp-icon="paw"></span>
+            <span class="icon">🐾</span>
             <br>No se encontraron clientes con ese criterio.
           </p>
         </div>
@@ -78,17 +127,15 @@
     </main>
   </div>
 
-  <!-- Modal: Registrar / Editar cliente -->
+  <!-- Modal: Registrar / Nuevo Cliente -->
   <div id="modalCliente" class="admin-modal-overlay hidden">
     <div class="admin-modal">
       <div class="admin-modal-head">
-        <h3><span data-bp-icon="paw"></span><span id="modalClienteTitulo">Registrar nuevo cliente</span></h3>
+        <h3><span>🐾</span><span>Registrar nuevo cliente</span></h3>
         <button class="admin-modal-close" onclick="cerrarModalCliente()">&times;</button>
       </div>
 
-      <form id="formCliente" onsubmit="return guardarCliente(event)">
-        <input type="hidden" id="clienteEditId" value="">
-
+      <form id="formCliente" onsubmit="guardarCliente(event)">
         <div class="admin-form-group">
           <label for="nuevoNombre">Nombre del cliente</label>
           <input type="text" id="nuevoNombre" placeholder="Ej. Sofía Castro" required>
@@ -109,161 +156,35 @@
           <input type="text" id="nuevoTelefono" placeholder="449-000-0000" required>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
-          <div class="admin-form-group">
-            <label for="nuevaEtapa">Etapa CRM</label>
-            <select id="nuevaEtapa" class="admin-select" style="width:100%;">
-              <option value="Prospecto">Prospecto</option>
-              <option value="Activo">Activo</option>
-              <option value="Frecuente">Frecuente</option>
-              <option value="Inactivo">Inactivo</option>
-            </select>
-          </div>
-          <div class="admin-form-group">
-            <label for="nuevoEstado">Estado</label>
-            <select id="nuevoEstado" class="admin-select" style="width:100%;">
-              <option value="Activo">Activo</option>
-              <option value="Inactivo">Inactivo</option>
-            </select>
-          </div>
-        </div>
-
         <div class="admin-modal-actions">
           <button type="button" class="admin-btn-secondary" onclick="cerrarModalCliente()">Cancelar</button>
-          <button type="submit" class="admin-btn-primary" id="btnGuardarCliente">Guardar cliente</button>
+          <button type="submit" class="admin-btn-primary">Guardar cliente</button>
         </div>
       </form>
     </div>
   </div>
 
   <div id="toast" class="admin-toast">
-    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+    <span>✅</span><span id="toastMsg">Acción realizada</span>
   </div>
 
-  <script src="admin-icons.js"></script>
-
   <script src="admin-components.js"></script>
-  <script type="module">
-    import { escucharClientes, crearCliente, actualizarCliente, actualizarEtapaCliente, eliminarCliente as eliminarClienteDB } from './firebase-db.js';
-
-    let clientes = [];
-    const claseEtapa  = { "Activo": "ok", "Frecuente": "warn", "Prospecto": "info", "Inactivo": "muted" };
-    const claseEstado = { "Activo": "ok", "Inactivo": "muted" };
-
-    function pintarClientes() {
-      const cuerpo = document.getElementById('cuerpoClientes');
-      cuerpo.innerHTML = clientes.map(c => `
-        <tr data-id="${c.id}" data-nombre="${c.nombre}" data-etapa="${c.etapa}" data-estado="${c.estado}">
-          <td>${c.id.slice(0, 5)}</td>
-          <td>${c.nombre}</td>
-          <td>${c.mascota}</td>
-          <td>${c.correo}</td>
-          <td>${c.telefono}</td>
-          <td><span class="admin-tag ${claseEtapa[c.etapa] || 'muted'}">${c.etapa}</span></td>
-          <td><span class="admin-tag ${claseEstado[c.estado] || 'muted'}">${c.estado}</span></td>
-          <td class="admin-table-actions">
-            <button title="Ver cliente" onclick="verCliente('${c.id}')">${bpIcon('eye')}</button>
-            <button title="Interacciones" onclick="verInteracciones('${c.id}','${c.nombre}')">${bpIcon('chat')}</button>
-            <button title="Editar cliente" onclick="editarCliente('${c.id}')">${bpIcon('pencil')}</button>
-            <button title="Eliminar cliente" class="danger" onclick="eliminarCliente('${c.id}')">${bpIcon('trash')}</button>
-          </td>
-        </tr>
-      `).join('');
-      filtrarClientes();
-
-      // Si se llegó desde "Editar cliente" en el detalle, abrir el modal ya cargado
-      const paramsUrl = new URLSearchParams(window.location.search);
-      const idAEditar = paramsUrl.get('editar');
-      if (idAEditar && clientes.some(c => c.id === idAEditar)) {
-        editarCliente(idAEditar);
-        window.history.replaceState({}, '', 'admin-clientes.html');
-      }
-    }
-
-    // Suscripción en tiempo real a la colección "clientes" de Firestore
-    escucharClientes((lista) => {
-      clientes = lista;
-      pintarClientes();
-    });
-
-    // Si se llegó desde "Clasificación y seguimiento" con un filtro de etapa en la URL
-    const etapaUrl = new URLSearchParams(window.location.search).get('etapa');
-    if (etapaUrl) document.getElementById('filtroEtapa').value = etapaUrl;
-
+  <script>
     function abrirModalCliente() {
-      document.getElementById('clienteEditId').value = '';
-      document.getElementById('modalClienteTitulo').textContent = 'Registrar nuevo cliente';
-      document.getElementById('btnGuardarCliente').textContent = 'Guardar cliente';
-      document.getElementById('formCliente').reset();
       document.getElementById('modalCliente').classList.remove('hidden');
     }
-    window.abrirModalCliente = abrirModalCliente;
-
-    function editarCliente(id) {
-      const c = clientes.find(x => x.id === id);
-      if (!c) return;
-      document.getElementById('clienteEditId').value = c.id;
-      document.getElementById('modalClienteTitulo').textContent = 'Editar cliente';
-      document.getElementById('btnGuardarCliente').textContent = 'Guardar cambios';
-      document.getElementById('nuevoNombre').value = c.nombre;
-      document.getElementById('nuevaMascota').value = c.mascota;
-      document.getElementById('nuevoCorreo').value = c.correo;
-      document.getElementById('nuevoTelefono').value = c.telefono;
-      document.getElementById('nuevaEtapa').value = c.etapa;
-      document.getElementById('nuevoEstado').value = c.estado;
-      document.getElementById('modalCliente').classList.remove('hidden');
-    }
-    window.editarCliente = editarCliente;
-
-    async function eliminarCliente(id) {
-      const c = clientes.find(x => x.id === id);
-      if (!c) return;
-      if (!confirm(`¿Eliminar a ${c.nombre} del listado de clientes? Esta acción no se puede deshacer.`)) return;
-      try {
-        await eliminarClienteDB(id);
-        mostrarToast(`Cliente ${c.nombre} eliminado`);
-      } catch (err) {
-        mostrarToast('No se pudo eliminar: ' + (err.message || 'revisa tu conexión con Firebase.'));
-      }
-    }
-    window.eliminarCliente = eliminarCliente;
 
     function cerrarModalCliente() {
       document.getElementById('modalCliente').classList.add('hidden');
       document.getElementById('formCliente').reset();
     }
-    window.cerrarModalCliente = cerrarModalCliente;
 
-    async function guardarCliente(e) {
+    function guardarCliente(e) {
       e.preventDefault();
-      const id = document.getElementById('clienteEditId').value;
-      const boton = document.getElementById('btnGuardarCliente');
-      const datos = {
-        nombre: document.getElementById('nuevoNombre').value,
-        mascota: document.getElementById('nuevaMascota').value,
-        correo: document.getElementById('nuevoCorreo').value,
-        telefono: document.getElementById('nuevoTelefono').value,
-        etapa: document.getElementById('nuevaEtapa').value,
-        estado: document.getElementById('nuevoEstado').value,
-      };
-
-      boton.disabled = true;
-      try {
-        if (id) {
-          await actualizarCliente(id, datos);
-          mostrarToast(`Cliente ${datos.nombre} actualizado correctamente`);
-        } else {
-          await crearCliente(datos);
-          mostrarToast(`Cliente ${datos.nombre} registrado correctamente`);
-        }
-        cerrarModalCliente();
-      } catch (err) {
-        mostrarToast('No se pudo guardar: ' + (err.message || 'revisa tu conexión con Firebase.'));
-      }
-      boton.disabled = false;
-      return false;
+      const nombre = document.getElementById('nuevoNombre').value;
+      cerrarModalCliente();
+      mostrarToast(`Cliente ${nombre} registrado correctamente`);
     }
-    window.guardarCliente = guardarCliente;
 
     function mostrarToast(msg) {
       const toast = document.getElementById('toast');
@@ -272,28 +193,20 @@
       setTimeout(() => toast.classList.remove('show'), 2600);
     }
 
-    function verCliente(id) {
-      window.location.href = 'admin-cliente-detalle.html?cliente=' + encodeURIComponent(id);
+    function verCliente(nombre, mascota, correo, telefono, etapa) {
+      alert(`Cliente: ${nombre}\nMascota: ${mascota}\nCorreo: ${correo}\nTeléfono: ${telefono}\nEtapa CRM: ${etapa}`);
     }
-    window.verCliente = verCliente;
-
-    function verInteracciones(id, nombre) {
-      window.location.href = 'admin-interacciones.html?cliente=' + encodeURIComponent(id) + '&nombre=' + encodeURIComponent(nombre);
-    }
-    window.verInteracciones = verInteracciones;
 
     function filtrarClientes() {
       const texto = document.getElementById('buscarCliente').value.trim().toLowerCase();
       const etapa = document.getElementById('filtroEtapa').value;
-      const estado = document.getElementById('filtroEstado').value;
       const filas = document.querySelectorAll('#tablaClientes tbody tr');
       let visibles = 0;
 
       filas.forEach(fila => {
         const coincideTexto = fila.textContent.toLowerCase().includes(texto);
         const coincideEtapa = !etapa || fila.dataset.etapa === etapa;
-        const coincideEstado = !estado || fila.dataset.estado === estado;
-        const mostrar = coincideTexto && coincideEtapa && coincideEstado;
+        const mostrar = coincideTexto && coincideEtapa;
         fila.classList.toggle('hidden', !mostrar);
         if (mostrar) visibles++;
       });
@@ -301,7 +214,6 @@
       document.getElementById('contadorClientes').textContent = `${visibles} cliente${visibles === 1 ? '' : 's'}`;
       document.getElementById('sinResultados').classList.toggle('hidden', visibles !== 0);
     }
-    window.filtrarClientes = filtrarClientes;
   </script>
 </body>
 </html>
