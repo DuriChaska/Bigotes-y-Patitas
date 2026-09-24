@@ -53,6 +53,14 @@
     import { escucharTodasInteracciones } from './firebase-db.js';
 
     let actividades = [];
+    let todasLasInteracciones = [];
+
+    function recalcular() {
+      const uid = window.BP_SESION?.uid;
+      actividades = uid ? todasLasInteracciones.filter(a => a.usuarioUid === uid) : [];
+      filtrarPorFecha();
+    }
+    document.addEventListener('bp-sesion-lista', recalcular);
 
     // Convierte "dd/mm/aaaa" a "aaaa-mm-dd" para poder comparar fechas
     function aISO(fechaTexto) {
@@ -92,8 +100,8 @@
     window.filtrarPorFecha = filtrarPorFecha;
 
     escucharTodasInteracciones((lista) => {
-      actividades = lista;
-      filtrarPorFecha();
+      todasLasInteracciones = lista;
+      recalcular();
     });
   </script>
 </body>

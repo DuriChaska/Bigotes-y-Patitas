@@ -168,7 +168,6 @@
         mostrarToast(`Usuario ${nombre} creado como ${rol}`);
         cerrarModalUsuario();
       } catch (err) {
-        console.error(err);
         const mensajes = {
           'auth/email-already-in-use': 'Ese correo ya tiene una cuenta.',
           'auth/invalid-email': 'El correo no es válido.',
@@ -187,8 +186,7 @@
         await actualizarRolUsuario(uid, rolNuevo);
         mostrarToast('Rol actualizado correctamente');
       } catch (err) {
-        console.error(err);
-        mostrarToast('No se pudo actualizar el rol.');
+        mostrarToast('No se pudo actualizar el rol: ' + (err.message || ''));
       }
     }
     window.cambiarRol = cambiarRol;
@@ -199,8 +197,7 @@
         await eliminarPerfilUsuario(uid);
         mostrarToast(`Se quitó el acceso de ${nombre}`);
       } catch (err) {
-        console.error(err);
-        mostrarToast('No se pudo quitar el acceso.');
+        mostrarToast('No se pudo quitar el acceso: ' + (err.message || ''));
       }
     }
     window.eliminarUsuario = eliminarUsuario;

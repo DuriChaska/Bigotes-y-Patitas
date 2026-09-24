@@ -14,13 +14,16 @@
     <h2>Registro Usuario</h2>
     <form class="registration-form" id="registerForm">
       <div class="input-group">
-        <input type="text" placeholder="Nombre" />
-        <input type="text" placeholder="Apellidos" />
+        <input type="text" id="reg-nombre" placeholder="Nombre" required />
+        <input type="text" id="reg-apellidos" placeholder="Apellidos" required />
       </div>
-      <input type="email" placeholder="Correo" />
-      <input type="password" placeholder="Contraseña" />
-      <input type="password" placeholder="Confirmar Contraseña" />
+      <input type="email" id="reg-correo" placeholder="Correo" required />
+      <input type="text" id="reg-telefono" placeholder="Teléfono" required />
+      <input type="text" id="reg-mascota" placeholder="Nombre y raza de tu mascota (opcional)" />
+      <input type="password" id="reg-pass" placeholder="Contraseña" required minlength="6" />
+      <input type="password" id="reg-pass2" placeholder="Confirmar Contraseña" required minlength="6" />
       <button type="submit">REGISTRARSE</button>
+      <p id="registerError" style="display:none; color:#b8603a; margin-top:15px;"></p>
       <p id="registerMessage" style="display:none; color:#054704; margin-top:15px;">
         Registro exitoso. Redirigiendo al inicio de sesión...
       </p>
@@ -30,6 +33,6 @@
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script src="registro.js"></script>
+  <script type="module" src="registro.js"></script>
 </body>
 </html>
