@@ -12,25 +12,60 @@
 
   <section class="client-interface login">
     <h2>Iniciar Sesión</h2>
-    <form class="login-form" onsubmit="entrarPerfil(event)">
-      <input type="email" placeholder="Correo electrónico" />
-      <input type="password" placeholder="Contraseña" />
+    <form class="login-form" id="loginForm">
+      <input type="email" id="login-correo" placeholder="Correo electrónico" required />
+      <input type="password" id="login-pass" placeholder="Contraseña" required />
+      <p id="loginError" style="color:#c0392b; font-size:.85rem; display:none; margin:.4rem 0 0;"></p>
       <button type="submit">Entrar</button>
     </form>
     <p style="margin-top:1rem; font-size:.9rem;">
-      ¿No tienes cuenta? 
-      <a href="Interfaz Usuario - Registro .html" style="color:var(--pink-medio); font-weight:600;">Regístrate aquí</a>
+      ¿No tienes cuenta?
+      <a href="#" id="linkRegistro" style="color:var(--pink-medio); font-weight:600;">Regístrate aquí</a>
     </p>
   </section>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script>
-    function entrarPerfil(e) {
+  <script type="module">
+    import { loginCliente } from './firebase-db.js';
+
+    const form = document.getElementById('loginForm');
+    const error = document.getElementById('loginError');
+    const next = new URLSearchParams(window.location.search).get('next');
+
+    const linkRegistro = document.getElementById('linkRegistro');
+    linkRegistro.href = 'Interfaz Usuario - Registro .html' + (next ? '?next=' + encodeURIComponent(next) : '');
+
+    const ERRORES_FIREBASE = {
+      'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+      'auth/invalid-email': 'El correo no es válido.',
+      'auth/user-not-found': 'No hay ninguna cuenta con ese correo.',
+      'auth/wrong-password': 'Correo o contraseña incorrectos.',
+      'auth/too-many-requests': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
+    };
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      window.location.href = "Interfaz Cliente - Perfil.html";
-    }
+      error.style.display = 'none';
+
+      const correo = document.getElementById('login-correo').value.trim();
+      const pass = document.getElementById('login-pass').value;
+      const boton = form.querySelector('button[type=submit]');
+      boton.disabled = true;
+      boton.textContent = 'Entrando...';
+
+      try {
+        await loginCliente(correo, pass);
+        window.location.href = next || 'Interfaz Cliente - Perfil.html';
+      } catch (err) {
+        console.error(err);
+        error.textContent = ERRORES_FIREBASE[err.code] || 'No se pudo iniciar sesión. Revisa tu conexión.';
+        error.style.display = 'block';
+        boton.disabled = false;
+        boton.textContent = 'Entrar';
+      }
+    });
   </script>
 </body>
 </html>

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mi actividad - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
-  <script type="module" src="admin-auth-guard.js"></script>
 </head>
 <body>
 
@@ -16,93 +15,20 @@
       <div class="admin-topbar">
         <div>
           <h1>Mi actividad</h1>
-          <p class="admin-breadcrumb">Panel de administración · Actividades realizadas por el usuario</p>
-        </div>
-        <div class="admin-topbar-right">
-          <div class="admin-search" style="gap:8px;">
-            <span data-bp-icon="calendar"></span>
-            <input type="date" id="fecha-desde" class="admin-date-input" onchange="filtrarPorFecha()">
-            <span style="color:var(--gray);">-</span>
-            <input type="date" id="fecha-hasta" class="admin-date-input" onchange="filtrarPorFecha()">
-          </div>
+          <p class="admin-breadcrumb">Panel de administración · Historial de acciones</p>
         </div>
       </div>
 
       <div class="admin-panel">
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Tipo</th>
-                <th>Descripción</th>
-              </tr>
-            </thead>
-            <tbody id="actividad-lista"></tbody>
-          </table>
+        <div class="admin-empty-state">
+          <div class="icon">🕒</div>
+          <h3>Próximamente</h3>
+          <p>Aquí vas a poder ver el historial de productos, pedidos y promociones que has gestionado.</p>
         </div>
-        <p id="actividad-conteo" style="margin-top:14px; font-size:.82rem; color:var(--gray);"></p>
       </div>
     </main>
   </div>
 
-  <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script type="module">
-    import { escucharTodasInteracciones } from './firebase-db.js';
-
-    let actividades = [];
-    let todasLasInteracciones = [];
-
-    function recalcular() {
-      const uid = window.BP_SESION?.uid;
-      actividades = uid ? todasLasInteracciones.filter(a => a.usuarioUid === uid) : [];
-      filtrarPorFecha();
-    }
-    document.addEventListener('bp-sesion-lista', recalcular);
-
-    // Convierte "dd/mm/aaaa" a "aaaa-mm-dd" para poder comparar fechas
-    function aISO(fechaTexto) {
-      if (!fechaTexto) return '';
-      const [d, m, a] = fechaTexto.split('/');
-      return a && m && d ? `${a}-${m}-${d}` : '';
-    }
-
-    function pintarActividad(lista) {
-      const cuerpo = document.getElementById('actividad-lista');
-      cuerpo.innerHTML = lista.length === 0
-        ? `<tr><td colspan="4" style="text-align:center; color:var(--gray); padding:20px;">No hay actividad en ese rango de fechas.</td></tr>`
-        : lista.map(a => `
-            <tr>
-              <td>${a.fecha || '—'}</td>
-              <td>${a.clienteNombre}</td>
-              <td>${a.tipo}</td>
-              <td>${a.descripcion}</td>
-            </tr>
-          `).join('');
-
-      document.getElementById('actividad-conteo').textContent =
-        `Mostrando ${lista.length} de ${actividades.length} actividades`;
-    }
-
-    function filtrarPorFecha() {
-      const desde = document.getElementById('fecha-desde').value;
-      const hasta = document.getElementById('fecha-hasta').value;
-      const filtradas = actividades.filter(a => {
-        const iso = aISO(a.fecha);
-        const cumpleDesde = !desde || !iso || iso >= desde;
-        const cumpleHasta = !hasta || !iso || iso <= hasta;
-        return cumpleDesde && cumpleHasta;
-      });
-      pintarActividad(filtradas);
-    }
-    window.filtrarPorFecha = filtrarPorFecha;
-
-    escucharTodasInteracciones((lista) => {
-      todasLasInteracciones = lista;
-      recalcular();
-    });
-  </script>
 </body>
 </html>

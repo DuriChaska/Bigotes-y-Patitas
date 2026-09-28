@@ -48,9 +48,7 @@
     </p>
   </div>
 
-  <script type="module">
-    import { loginAdmin } from './firebase-db.js';
-
+  <script>
     function togglePass() {
       const input = document.getElementById('admin-pass');
       const link = document.querySelector('.toggle-pass');
@@ -58,41 +56,22 @@
       input.type = isPass ? 'text' : 'password';
       link.textContent = isPass ? 'Ocultar' : 'Mostrar';
     }
-    window.togglePass = togglePass;
 
-    async function entrarAdmin(e) {
+    function entrarAdmin(e) {
       e.preventDefault();
+      // TODO: reemplazar por validación real contra el backend cuando esté listo.
       const email = document.getElementById('admin-email').value.trim();
       const pass = document.getElementById('admin-pass').value.trim();
       const errorBox = document.getElementById('admin-login-error');
-      const boton = document.querySelector('.admin-login-btn');
 
-      errorBox.classList.remove('show');
-      boton.disabled = true;
-      boton.textContent = 'Ingresando...';
-
-      try {
-        await loginAdmin(email, pass);
+      if (email.length > 0 && pass.length > 0) {
+        errorBox.classList.remove('show');
+        sessionStorage.setItem('bp_admin_logueado', 'true');
         window.location.href = 'admin.html';
-      } catch (err) {
-        errorBox.textContent = mensajeError(err.code);
+      } else {
         errorBox.classList.add('show');
-        boton.disabled = false;
-        boton.textContent = 'Iniciar sesión';
       }
       return false;
-    }
-    window.entrarAdmin = entrarAdmin;
-
-    function mensajeError(codigo) {
-      switch (codigo) {
-        case 'auth/invalid-email': return 'El correo no tiene un formato válido.';
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential': return 'Correo o contraseña incorrectos. Inténtalo de nuevo.';
-        case 'auth/too-many-requests': return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.';
-        default: return 'No se pudo iniciar sesión. Revisa tu conexión e inténtalo de nuevo.';
-      }
     }
   </script>
 </body>

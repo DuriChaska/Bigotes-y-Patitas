@@ -9,6 +9,7 @@
 <body>
 
   <div id="header"></div>
+  <div id="toast-container"></div>
 
   <!-- HERO -->
   <section class="hero">
@@ -28,19 +29,19 @@
 
   <!-- CATEGORÍAS -->
   <section class="categories">
-    <div class="category-item">
+    <div class="category-item" onclick="window.location.href='shop.html?categoria=Perros'" style="cursor:pointer;">
       <img src="Imagenes/Mascotas/cat-perros.svg" alt="Perros" />
       <span>PERROS</span>
     </div>
-    <div class="category-item">
+    <div class="category-item" onclick="window.location.href='shop.html?categoria=Gatos'" style="cursor:pointer;">
       <img src="Imagenes/Mascotas/cat-gatos.svg" alt="Gatos" />
       <span>GATOS</span>
     </div>
-    <div class="category-item">
+    <div class="category-item" onclick="window.location.href='shop.html?categoria=Ediciones%20limitadas'" style="cursor:pointer;">
       <img src="Imagenes/Mascotas/cat-ediciones.svg" alt="Ediciones Limitadas" />
       <span>EDICIONES LIMITADAS</span>
     </div>
-    <div class="category-item">
+    <div class="category-item" onclick="window.location.href='shop.html?categoria=Accesorios'" style="cursor:pointer;">
       <img src="Imagenes/Mascotas/cat-accesorios.svg" alt="Accesorios" />
       <span>ACCESORIOS</span>
     </div>
@@ -62,91 +63,8 @@
   <!-- DISEÑOS POPULARES -->
   <section class="popular-designs">
     <h2>DISEÑOS POPULARES</h2>
-    <div class="products-grid">
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-sueter-perro.svg" alt="Suéter para perro" />
-        <div class="product-info">
-          <h3>Suéter tejido para perro</h3>
-          <p>Suéter cálido y suave, ideal para perritos pequeños y medianos en temporada de frío.</p>
-        </div>
-        <div class="product-price">$200.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-impermeable-perro.svg" alt="Impermeable para perro" />
-        <div class="product-info">
-          <h3>Impermeable amarillo para perro</h3>
-          <p>Chubasquero ligero y resistente al agua, perfecto para paseos en días lluviosos.</p>
-        </div>
-        <div class="product-price">$399.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-hoodie-perro.svg" alt="Sudadera con gorro para perro" />
-        <div class="product-info">
-          <h3>Sudadera con gorro para perro</h3>
-          <p>Sudadera cómoda con capucha que combina abrigo y estilo urbano para tu peludo.</p>
-        </div>
-        <div class="product-price">$859.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-panoleta-gato.svg" alt="Pañoleta para gato" />
-        <div class="product-info">
-          <h3>Pañoleta ajustable para gato</h3>
-          <p>Pañoleta ligera de algodón con broche seguro, cómoda para el cuello de tu gatito.</p>
-        </div>
-        <div class="product-price">$168.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-mono-gato.svg" alt="Moño para gato" />
-        <div class="product-info">
-          <h3>Moño decorativo para gato</h3>
-          <p>Accesorio elegante y liviano, perfecto para ocasiones especiales o fotos.</p>
-        </div>
-        <div class="product-price">$249.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-arnes-perro.svg" alt="Arnés para perro" />
-        <div class="product-info">
-          <h3>Arnés acolchado para perro</h3>
-          <p>Arnés ergonómico y ajustable que distribuye la presión de forma segura y cómoda.</p>
-        </div>
-        <div class="product-price">$299.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-disfraz-perro.svg" alt="Disfraz de astronauta para perro" />
-        <span class="badge-oferta">OFERTA</span>
-        <div class="product-info">
-          <h3>Disfraz de astronauta para perro</h3>
-          <p>Disfraz divertido y ligero que inspira aventura, ideal para fotos y eventos temáticos.</p>
-        </div>
-        <div class="product-price">$200.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-collar-gato.svg" alt="Collar con campana para gato" />
-        <span class="badge-oferta">OFERTA</span>
-        <div class="product-info">
-          <h3>Collar con campana para gato</h3>
-          <p>Collar de seguridad con broche de liberación rápida y campana antipérdida.</p>
-        </div>
-        <div class="product-price">$299.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-    </div>
+    <div id="estadoPopulares" style="text-align:center; padding:20px 0; color:var(--gray);">Cargando…</div>
+    <div class="products-grid" id="gridPopulares"></div>
   </section>
 
   <!-- INFO PERSONALIZACIÓN -->
@@ -177,49 +95,8 @@
   <!-- NUEVOS DISEÑOS -->
   <section class="new-designs">
     <h2>NUEVOS DISEÑOS</h2>
-    <div class="products-grid">
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-chamarra-perro.svg" alt="Nuevo diseño" />
-        <div class="product-info">
-          <h3>Chamarra urbana para perro</h3>
-          <p>Chamarra acolchada de alta durabilidad, ligera y cómoda para el día a día.</p>
-        </div>
-        <div class="product-price">$298.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-vestido-gata.svg" alt="Nuevo diseño" />
-        <div class="product-info">
-          <h3>Vestido ligero para gata</h3>
-          <p>Vestido fresco y delicado, perfecto para paseos cortos o reuniones especiales.</p>
-        </div>
-        <div class="product-price">$424.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-playera-perro.svg" alt="Nuevo diseño" />
-        <div class="product-info">
-          <h3>Playera de manga corta para perro pequeño</h3>
-          <p>Diseño clásico, suave y transpirable, ideal para razas pequeñas.</p>
-        </div>
-        <div class="product-price">$205.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-      <div class="product-card">
-        <img src="Imagenes/Mascotas/prod-gorro-gato.svg" alt="Nuevo diseño" />
-        <div class="product-info">
-          <h3>Gorro y bufanda para gato</h3>
-          <p>Set cálido y original, fácil de combinar para los días fríos.</p>
-        </div>
-        <div class="product-price">$195.00</div>
-        <button class="add-to-cart">AGREGAR AL CARRITO</button>
-      </div>
-
-    </div>
+    <div id="estadoNuevos" style="text-align:center; padding:20px 0; color:var(--gray);">Cargando…</div>
+    <div class="products-grid" id="gridNuevos"></div>
   </section>
 
   <!-- NEWSLETTER -->
@@ -234,5 +111,114 @@
   <div id="footer"></div>
 
   <script src="components.js"></script>
+  <script type="module">
+    import { escucharProductosScm } from './firebase-db.js';
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const IMG_VACIA = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#f1ece1"/>' +
+      '<text x="150" y="155" font-family="sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#8a7d6b">Bigotes y Patitas</text></svg>');
+
+    function urlImagen(u) {
+      if (typeof u !== 'string' || !u.trim()) return IMG_VACIA;
+      const val = u.trim();
+      if (/^https?:\/\//i.test(val)) return val;
+      if (!/^[a-z][a-z0-9+.-]*:/i.test(val)) return val;
+      return IMG_VACIA;
+    }
+
+    function obtenerCarrito() { return JSON.parse(localStorage.getItem("carrito") || "[]"); }
+    function guardarCarrito(c) {
+      localStorage.setItem("carrito", JSON.stringify(c));
+      window.dispatchEvent(new Event('actualizarCarrito'));
+    }
+
+    function mostrarToast(mensaje, tipo = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${tipo}`;
+      toast.textContent = mensaje;
+      container.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 100);
+      setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 500); }, 2800);
+    }
+
+    let productos = [];
+
+    window.agregarAlCarrito = function (id) {
+      const producto = productos.find(p => p.id === id);
+      if (!producto) { mostrarToast("Producto no encontrado", "error"); return; }
+      if (Number(producto.stock) <= 0) { mostrarToast("Ese producto está agotado", "error"); return; }
+      let carrito = obtenerCarrito();
+      const existe = carrito.find(i => i.id === id);
+      const enCarrito = existe ? existe.cantidad : 0;
+      if (enCarrito + 1 > Number(producto.stock)) {
+        mostrarToast(`Solo quedan ${producto.stock} de "${producto.nombre}"`, "error");
+        return;
+      }
+      if (existe) { existe.cantidad += 1; }
+      else {
+        carrito.push({
+          id: producto.id, nombre: producto.nombre, precio: Number(producto.precio) || 0,
+          imagen: producto.img || '', cantidad: 1,
+        });
+      }
+      guardarCarrito(carrito);
+      mostrarToast(`¡Agregado! 1 × ${producto.nombre}`, "success");
+    };
+
+    function tarjeta(p) {
+      const stock = Number(p.stock) || 0;
+      const stockMin = Number(p.stockMin) || 0;
+      const agotado = stock <= 0;
+      const bajo = !agotado && stock <= stockMin;
+      return `
+        <div class="product-card${agotado ? ' agotado' : ''}">
+          ${agotado ? '<span class="badge-stock agotado">Agotado</span>' : (bajo ? '<span class="badge-stock bajo">¡Últimas piezas!</span>' : '')}
+          <img src="${esc(urlImagen(p.img))}" alt="${esc(p.nombre)}" loading="lazy" />
+          <div class="product-info">
+            <h3>${esc(p.nombre)}</h3>
+            <p>${esc(p.descripcion || '')}</p>
+          </div>
+          <div class="product-price">$${(Number(p.precio) || 0).toFixed(2)}</div>
+          <button class="ver-detalles" type="button" onclick="window.location.href='Producto.html?id=${encodeURIComponent(p.id)}'">Ver Detalles</button>
+          <button class="add-to-cart" type="button" ${agotado ? 'disabled' : ''} onclick="agregarAlCarrito('${esc(p.id)}')">AGREGAR AL CARRITO</button>
+        </div>`;
+    }
+
+    function pintarSeccion(gridId, estadoId, lista) {
+      const grid = document.getElementById(gridId);
+      const estado = document.getElementById(estadoId);
+      if (lista.length === 0) {
+        grid.innerHTML = '';
+        estado.style.display = '';
+        estado.textContent = 'Todavía no hay productos publicados.';
+        return;
+      }
+      estado.style.display = 'none';
+      grid.innerHTML = lista.map(tarjeta).join('');
+      grid.querySelectorAll('img').forEach(img => {
+        img.addEventListener('error', () => { img.src = IMG_VACIA; }, { once: true });
+      });
+    }
+
+    escucharProductosScm(
+      (lista) => {
+        productos = lista;
+        // "Populares" y "Nuevos" se reparten el catálogo para no repetir productos
+        // (en un catálogo más grande, esto se podría afinar con datos de ventas reales).
+        pintarSeccion('gridPopulares', 'estadoPopulares', lista.slice(0, 8));
+        pintarSeccion('gridNuevos', 'estadoNuevos', lista.slice(8, 12));
+      },
+      (err) => {
+        console.error(err);
+        document.getElementById('estadoPopulares').textContent = 'No se pudo cargar el catálogo.';
+        document.getElementById('estadoNuevos').textContent = 'No se pudo cargar el catálogo.';
+      }
+    );
+  </script>
 </body>
 </html>

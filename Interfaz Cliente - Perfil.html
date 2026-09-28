@@ -112,8 +112,8 @@
     <div class="profile-header">
       <img src="Imagenes/Kim.jpg" alt="Foto de perfil" class="profile-pic" />
       <div class="profile-info">
-        <h2>Kim Du RI</h2>
-        <p>@Kim Du</p>
+        <h2 id="nombreCliente">Cargando…</h2>
+        <p id="arrobaCliente"></p>
       </div>
     </div>
 
@@ -123,9 +123,9 @@
       <div class="profile-item">
         <h3>Mis datos</h3>
         <p>
-          Correo: Kimduri@gmail.com<br />
-          Teléfono: 449 311 6529<br />
-          Dirección: Aguascalientes, Ags.
+          Correo: <span id="correoCliente">—</span><br />
+          Teléfono: <span id="telefonoCliente">—</span><br />
+          Mascota: <span id="mascotaCliente">—</span>
         </p>
       </div>
 
@@ -182,42 +182,123 @@
 
   <script src="components.js"></script>
 
-  <script>
+  <script type="module">
+    import { obtenerUsuarioActual, obtenerPerfilCliente, escucharVentasDeCliente, logoutCliente } from './firebase-db.js';
 
-    /* ── DATOS BASE ─────────────────────────────── */
-    const comprasBase = [
-      {
-        id: "C001",
-        nombre: "Blusa Floral Romántica",
-        talla: "M",
-        color: "Rosa palo",
-        precio: 320,
-        fecha: "2025-03-15",
-        estado: "entregado",
-        emoji: "🌸"
-      },
-      {
-        id: "C002",
-        nombre: "Jeans Mom Fit Vintage",
-        talla: "28",
-        color: "Azul desgastado",
-        precio: 580,
-        fecha: "2025-04-01",
-        estado: "enviado",
-        emoji: "👖"
-      },
-      {
-        id: "C003",
-        nombre: "Vestido Verano Lino",
-        talla: "S",
-        color: "Blanco roto",
-        precio: 450,
-        fecha: "2025-04-07",
-        estado: "proceso",
-        emoji: "👗"
+    /* ── Historial de compras REAL (Firestore: colección "ventas") ── */
+    let ventasCliente = [];
+
+    const badgeMap = {
+      Confirmada: ["badge-proceso",   "Confirmada ✓"],
+      Enviada:    ["badge-enviado",   "Enviada 🚚"],
+      Entregada:  ["badge-entregado", "Entregada ✓"],
+      Cancelada:  ["badge-proceso",   "Cancelada"]
+    };
+
+    function formatearMoneda(valor) {
+      return `$${Number(valor || 0).toFixed(2)}`;
+    }
+
+    // "creadoEn" llega como Timestamp de Firestore (tiene .toDate()); por si
+    // el snapshot todavía no lo resolvió, se cubre también el caso null.
+    function formatFecha(valor) {
+      if (!valor) return "";
+      const fecha = typeof valor.toDate === "function" ? valor.toDate() : new Date(valor);
+      if (isNaN(fecha.getTime())) return "";
+      const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+      return `${fecha.getDate()} ${meses[fecha.getMonth()]} ${fecha.getFullYear()}`;
+    }
+
+    function formatFechaISO(valor) {
+      if (!valor) return "";
+      const fecha = typeof valor.toDate === "function" ? valor.toDate() : new Date(valor);
+      return isNaN(fecha.getTime()) ? "" : fecha.toISOString().split("T")[0];
+    }
+
+    function pintarPerfil(perfil, usuario) {
+      document.getElementById("nombreCliente").textContent = perfil?.nombre || usuario.email;
+      document.getElementById("arrobaCliente").textContent = "@" + (usuario.email || "").split("@")[0];
+      document.getElementById("correoCliente").textContent = usuario.email || perfil?.correo || "—";
+      document.getElementById("telefonoCliente").textContent = perfil?.telefono || "Sin registrar";
+      document.getElementById("mascotaCliente").textContent = perfil?.mascota || "Sin especificar";
+    }
+
+    function pintarNumCompras() {
+      document.getElementById("numCompras").textContent = ventasCliente.length;
+    }
+
+    function abrirCompras() {
+      const lista = document.getElementById("listaCompras");
+
+      if (ventasCliente.length === 0) {
+        lista.innerHTML = `<p style="text-align:center;color:#9a7d8a;padding:20px 0">Aún no tienes compras 🛒</p>`;
+      } else {
+        lista.innerHTML = ventasCliente.map((v, index) => {
+          const [cls, label] = badgeMap[v.estado] || ["badge-proceso", v.estado || "Confirmada"];
+          const items = v.items || [];
+          const nombreResumen = items.length > 1
+            ? `${items[0]?.nombre || "Producto"} y ${items.length - 1} más`
+            : (items[0]?.nombre || "Pedido");
+          return `
+            <div class="compra-item" style="cursor:pointer;" onclick="verTicketDetalle(${index})">
+              <div class="compra-img">🛍️</div>
+              <div class="compra-info">
+                <div class="compra-nombre">${nombreResumen}</div>
+                <div class="compra-meta">Pedido: ${v.folio || v.id} · ${formatFecha(v.creadoEn)}</div>
+                <span class="badge ${cls}">${label}</span>
+              </div>
+              <div style="text-align:right">
+                <div class="compra-precio">${formatearMoneda(v.total)}</div>
+                <small style="color:#b34a8e; font-size:10px;">Ver ticket</small>
+              </div>
+            </div>
+          `;
+        }).join("");
       }
-    ];
 
+      document.getElementById("modalCompras").classList.add("open");
+    }
+
+    // Reconstruye el mismo objeto que factura.html espera en "ultimaCompra",
+    // pero a partir de la venta real guardada en Firestore.
+    function verTicketDetalle(index) {
+      const venta = ventasCliente[index];
+      if (!venta) return;
+      localStorage.setItem("ultimaCompra", JSON.stringify({
+        factura: venta.folio,
+        pedido: venta.folio,
+        fecha: formatFechaISO(venta.creadoEn),
+        cliente: venta.clienteNombre,
+        subtotal: venta.subtotal,
+        envio: venta.envio,
+        total: venta.total,
+        cupon: venta.cupon,
+        descripcionCupon: venta.descripcionCupon,
+        descuento: venta.descuento,
+        productos: venta.items,
+      }));
+      window.location.href = "factura.html";
+    }
+
+    function cerrarCompras() {
+      document.getElementById("modalCompras").classList.remove("open");
+    }
+
+    document.getElementById("modalCompras").addEventListener("click", function (e) {
+      if (e.target === this) cerrarCompras();
+    });
+
+    async function cerrarSesion() {
+      try { await logoutCliente(); } catch (err) { console.error(err); }
+      window.location.href = "login.html";
+    }
+
+    window.abrirCompras = abrirCompras;
+    window.cerrarCompras = cerrarCompras;
+    window.verTicketDetalle = verTicketDetalle;
+    window.cerrarSesion = cerrarSesion;
+
+    /* ── Publicaciones C2C (sección aparte, no forma parte del historial de compras) ── */
     const publicacionesBase = [
       {
         id: "P001",
@@ -248,107 +329,43 @@
       }
     ];
 
-    /* ── INICIALIZAR STORAGE ─────────────────────── */
-    function inicializarDatos() {
-      if (!localStorage.getItem("misCompras")) {
-        localStorage.setItem("misCompras", JSON.stringify(comprasBase));
-      }
+    function inicializarDatosPublicaciones() {
       if (!localStorage.getItem("misProductos")) {
         localStorage.setItem("misProductos", JSON.stringify(publicacionesBase));
       }
     }
 
-    /* ── ACTUALIZAR CONTADORES ───────────────────── */
-    function actualizarUI() {
-      const compras   = JSON.parse(localStorage.getItem("misCompras"))   || [];
+    function actualizarResumenPublicaciones() {
       const productos = JSON.parse(localStorage.getItem("misProductos")) || [];
-
-      document.getElementById("numCompras").textContent    = compras.length;
-      document.getElementById("totalProductos").textContent =
-        "Productos publicados: " + productos.length;
+      document.getElementById("totalProductos").textContent = "Productos publicados: " + productos.length;
     }
 
-    /* ── MODAL ───────────────────────────────────── */
-    const badgeMap = {
-      entregado: ["badge-entregado", "Entregado ✓"],
-      enviado:   ["badge-enviado",   "En camino 🚚"],
-      proceso:   ["badge-proceso",   "En proceso ⏳"]
-    };
+    /* ── INIT ───────────────────────────────────── */
+    (async function iniciar() {
+      // El perfil requiere una cuenta real: sin sesión, se manda a login y
+      // de ahí de regreso aquí mismo.
+      const usuario = await obtenerUsuarioActual();
+      if (!usuario) {
+        window.location.href = "login.html?next=" + encodeURIComponent("Interfaz Cliente - Perfil.html");
+        return;
+      }
 
-    function abrirCompras() {
-  const compras = JSON.parse(localStorage.getItem("misCompras")) || [];
-  const lista = document.getElementById("listaCompras");
+      let perfil = null;
+      try {
+        perfil = await obtenerPerfilCliente(usuario.uid);
+      } catch (err) {
+        console.error(err);
+      }
+      pintarPerfil(perfil, usuario);
 
-  if (compras.length === 0) {
-    lista.innerHTML = `<p style="text-align:center;color:#9a7d8a;padding:20px 0">Aún no tienes compras 🛒</p>`;
-  } else {
-    lista.innerHTML = compras.map((c, index) => {
-      const [cls, label] = badgeMap[c.estado] || ["badge-proceso", c.estado];
-      return `
-        <div class="compra-item" style="cursor:pointer;" onclick="verTicketDetalle(${index})">
-          <div class="compra-img">${c.emoji}</div>
-          <div class="compra-info">
-            <div class="compra-nombre">${c.nombre}</div>
-            <div class="compra-meta">ID: ${c.id} · ${formatFecha(c.fecha)}</div>
-            <span class="badge ${cls}">${label}</span>
-          </div>
-          <div style="text-align:right">
-            <div class="compra-precio">$${c.precio}</div>
-            <small style="color:#b34a8e; font-size:10px;">Ver ticket</small>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
+      escucharVentasDeCliente(usuario.uid, (ventas) => {
+        ventasCliente = ventas;
+        pintarNumCompras();
+      }, (err) => console.error(err));
 
-  document.getElementById("modalCompras").classList.add("open");
-}
-
-// Función para abrir la página de factura con los datos de esa compra específica
-function verTicketDetalle(index) {
-  const compras = JSON.parse(localStorage.getItem("misCompras"));
-  const compraSeleccionada = compras[index];
-  
-  // Si la compra tiene el detalle guardado, lo cargamos en 'ultimaCompra' 
-  // para que factura.html lo lea
-  if (compraSeleccionada.detalleCompleto) {
-    localStorage.setItem("ultimaCompra", JSON.stringify(compraSeleccionada.detalleCompleto));
-  } else {
-    // Para las compras de "base" que no tienen detalle completo
-    localStorage.setItem("ultimaCompra", JSON.stringify({
-      pedido: compraSeleccionada.id,
-      cliente: "Andrea Guadalupe",
-      total: compraSeleccionada.precio,
-      productos: [{nombre: compraSeleccionada.nombre, precio: compraSeleccionada.precio, cantidad: 1}]
-    }));
-  }
-  
-  window.location.href = 'factura.html';
-}
-    function cerrarCompras() {
-      document.getElementById("modalCompras").classList.remove("open");
-    }
-
-    // Cerrar al hacer click fuera del modal
-    document.getElementById("modalCompras").addEventListener("click", function(e) {
-      if (e.target === this) cerrarCompras();
-    });
-
-    function formatFecha(iso) {
-      const [y, m, d] = iso.split("-");
-      const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-      return `${d} ${meses[+m - 1]} ${y}`;
-    }
-
-    /* ── CERRAR SESIÓN ───────────────────────────── */
-    function cerrarSesion() {
-      window.location.href = "login.html";
-    }
-
-    /* ── INIT ────────────────────────────────────── */
-    inicializarDatos();
-    actualizarUI();
-
+      inicializarDatosPublicaciones();
+      actualizarResumenPublicaciones();
+    })();
   </script>
 
 </body>

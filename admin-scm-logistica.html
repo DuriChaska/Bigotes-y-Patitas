@@ -24,7 +24,7 @@
       <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
 
       <!-- Pestañas -->
-      <div style="display:flex; gap:22px; border-bottom:1.5px solid #f1ece1; margin:18px 0 22px;">
+      <div id="tabsLogistica" style="display:flex; gap:22px; border-bottom:1.5px solid #f1ece1; margin:18px 0 22px;">
         <button class="admin-tab-btn active" id="tabBtnEstrategia" onclick="cambiarTab('estrategia')">Configurar estrategia</button>
         <button class="admin-tab-btn" id="tabBtnComparativa" onclick="cambiarTab('comparativa')">Comparativa Push vs Pull</button>
       </div>
@@ -39,7 +39,7 @@
             <form id="formEstrategia">
               <div class="admin-form-group">
                 <label for="estProducto">Producto</label>
-                <select id="estProducto" class="admin-select" style="width:100%;" onchange="mostrarEstrategiaActual()"></select>
+                <select id="estProducto" class="admin-select" style="width:100%;"></select>
               </div>
 
               <div class="admin-form-group">
@@ -117,65 +117,73 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    // TODO (conexión a Firebase): mismo catálogo mock que admin-scm-inventario.html
-    // y admin-scm-movimientos.html. Al conectar, guardar la estrategia directamente
-    // en el documento del producto (actualizarProductoScm) igual que hace el campo
-    // "Estrategia logística" del formulario en admin-scm-productos.html.
-    let productos = [
-      { id: 1, nombre: "Croquetas para perro adulto 15kg", categoria: "Alimento",   stock: 40, stockMin: 10, estrategia: "PUSH" },
-      { id: 2, nombre: "Croquetas para gato interior 3kg",  categoria: "Alimento",   stock: 8,  stockMin: 10, estrategia: "PULL" },
-      { id: 3, nombre: "Arena sanitaria aglomerante 10kg",  categoria: "Accesorios", stock: 25, stockMin: 8,  estrategia: "PUSH" },
-      { id: 4, nombre: "Correa retráctil 5m",               categoria: "Accesorios", stock: 15, stockMin: 5,  estrategia: "PULL" },
-      { id: 5, nombre: "Pelota mordedora de goma",          categoria: "Juguetes",   stock: 6,  stockMin: 10, estrategia: "PULL" },
-      { id: 6, nombre: "Cama acolchada para perro mediano", categoria: "Accesorios", stock: 12, stockMin: 4,  estrategia: "PUSH" },
-      { id: 7, nombre: "Snacks dentales para perro",        categoria: "Alimento",   stock: 30, stockMin: 12, estrategia: "PUSH" },
-      { id: 8, nombre: "Ratón de peluche con cascabel",     categoria: "Juguetes",   stock: 20, stockMin: 6,  estrategia: "PULL" },
-    ];
+  <script type="module">
+    import { escucharProductosScm, actualizarProductoScm } from './firebase-db.js';
+    import { pintarBannerStockBajo } from './admin-stock-alertas.js';
 
+    let productos = [];
+    let cargado = false;
     const claseEstrategia = { "PUSH": "info", "PULL": "warn" };
     const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
-    function cambiarTab(tab) {
+    window.cambiarTab = function (tab) {
       $('tabEstrategia').classList.toggle('hidden', tab !== 'estrategia');
       $('tabComparativa').classList.toggle('hidden', tab !== 'comparativa');
       $('tabBtnEstrategia').classList.toggle('active', tab === 'estrategia');
       $('tabBtnComparativa').classList.toggle('active', tab === 'comparativa');
       if (tab === 'comparativa') pintarComparativa();
-    }
+    };
 
     function llenarSelectProductosEst() {
-      $('estProducto').innerHTML = productos.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
+      const actual = $('estProducto').value;
+      $('estProducto').innerHTML = productos.map(p => `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('')
+        || '<option value="">No hay productos en el catálogo</option>';
+      $('estProducto').value = productos.some(p => p.id === actual) ? actual : ($('estProducto').options[0]?.value || '');
       mostrarEstrategiaActual();
     }
+    $('estProducto').addEventListener('change', mostrarEstrategiaActual);
 
     function mostrarEstrategiaActual() {
-      const nombre = $('estProducto').value;
-      const prod = productos.find(p => p.nombre === nombre);
+      const id = $('estProducto').value;
+      const prod = productos.find(p => p.id === id);
       if (!prod) return;
       document.querySelectorAll('input[name="estTipo"]').forEach(r => r.checked = (r.value === prod.estrategia));
     }
 
-    $('formEstrategia').addEventListener('submit', (e) => {
+    $('formEstrategia').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nombre = $('estProducto').value;
+      const id = $('estProducto').value;
+      const prod = productos.find(p => p.id === id);
+      if (!prod) { mostrarToast('Selecciona un producto'); return; }
       const tipo = document.querySelector('input[name="estTipo"]:checked')?.value;
       if (!tipo) { mostrarToast('Selecciona una estrategia'); return; }
-      const prod = productos.find(p => p.nombre === nombre);
-      if (prod) prod.estrategia = tipo;
-      pintarTablaEstrategia();
-      mostrarToast(`Estrategia ${tipo} guardada para ${nombre}`);
+
+      const boton = $('formEstrategia').querySelector('button[type="submit"]');
+      boton.disabled = true;
+      try {
+        await actualizarProductoScm(id, { ...prod, estrategia: tipo });
+        mostrarToast(`Estrategia ${tipo} guardada para ${prod.nombre}`);
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
+      }
+      boton.disabled = false;
     });
 
     function pintarTablaEstrategia() {
+      if (!cargado) {
+        $('cuerpoEstrategia').innerHTML = `<tr><td colspan="3">Cargando…</td></tr>`;
+        return;
+      }
       $('cuerpoEstrategia').innerHTML = productos.map(p => `
         <tr>
-          <td>${p.nombre}</td>
-          <td>${p.categoria}</td>
-          <td><span class="admin-tag ${claseEstrategia[p.estrategia]}">${p.estrategia}</span></td>
+          <td>${esc(p.nombre)}</td>
+          <td>${esc(p.categoria)}</td>
+          <td><span class="admin-tag ${claseEstrategia[p.estrategia] || 'muted'}">${esc(p.estrategia)}</span></td>
         </tr>
-      `).join('');
-      $('contadorEstrategia').textContent = `${productos.length} productos`;
+      `).join('') || `<tr><td colspan="3">Todavía no hay productos en el catálogo.</td></tr>`;
+      $('contadorEstrategia').textContent = `${productos.length} producto${productos.length === 1 ? '' : 's'}`;
     }
 
     function pintarComparativa() {
@@ -183,13 +191,13 @@
       $('statPullCount').textContent = productos.filter(p => p.estrategia === "PULL").length;
       $('cuerpoComparativa').innerHTML = productos.map(p => `
         <tr>
-          <td>${p.nombre}</td>
-          <td>${p.categoria}</td>
-          <td>${p.stock}</td>
-          <td>${p.stockMin}</td>
-          <td><span class="admin-tag ${claseEstrategia[p.estrategia]}">${p.estrategia}</span></td>
+          <td>${esc(p.nombre)}</td>
+          <td>${esc(p.categoria)}</td>
+          <td>${Number(p.stock) || 0}</td>
+          <td>${Number(p.stockMin) || 0}</td>
+          <td><span class="admin-tag ${claseEstrategia[p.estrategia] || 'muted'}">${esc(p.estrategia)}</span></td>
         </tr>
-      `).join('');
+      `).join('') || `<tr><td colspan="5">Todavía no hay productos en el catálogo.</td></tr>`;
     }
 
     function mostrarToast(msg) {
@@ -198,8 +206,25 @@
       setTimeout(() => $('toast').classList.remove('show'), 2600);
     }
 
-    llenarSelectProductosEst();
-    pintarTablaEstrategia();
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      iniciado = true;
+      pintarTablaEstrategia();
+      escucharProductosScm(
+        (lista) => {
+          productos = lista; cargado = true;
+          pintarBannerStockBajo(productos, 'tabsLogistica');
+          llenarSelectProductosEst();
+          pintarTablaEstrategia();
+          if (!$('tabComparativa').classList.contains('hidden')) pintarComparativa();
+        },
+        (err) => console.error(err)
+      );
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
   </script>
 </body>
 </html>

@@ -4,57 +4,95 @@ rules_version = '2';
 // Cópialas en Firebase Console → Firestore Database → Reglas,
 // o despliégalas con la CLI de Firebase (firebase deploy --only firestore:rules).
 //
-// Lógica:
-//  - clientes: CUALQUIERA (sin sesión) puede CREAR un cliente nuevo — es lo
-//    que usa el formulario público de registro del sitio. Pero leer, editar
-//    o borrar clientes sigue exigiendo sesión iniciada (solo el panel admin).
-//  - interacciones: cualquier usuario con sesión iniciada puede leer y
-//    escribir (administradores y vendedores tienen el mismo acceso aquí).
-//  - usuarios: cualquiera con sesión puede LEER (para saber su propio rol
-//    al entrar), pero solo alguien cuyo propio documento diga
-//    rol == "administrador" puede crear, editar o borrar perfiles de otros.
+// Hay TRES tipos de cuenta de Firebase Authentication en este proyecto:
+//  - Administrador / vendedor: tienen perfil en "usuarios" (colección solo
+//    de personal). Es lo que antes era "cualquier usuario con sesión".
+//  - Cliente: tiene perfil en "clientes/{uid}" (mismo id que su cuenta de
+//    Authentication). Se registra desde el sitio público.
+// Por eso ya NO se puede usar "request.auth != null" a secas para dar acceso
+// de personal: eso ahora también es verdad para un cliente cualquiera. Las
+// funciones esStaff()/esAdmin() (más abajo) son las que de verdad distinguen
+// personal de clientes.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /clientes/{clienteId} {
-      allow read, update, delete: if request.auth != null;
-      allow create: if request.resource.data.nombre is string
-                    && request.resource.data.correo is string
-                    && request.resource.data.etapa == 'Prospecto';
-    }
-
-    match /interacciones/{interaccionId} {
-      allow read, write: if request.auth != null;
-    }
-
-    match /usuarios/{uid} {
-      allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
-    }
-
-    // ---- SCM (cadena de suministros): SOLO administradores ----
-    // Ni vendedores, ni clientes, ni cuentas sin perfil en "usuarios" pueden
-    // leer o escribir aquí. Esta es la barrera real: el menú oculto y la
-    // redirección de las páginas son solo cortesía de la interfaz.
+    // ---- Helpers de rol (usados por TODA la colección, no solo SCM) ----
     function esAdmin() {
       return request.auth != null
         && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
     }
+    // Personal (administrador o vendedor): cualquiera con perfil en "usuarios".
+    function esStaff() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
 
+    // ---- Clientes: CRM (personal) + cuentas reales de clientes ----
+    // - El personal (esStaff) puede ver y gestionar cualquier cliente, igual que antes.
+    // - Un cliente con cuenta real solo puede leer/editar SU PROPIO documento
+    //   (el id del documento es el mismo uid de su cuenta de Authentication),
+    //   y solo puede tocar sus datos de contacto, no su etapa/estado (eso es del CRM).
+    function clienteValido(d) {
+      return d.nombre is string && d.nombre.size() > 0
+        && d.correo is string && d.correo.size() > 0
+        && d.etapa == 'Prospecto';
+    }
+    function soloCamposDeContacto() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['nombre', 'telefono', 'mascota', 'direccion', 'actualizadoEn']);
+    }
+
+    match /clientes/{clienteId} {
+      allow read: if esStaff() || (request.auth != null && request.auth.uid == clienteId);
+      allow update: if esStaff() || (request.auth != null && request.auth.uid == clienteId && soloCamposDeContacto());
+      allow delete: if esStaff();
+      allow create: if (esStaff() && clienteValido(request.resource.data))
+                    || (request.auth != null && request.auth.uid == clienteId && clienteValido(request.resource.data));
+    }
+
+    // ---- Interacciones (CRM): solo personal ----
+    match /interacciones/{interaccionId} {
+      allow read, write: if esStaff();
+    }
+
+    // ---- Usuarios (perfiles de personal): solo el personal puede leerlos,
+    // solo un administrador puede crear/editar/borrar perfiles de otros ----
+    match /usuarios/{uid} {
+      allow read: if esStaff();
+      allow create, update, delete: if esAdmin();
+    }
+
+    // ---- SCM (cadena de suministros): gestión SOLO administradores.
+    // La única excepción es la LECTURA del catálogo (scm_productos), que es
+    // pública porque alimenta las páginas de la tienda, y la actualización de
+    // stock/el registro del movimiento que hace una compra real de un cliente
+    // (ver más abajo). Ni vendedores, ni clientes, ni cuentas sin perfil pueden
+    // gestionar el resto del módulo: esta es la barrera real, el menú oculto y
+    // la redirección de las páginas son solo cortesía de la interfaz.
     function productoScmValido(d) {
       return d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 120
         && d.stock is int && d.stock >= 0
         && d.stockMin is int && d.stockMin >= 0
         && d.estrategia in ['PUSH', 'PULL']
-        && d.costo is number && d.costo >= 0;
+        && d.costo is number && d.costo >= 0
+        && d.precio is number && d.precio >= 0;
+    }
+    // Una compra real solo puede TOCAR el stock (bajarlo), nunca el resto del producto.
+    function esDescuentoDeStockPorVenta() {
+      return request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'actualizadoEn'])
+        && request.resource.data.stock is int
+        && request.resource.data.stock >= 0
+        && request.resource.data.stock < resource.data.stock;
     }
 
     match /scm_productos/{productoId} {
-      allow read, delete: if esAdmin();
-      allow create, update: if esAdmin() && productoScmValido(request.resource.data);
+      allow read: if true; // catálogo público: lo usan index/shop/producto sin necesidad de sesión
+      allow delete: if esAdmin();
+      allow create: if esAdmin() && productoScmValido(request.resource.data);
+      allow update: if (esAdmin() && productoScmValido(request.resource.data)) || esDescuentoDeStockPorVenta();
     }
 
     function proveedorScmValido(d) {
@@ -68,6 +106,60 @@ service cloud.firestore {
     match /scm_proveedores/{proveedorId} {
       allow read, delete: if esAdmin();
       allow create, update: if esAdmin() && proveedorScmValido(request.resource.data);
+    }
+
+    function pedidoScmValido(d) {
+      return d.folio is string
+        && d.productoId is string && d.productoId.size() > 0
+        && d.cantidad is int && d.cantidad > 0
+        && d.tipo in ['Reposición', 'Venta']
+        && d.estado in ['Pendiente', 'En proceso', 'Surtido', 'Cancelado']
+        && d.fecha is string;
+    }
+
+    match /scm_pedidos/{pedidoId} {
+      allow read, delete: if esAdmin();
+      allow create, update: if esAdmin() && pedidoScmValido(request.resource.data);
+    }
+
+    function movimientoScmValido(d) {
+      return d.productoId is string && d.productoId.size() > 0
+        && d.tipo in ['Entrada', 'Salida']
+        && d.cantidad is int && d.cantidad > 0
+        && d.fecha is string;
+    }
+
+    match /scm_movimientos/{movimientoId} {
+      allow read: if esAdmin();
+      // El personal registra entradas y salidas manuales; una compra real de un
+      // cliente registra su propia salida (siempre autenticado, siempre "Salida").
+      allow create: if (esAdmin() && movimientoScmValido(request.resource.data))
+                    || (request.auth != null && movimientoScmValido(request.resource.data)
+                        && request.resource.data.tipo == 'Salida');
+      // Los movimientos son un historial: no se editan ni se borran, solo se agregan.
+    }
+
+    // Checklist manual del nivel de madurez SCM (un solo documento: "madurez").
+    match /scm_estado/{estadoId} {
+      allow read: if esAdmin();
+      allow write: if esAdmin() && request.resource.data.items is map;
+    }
+
+    // ---- Ventas: compras reales hechas por clientes desde la tienda ----
+    // Un cliente solo puede crear (y leer) SUS PROPIAS ventas; el personal puede
+    // leer todas (para dar soporte). Son un historial: no se editan ni se borran.
+    function ventaValida(d) {
+      return d.clienteId is string && d.clienteId.size() > 0
+        && d.items is list && d.items.size() > 0
+        && d.total is number && d.total >= 0
+        && d.folio is string;
+    }
+
+    match /ventas/{ventaId} {
+      allow read: if esStaff() || (request.auth != null && resource.data.clienteId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.clienteId == request.auth.uid
+        && ventaValida(request.resource.data);
     }
 
     // Cualquier otra colección queda bloqueada por defecto.

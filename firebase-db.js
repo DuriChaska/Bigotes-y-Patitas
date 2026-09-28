@@ -8,13 +8,27 @@
 //  Colecciones en Firestore:
 //    clientes/{id}      { nombre, mascota, correo, telefono,
 //                          etapa, estado, fechaRegistro }
+//                          Los clientes que se registran de verdad en la
+//                          tienda tienen id == su uid de Authentication;
+//                          los que el CRM agrega a mano tienen un id al azar.
 //    interacciones/{id} { clienteId, clienteNombre, tipo,
 //                          descripcion, fecha, usuario, creadoEn }
 //    usuarios/{uid}     { nombre, correo, rol: "administrador"|"vendedor" }
+//    ventas/{id}        { clienteId (uid), clienteNombre, clienteCorreo,
+//                          items: [{ productoId, nombre, precio, cantidad }],
+//                          subtotal, descuento, cupon, total, folio,
+//                          direccionEnvio, metodoPago, estado, creadoEn }
+//                          (una compra real de un cliente; descuenta stock)
 //    scm_productos/{id} { nombre, descripcion, categoria, proveedor, proveedorId,
 //                          stock, stockMin, estrategia: "PUSH"|"PULL", costo, img }
 //    scm_proveedores/{id} { nombre, contacto, correo, telefono, direccion }
-//                          (las dos colecciones SCM: SOLO administradores, ver firestore.rules)
+//    scm_pedidos/{id}    { folio, productoId, producto, cantidad, tipo: "Reposición"|"Venta",
+//                          proveedorId, proveedor, fecha, estado: "Pendiente"|"En proceso"|
+//                          "Surtido"|"Cancelado", notas }
+//    scm_movimientos/{id} { productoId, producto, tipo: "Entrada"|"Salida", cantidad,
+//                          motivo, fecha, usuario }
+//    scm_estado/madurez  { items: { <idDelPunto>: true|false }, actualizadoEn }
+//                          (todas las colecciones SCM: SOLO administradores, ver firestore.rules)
 // ============================================
 
 import { auth, db, firebaseConfig } from "./firebase-config.js";
@@ -174,6 +188,59 @@ export function eliminarCliente(id) {
   return deleteDoc(doc(db, "clientes", id));
 }
 
+// ---------- Clientes: cuentas reales (tienda pública) ----------
+// A diferencia de crearUsuarioConRol (panel admin), aquí SÍ queremos que la
+// sesión recién creada quede activa: es el flujo normal de registro de un
+// cliente en la tienda. El documento de "clientes" se crea con el mismo id
+// que el uid de su cuenta, para poder distinguirlo de los que agrega el CRM.
+
+export async function registrarCliente({ nombre, correo, contrasena, telefono, mascota }) {
+  const credencial = await createUserWithEmailAndPassword(auth, correo, contrasena);
+  await updateProfile(credencial.user, { displayName: nombre });
+  await setDoc(doc(db, "clientes", credencial.user.uid), {
+    nombre, correo,
+    telefono: telefono || "",
+    mascota: mascota || "Sin especificar",
+    etapa: "Prospecto",
+    estado: "Activo",
+    fechaRegistro: new Date().toLocaleDateString('es-MX'),
+    creadoEn: serverTimestamp(),
+  });
+  return credencial.user;
+}
+
+export function loginCliente(correo, contrasena) {
+  return signInWithEmailAndPassword(auth, correo, contrasena);
+}
+
+export function logoutCliente() {
+  return signOut(auth);
+}
+
+/** Ejecuta callback(user) cada vez que cambia la sesión del sitio público (user es null si no hay nadie). */
+export function observarSesionCliente(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+/** Devuelve una promesa con el usuario actual (o null) sin dejar un listener activo. Útil para
+ *  páginas que solo necesitan saber, una vez, si hay alguien con sesión (p. ej. antes de pagar). */
+export function obtenerUsuarioActual() {
+  return new Promise((resolve) => {
+    const cancelar = onAuthStateChanged(auth, (user) => { cancelar(); resolve(user); });
+  });
+}
+
+/** Trae el perfil (Firestore) del cliente con sesión iniciada, por su uid. */
+export async function obtenerPerfilCliente(uid) {
+  const snap = await getDoc(doc(db, "clientes", uid));
+  return snap.exists() ? { id: uid, ...snap.data() } : null;
+}
+
+/** El cliente edita sus propios datos de contacto (nombre, teléfono, mascota, dirección). */
+export function actualizarPerfilCliente(uid, datos) {
+  return updateDoc(doc(db, "clientes", uid), { ...datos, actualizadoEn: serverTimestamp() });
+}
+
 // ---------- Interacciones ----------
 
 /** Escucha TODAS las interacciones (más recientes primero). */
@@ -241,6 +308,12 @@ export function escucharProductosScm(callback, onError) {
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, onError);
+}
+
+/** Trae el catálogo una sola vez (sin listener); útil para validar stock antes de una compra. */
+export async function obtenerProductosScm() {
+  const snap = await getDocs(scmProductosRef);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export function crearProductoScm(datos) {
@@ -321,4 +394,239 @@ export function cargarProveedoresScmEjemplo(lista) {
     const ref = await crearProveedorScm(p);
     return { id: ref.id, nombre: p.nombre };
   }));
+}
+
+// ---------- SCM: pedidos (reposición / suministro, solo administradores) ----------
+
+const scmPedidosRef = collection(db, "scm_pedidos");
+
+/** Escucha en tiempo real la lista de pedidos (más recientes primero). */
+export function escucharPedidosScm(callback, onError) {
+  const q = query(scmPedidosRef, orderBy("creadoEn", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * Crea un pedido nuevo con folio autogenerado tipo "PC-001", consecutivo según
+ * cuántos pedidos existen ya (suficiente para el volumen de este panel; en un
+ * sistema con altísima concurrencia se usaría un contador transaccional aparte).
+ */
+export async function crearPedidoScm(datos) {
+  const totalSnap = await getDocs(scmPedidosRef);
+  const folio = "PC-" + String(totalSnap.size + 1).padStart(3, "0");
+  return addDoc(scmPedidosRef, {
+    ...datos,
+    folio,
+    estado: datos.estado || "Pendiente",
+    creadoEn: serverTimestamp(),
+  });
+}
+
+export function actualizarPedidoScm(id, datos) {
+  return updateDoc(doc(db, "scm_pedidos", id), { ...datos, actualizadoEn: serverTimestamp() });
+}
+
+export function actualizarEstadoPedidoScm(id, estado) {
+  return updateDoc(doc(db, "scm_pedidos", id), { estado, actualizadoEn: serverTimestamp() });
+}
+
+export function eliminarPedidoScm(id) {
+  return deleteDoc(doc(db, "scm_pedidos", id));
+}
+
+// ---------- SCM: movimientos de inventario (solo administradores) ----------
+
+const scmMovimientosRef = collection(db, "scm_movimientos");
+
+/** Escucha en tiempo real el historial de movimientos (más recientes primero). */
+export function escucharMovimientosScm(callback, onError) {
+  const q = query(scmMovimientosRef, orderBy("fecha", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * Registra un movimiento y ajusta el stock del producto en la misma operación
+ * (writeBatch: o se guardan las dos cosas o ninguna). stockActual es el stock
+ * del producto ANTES del movimiento (se lee en la página desde el listener de
+ * escucharProductosScm, no hace falta volver a pedirlo aquí).
+ */
+export async function crearMovimientoScm(datos, stockActual) {
+  const cantidad = Number(datos.cantidad) || 0;
+  const nuevoStock = Math.max(0, stockActual + (datos.tipo === "Entrada" ? cantidad : -cantidad));
+  const lote = writeBatch(db);
+  lote.set(doc(scmMovimientosRef), { ...datos, cantidad, creadoEn: serverTimestamp() });
+  lote.update(doc(db, "scm_productos", datos.productoId), { stock: nuevoStock, actualizadoEn: serverTimestamp() });
+  await lote.commit();
+}
+
+// ---------- Ventas: compras reales hechas por clientes desde la tienda ----------
+
+const ventasRef = collection(db, "ventas");
+
+/** Escucha en tiempo real las ventas de UN cliente (para su historial de compras). */
+export function escucharVentasDeCliente(uid, callback, onError) {
+  const q = query(ventasRef, where("clienteId", "==", uid), orderBy("creadoEn", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * Crea una venta real: guarda el pedido, descuenta el stock de cada producto
+ * comprado y registra un movimiento de "Salida" por cada línea — todo en una
+ * sola operación atómica (writeBatch: o se guarda todo, o no se guarda nada).
+ *
+ * datosVenta: { clienteId, clienteNombre, clienteCorreo, items: [{ productoId,
+ *   nombre, precio, cantidad }], subtotal, descuento, cupon, total,
+ *   direccionEnvio, metodoPago }
+ * productosActuales: catálogo con el stock ANTES de la compra (ya disponible en
+ *   la página desde escucharProductosScm, no hace falta volver a pedirlo aquí).
+ */
+export async function crearVenta(datosVenta, productosActuales) {
+  const items = datosVenta.items || [];
+  if (items.length === 0) throw new Error("El carrito está vacío.");
+
+  // Verifica que haya stock suficiente ANTES de tocar nada.
+  for (const item of items) {
+    const prod = productosActuales.find(p => p.id === item.productoId);
+    if (!prod) throw new Error(`El producto "${item.nombre}" ya no está disponible en el catálogo.`);
+    if (Number(prod.stock) < Number(item.cantidad)) {
+      throw new Error(`Ya no hay suficiente stock de "${prod.nombre}" (disponible: ${Number(prod.stock)}).`);
+    }
+  }
+
+  // El folio NO se genera contando los documentos existentes (a diferencia de
+  // "PC-001" en pedidos/proveedores, que sí lo hace): un cliente real no tiene
+  // permiso para leer TODAS las ventas (las reglas de "ventas" solo dejan ver
+  // las propias o al personal), así que una lectura sin filtro aquí sería
+  // rechazada por Firestore. En su lugar se arma un folio único con la fecha
+  // y un sufijo aleatorio, sin necesitar ningún permiso extra.
+  const ahora = new Date();
+  const fechaFolio = ahora.toISOString().slice(2, 10).replace(/-/g, "");
+  const sufijo = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const folio = `CC-${fechaFolio}-${sufijo}`;
+  const hoy = ahora.toISOString().slice(0, 10);
+
+  const lote = writeBatch(db);
+  const ventaRef = doc(ventasRef);
+  lote.set(ventaRef, {
+    ...datosVenta,
+    folio,
+    estado: "Confirmada",
+    creadoEn: serverTimestamp(),
+  });
+
+  items.forEach((item) => {
+    const prod = productosActuales.find(p => p.id === item.productoId);
+    const nuevoStock = Math.max(0, Number(prod.stock) - Number(item.cantidad));
+    lote.update(doc(db, "scm_productos", item.productoId), {
+      stock: nuevoStock, actualizadoEn: serverTimestamp(),
+    });
+    lote.set(doc(collection(db, "scm_movimientos")), {
+      productoId: item.productoId,
+      producto: item.nombre,
+      tipo: "Salida",
+      cantidad: Number(item.cantidad),
+      motivo: `Venta ${folio}`,
+      fecha: hoy,
+      usuario: datosVenta.clienteNombre || datosVenta.clienteCorreo || "Cliente",
+      creadoEn: serverTimestamp(),
+    });
+  });
+
+  await lote.commit();
+  return { id: ventaRef.id, folio };
+}
+
+// ---------- SCM: nivel de madurez (checklist manual, solo administradores) ----------
+// Un solo documento ("scm_estado/madurez") con el mapa { itemId: true|false }.
+// El nivel (Inicial / En desarrollo / Optimizado) y la barra de avance se
+// calculan en la página a partir de cuántos puntos están marcados: NO se
+// calculan solos a partir de los datos del negocio, los marca la persona.
+
+const scmEstadoMadurezRef = doc(db, "scm_estado", "madurez");
+
+/** Escucha en tiempo real qué puntos del checklist de madurez están marcados. */
+export function escucharMadurezScm(callback, onError) {
+  return onSnapshot(scmEstadoMadurezRef, (snap) => {
+    callback(snap.exists() ? (snap.data().items || {}) : {});
+  }, onError);
+}
+
+/** Marca o desmarca un punto del checklist (merge: no toca los demás puntos). */
+export function marcarItemMadurezScm(itemId, completado) {
+  return setDoc(scmEstadoMadurezRef, {
+    items: { [itemId]: completado },
+    actualizadoEn: serverTimestamp(),
+  }, { merge: true });
+}
+
+// ---------- SCM: métricas para Reportes ----------
+
+/**
+ * Trae productos, proveedores, pedidos y movimientos una sola vez y calcula
+ * los indicadores que usan admin-scm-reportes.html (dashboard y checklist
+ * de madurez).
+ */
+export async function calcularMetricasScm() {
+  const [productosSnap, proveedoresSnap, pedidosSnap, movimientosSnap] = await Promise.all([
+    getDocs(scmProductosRef),
+    getDocs(scmProveedoresRef),
+    getDocs(scmPedidosRef),
+    getDocs(scmMovimientosRef),
+  ]);
+
+  const productos = productosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const proveedores = proveedoresSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const pedidos = pedidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const movimientos = movimientosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const stockBajo = productos.filter(p => Number(p.stock) <= Number(p.stockMin));
+  const pedidosEnProceso = pedidos.filter(p => p.estado === "Pendiente" || p.estado === "En proceso");
+  const push = productos.filter(p => p.estrategia === "PUSH").length;
+  const pull = productos.filter(p => p.estrategia === "PULL").length;
+
+  // Productos con más salidas (ventas/reposición despachada) = "más vendidos"
+  const salidasPorProducto = {};
+  movimientos.filter(m => m.tipo === "Salida").forEach(m => {
+    salidasPorProducto[m.producto] = (salidasPorProducto[m.producto] || 0) + (Number(m.cantidad) || 0);
+  });
+  const productosMasVendidos = Object.entries(salidasPorProducto)
+    .sort((a, b) => b[1] - a[1]).slice(0, 5)
+    .map(([producto, cantidad]) => ({ producto, cantidad }));
+
+  // Rotación de inventario: % de productos con al menos un movimiento registrado
+  const productosConMovimiento = new Set(movimientos.map(m => m.productoId)).size;
+  const rotacion = productos.length ? Math.round((productosConMovimiento / productos.length) * 100) : 0;
+
+  // Comparativa PUSH vs PULL: pedidos de reposición agrupados por mes y por
+  // la estrategia del producto al momento del pedido.
+  const porMes = {};
+  pedidos.forEach(p => {
+    if (!p.fecha) return;
+    const mes = p.fecha.slice(0, 7); // "YYYY-MM"
+    const prod = productos.find(x => x.id === p.productoId);
+    const estrategia = prod ? prod.estrategia : null;
+    if (!estrategia) return;
+    porMes[mes] = porMes[mes] || { PUSH: 0, PULL: 0 };
+    porMes[mes][estrategia]++;
+  });
+  const comparativaPushPull = Object.entries(porMes).sort(([a], [b]) => a.localeCompare(b))
+    .map(([mes, v]) => ({ mes, ...v }));
+
+  return {
+    productos, proveedores, pedidos, movimientos,
+    totalProductos: productos.length,
+    totalProveedores: proveedores.length,
+    pedidosEnProceso: pedidosEnProceso.length,
+    stockBajo,
+    push, pull,
+    productosMasVendidos,
+    rotacion,
+    comparativaPushPull,
+  };
 }

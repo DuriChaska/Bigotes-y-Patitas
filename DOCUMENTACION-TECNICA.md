@@ -308,3 +308,47 @@ propio panel, sin volver a tocar la consola de Firebase.
   cualquier administrador puede editar o quitarle el rol a otro
   administrador (aunque no puede tocar su propio rol desde esa misma
   pantalla, por seguridad básica).
+
+---
+
+## 9. Ampliación: módulo SCM y tienda pública conectados a Firebase
+
+Todo lo de arriba describe el CRM. Después se conectó también el módulo
+**SCM** (cadena de suministro) y **toda la tienda pública** (catálogo,
+carrito, checkout, cuentas de cliente) a la misma base de Firestore. El
+esquema completo de las colecciones nuevas (`scm_productos`,
+`scm_proveedores`, `scm_pedidos`, `scm_movimientos`, `scm_estado`, `ventas`)
+está documentado en **`SETUP-FIREBASE.md`**, sección "Estructura de datos en
+Firestore" — para no duplicarlo aquí. Un resumen de lo más importante:
+
+- **El catálogo (`scm_productos`) es de lectura pública** (`allow read: if
+  true` en `firestore.rules`): es lo único de todo el proyecto que cualquier
+  visitante sin sesión puede leer, porque de eso viven `index.html`,
+  `shop.html` y `Producto.html`.
+- **Las cuentas de cliente son cuentas reales de Firebase Authentication**,
+  no simuladas: se registran en `Interfaz Usuario - Registro .html`, inician
+  sesión en `login.html`, y su perfil vive en `clientes/{uid}` (mismo
+  documento que usa el CRM, pero con el id igual al uid de Authentication en
+  vez de un id autogenerado). Por eso las reglas ya no pueden usar
+  `request.auth != null` como sinónimo de "es personal" — ver la función
+  `esStaff()` en `firestore.rules`.
+- **El carrito vive en `localStorage`** (igual que en la versión original),
+  pero `Carrito.html` y `Checkout.html` lo revalidan contra el stock real de
+  `scm_productos` antes de cobrar, para no vender algo agotado.
+- **El checkout (`Checkout.html`) exige sesión iniciada** (redirige a
+  `login.html?next=Checkout.html` si no hay nadie logueado) y, al confirmar
+  el pedido, llama a `crearVenta()` en `firebase-db.js`: esa función guarda
+  el pedido en `ventas`, descuenta el stock de cada producto comprado y
+  registra el movimiento de salida correspondiente, **todo en una sola
+  operación atómica** (`writeBatch`) — o se guarda todo o no se guarda nada.
+- **El perfil del cliente (`Interfaz Cliente - Perfil.html`) muestra su
+  historial de compras real**, leyendo `ventas` filtradas por su propio
+  `clienteId` (no puede ver las compras de otros clientes).
+- **El nivel de madurez del SCM** (`admin-scm-madurez.html`) es un checklist
+  manual, no un cálculo automático: alguien del panel marca a mano qué
+  puntos ya se cumplen, y de ahí sale la barra de avance y si el proyecto se
+  considera "Inicial", "En desarrollo" u "Optimizado". Se guarda en el
+  documento único `scm_estado/madurez`.
+- **Alertas de bajo stock**: cuando un producto cae por debajo de su
+  `stockMin`, aparece un banner en las páginas del SCM (`admin-stock-alertas.js`,
+  reutilizado en Inventario, Productos, Pedidos, Logística y el hub de SCM).

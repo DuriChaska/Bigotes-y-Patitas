@@ -24,7 +24,7 @@
         </div>
       </div>
 
-      <div class="admin-panel" style="margin-bottom:18px;">
+      <div class="admin-panel" id="panelIntroScm" style="margin-bottom:18px;">
         <p style="color:var(--gray); font-size:.85rem; margin:0;">
           <strong>Módulo 1 · Acceso al módulo de cadena de suministros.</strong>
           Haz clic en un módulo para ingresar a la gestión correspondiente.
@@ -54,12 +54,12 @@
   <span class="scm-card-cta">Ver inventario <span data-bp-icon="arrow_right"></span></span>
         </a>
 
-        <button type="button" class="scm-card proximamente" data-modulo="Pedidos">
+        <a href="admin-scm-pedidos.html" class="scm-card">
           <div class="scm-card-icon yellow" data-bp-icon="clipboard"></div>
           <h3>Pedidos</h3>
           <p>Reposición y suministro</p>
-          <span class="scm-card-cta">Próximamente</span>
-        </button>
+          <span class="scm-card-cta">Ver pedidos <span data-bp-icon="arrow_right"></span></span>
+        </a>
 
         <a href="admin-scm-logistica.html" class="scm-card">
   <div class="scm-card-icon orange" data-bp-icon="refresh"></div>
@@ -68,12 +68,19 @@
   <span class="scm-card-cta">Configurar <span data-bp-icon="arrow_right"></span></span>
         </a>
 
-        <button type="button" class="scm-card proximamente" data-modulo="Reportes">
+        <a href="admin-scm-reportes.html" class="scm-card">
           <div class="scm-card-icon purple" data-bp-icon="chart"></div>
           <h3>Reportes</h3>
           <p>Métricas y análisis</p>
-          <span class="scm-card-cta">Próximamente</span>
-        </button>
+          <span class="scm-card-cta">Ver reportes <span data-bp-icon="arrow_right"></span></span>
+        </a>
+
+        <a href="admin-scm-madurez.html" class="scm-card">
+          <div class="scm-card-icon green" data-bp-icon="trending_up"></div>
+          <h3>Nivel de madurez</h3>
+          <p>Checklist de avance del SCM</p>
+          <span class="scm-card-cta">Ver nivel <span data-bp-icon="arrow_right"></span></span>
+        </a>
 
       </div>
     </main>
@@ -97,6 +104,23 @@
         mostrarToast('El módulo de ' + card.dataset.modulo + ' estará disponible próximamente');
       });
     });
+  </script>
+  <script type="module">
+    import { escucharProductosScm } from './firebase-db.js';
+    import { pintarBannerStockBajo } from './admin-stock-alertas.js';
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      iniciado = true;
+      escucharProductosScm(
+        (productos) => pintarBannerStockBajo(productos, 'panelIntroScm'),
+        (err) => console.error(err)
+      );
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
   </script>
 </body>
 </html>

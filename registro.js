@@ -1,16 +1,27 @@
 // ============================================
 //  Bigotes y Patitas - registro.js
 //  Formulario público de registro de clientes.
-//  Al registrarse, se crea directo un documento en
-//  la colección "clientes" de Firestore, para que
-//  aparezca de inmediato en el CRM (admin-clientes.html).
+//  Crea una cuenta REAL en Firebase Authentication (con la
+//  contraseña que escribe la persona) y, ya con la sesión
+//  iniciada, guarda su perfil en Firestore (clientes/{uid}),
+//  para que también aparezca de inmediato en el CRM.
 // ============================================
 
-import { crearCliente } from "./firebase-db.js";
+import { registrarCliente } from "./firebase-db.js";
 
 const form = document.getElementById("registerForm");
 const mensajeExito = document.getElementById("registerMessage");
 const mensajeError = document.getElementById("registerError");
+
+const nextParam = new URLSearchParams(window.location.search).get('next');
+const linkLogin = document.getElementById("linkLogin");
+if (linkLogin) linkLogin.href = 'login.html' + (nextParam ? '?next=' + encodeURIComponent(nextParam) : '');
+
+const ERRORES_FIREBASE = {
+  'auth/email-already-in-use': 'Ya existe una cuenta registrada con ese correo.',
+  'auth/invalid-email': 'El correo no es válido.',
+  'auth/weak-password': 'La contraseña es demasiado débil (usa al menos 6 caracteres).',
+};
 
 function mostrarError(texto) {
   mensajeError.textContent = texto;
@@ -43,22 +54,24 @@ form.addEventListener("submit", async function (e) {
   boton.textContent = "Registrando...";
 
   try {
-    await crearCliente({
+    await registrarCliente({
       nombre: `${nombre} ${apellidos}`.trim(),
       correo,
+      contrasena: pass,
       telefono,
       mascota: mascota || "Sin especificar",
-      etapa: "Prospecto",
-      estado: "Activo",
     });
 
     mensajeExito.style.display = "block";
     form.reset();
+    // La cuenta ya quedó con sesión iniciada: se manda directo a la tienda
+    // (o de vuelta a donde iba, p. ej. Checkout.html, si venía de ahí).
     setTimeout(() => {
-      window.location.href = "login.html";
-    }, 2000);
+      window.location.href = nextParam || "index.html";
+    }, 1500);
   } catch (err) {
-    mostrarError("No se pudo completar el registro: " + (err.message || "revisa tu conexión."));
+    console.error(err);
+    mostrarError(ERRORES_FIREBASE[err.code] || ("No se pudo completar el registro: " + (err.message || "revisa tu conexión.")));
     boton.disabled = false;
     boton.textContent = "REGISTRARSE";
   }
