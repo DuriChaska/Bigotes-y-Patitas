@@ -325,7 +325,7 @@
 
   <section class="checkout-section">
     <nav class="breadcrumb">
-      <a href="carrito.html">Carrito</a> / <span id="step-title" style="font-weight: bold;">Envío</span>
+      <a href="Carrito.html">Carrito</a> / <span id="step-title" style="font-weight: bold;">Envío</span>
     </nav>
 
     <div class="checkout-container">
@@ -357,7 +357,7 @@
           <textarea id="notes" placeholder="Referencias" rows="3"></textarea>
 
           <div class="checkout-nav">
-            <a href="carrito.html" class="back-link">← REGRESAR AL CARRITO</a>
+            <a href="Carrito.html" class="back-link">← REGRESAR AL CARRITO</a>
             <button class="continue-btn" onclick="validateAndShowPayment()">CONTINUAR A PAGAR →</button>
           </div>
         </div>
@@ -377,7 +377,7 @@
               <div class="payment-option-body" id="body-paypal">
                 <p style="font-size:13px; color:#555; margin:12px 0 8px;">Serás redirigido a PayPal de forma segura.</p>
                 <input type="email" placeholder="Correo de PayPal" />
-                <button class="btn-paypal" onclick="simulateOrder()">PAGAR CON PAYPAL</button>
+                <button class="btn-paypal" onclick="confirmarPedido()">PAGAR CON PAYPAL</button>
               </div>
             </div>
 
@@ -397,7 +397,7 @@
                   <input type="text" placeholder="MM/AA" maxlength="5" oninput="formatExpiry(this)" />
                   <input type="text" placeholder="CVV" maxlength="4" />
                 </div>
-                <button class="continue-btn" style="width:100%; float:none; margin-top:4px;" onclick="simulateOrder()">PAGAR AHORA</button>
+                <button class="continue-btn" style="width:100%; float:none; margin-top:4px;" onclick="confirmarPedido()">PAGAR AHORA</button>
               </div>
             </div>
 
@@ -415,12 +415,12 @@
                 <div id="info-oxxo" class="transfer-info">
                   <p style="font-size:18px; letter-spacing:3px; font-weight:bold; color:#b34a8e; text-align:center;">6394 8521 7043 2210</p>
                   <p><strong>Monto:</strong> <span class="oxxo-total-val">$0.00</span></p>
-                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="simulateOrder()">CONFIRMAR PEDIDO</button>
+                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="confirmarPedido()">CONFIRMAR PEDIDO</button>
                 </div>
                 <div id="info-spei" class="transfer-info hidden">
                   <p>CLABE: <strong>646180157041234567</strong></p>
                   <p>Banco: <strong>STP</strong></p>
-                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="simulateOrder()">YA TRANSFERÍ</button>
+                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="confirmarPedido()">YA TRANSFERÍ</button>
                 </div>
               </div>
             </div>
@@ -435,7 +435,7 @@
                 <div class="transfer-info">
                   <p>Tienes disponibles: <strong>500 puntos</strong></p>
                   <p style="font-size: 12px; color: #666;">1 punto = $1.00 MXN. Se descontarán de tu cuenta al confirmar.</p>
-                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="simulateOrder()">PAGAR CON PUNTOS</button>
+                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="confirmarPedido()">PAGAR CON PUNTOS</button>
                 </div>
               </div>
             </div>
@@ -483,11 +483,22 @@
     </div>
   </section>
 
-  <script>
+  <script src="components.js"></script>
+  <script type="module">
+    import { crearVenta, obtenerProductosScm, obtenerUsuarioActual, obtenerPerfilCliente } from './firebase-db.js';
+
     const ENVIO = 120;
+    let usuarioActual = null;
+    let perfilCliente = null;
+    let productosActuales = [];
 
     function obtenerCarrito() {
       return JSON.parse(localStorage.getItem("carrito") || "[]");
+    }
+
+    function guardarCarrito(carrito) {
+      localStorage.setItem("carrito", JSON.stringify(carrito));
+      window.dispatchEvent(new Event('actualizarCarrito'));
     }
 
     function obtenerCupon() {
@@ -532,7 +543,7 @@
           descripcion = `${cupon.codigo} (${cupon.valor}% de descuento)`;
           break;
 
-        case "tercera_prenda":
+        case "tercera_prenda": {
           const cantidadTotal = obtenerCantidadTotal(carrito);
 
           if (cantidadTotal >= 3) {
@@ -547,6 +558,7 @@
             descripcion = `${cupon.codigo} requiere al menos 3 prendas`;
           }
           break;
+        }
 
         case "envio_gratis":
           if (subtotal >= 2000) {
@@ -584,6 +596,48 @@
         descripcionCupon: resultado.descripcion,
         total
       };
+    }
+
+    // Reconcilia el carrito contra el stock real de Firestore antes de mostrar
+    // el resumen: si un producto ya no existe o ya no alcanza el stock, se
+    // ajusta o se quita (igual que en Carrito.html).
+    async function sincronizarConStockReal() {
+      let carrito = obtenerCarrito();
+      if (carrito.length === 0) return carrito;
+
+      try {
+        productosActuales = await obtenerProductosScm();
+      } catch (err) {
+        console.error(err);
+        return carrito;
+      }
+
+      const avisos = [];
+      const ajustado = [];
+      carrito.forEach(item => {
+        const real = productosActuales.find(p => p.id === item.id);
+        if (!real) {
+          avisos.push(`"${item.nombre}" ya no está disponible y se quitó del carrito.`);
+          return;
+        }
+        const stock = Number(real.stock) || 0;
+        if (stock <= 0) {
+          avisos.push(`"${item.nombre}" está agotado y se quitó del carrito.`);
+          return;
+        }
+        let cantidad = Number(item.cantidad) || 1;
+        if (cantidad > stock) {
+          avisos.push(`Solo quedaban ${stock} de "${item.nombre}"; se ajustó la cantidad.`);
+          cantidad = stock;
+        }
+        ajustado.push({ id: item.id, nombre: real.nombre, precio: Number(real.precio) || 0, imagen: real.img || item.imagen, cantidad });
+      });
+
+      if (avisos.length) {
+        guardarCarrito(ajustado);
+        alert(avisos.join('\n'));
+      }
+      return ajustado;
     }
 
     function renderSummary() {
@@ -654,11 +708,16 @@
     }
   }
 }
-    // SIN VALIDACIONES: Pasa directo al pago
     function validateAndShowPayment() {
       const carrito = obtenerCarrito();
       if (carrito.length === 0) {
         alert("Tu carrito está vacío.");
+        return;
+      }
+      const requeridos = ['fname', 'lname', 'street', 'city', 'state', 'zip', 'phone', 'email'];
+      const faltante = requeridos.find(id => !document.getElementById(id).value.trim());
+      if (faltante) {
+        alert("Completa todos los datos de envío antes de continuar.");
         return;
       }
       showPayment();
@@ -715,81 +774,162 @@
       input.value = v;
     }
 
-    function simulateOrder() {
-  // 1. Obtener datos base (Combinando lógica de Andy para cupones)
-  const resumen = obtenerResumenCompra(); 
-  const orderNum = 'CC-' + Math.floor(10000 + Math.random() * 90000);
-  const facturaNum = 'FAC-' + Math.floor(10000 + Math.random() * 90000);
-  const hoy = new Date().toISOString().split('T')[0]; // Formato estándar YYYY-MM-DD
-  
-  // Capturar método de pago (Lógica de Kim)
-  const metodoInput = document.querySelector('input[name="pay-method"]:checked');
-  const metodoSeleccionado = metodoInput ? metodoInput.value : "No especificado";
+    let enviando = false;
 
-  // 2. Crear objeto de la compra (Completo con descuentos de Andy)
-  const compraRealizada = {
-    pedido: orderNum,
-    factura: facturaNum,
-    fecha: hoy,
-    cliente: document.getElementById("fname").value.trim() || "Andrea Guadalupe",
-    productos: resumen.carrito,
-    subtotal: resumen.subtotal,
-    descuento: resumen.descuento,
-    cupon: resumen.cupon ? resumen.cupon.codigo : null,
-    descripcionCupon: resumen.descripcionCupon,
-    envio: resumen.envio,
-    total: resumen.total,
-    metodo: metodoSeleccionado
-  };
+    // Reemplaza a la antigua simulateOrder(): ahora crea la venta de verdad en
+    // Firestore -- descuenta el stock real y guarda el pedido en "ventas" --
+    // en vez de solo simular una compra falsa.
+    async function confirmarPedido() {
+      if (enviando) return;
 
-  // 3. Guardar para la factura inmediata
-  localStorage.setItem("ultimaCompra", JSON.stringify(compraRealizada));
+      const resumen = obtenerResumenCompra();
+      if (!resumen || resumen.carrito.length === 0) {
+        alert("Tu carrito está vacío.");
+        return;
+      }
+      if (!usuarioActual) {
+        window.location.href = 'login.html?next=' + encodeURIComponent('Checkout.html');
+        return;
+      }
 
-  // 4. AGREGAR AL HISTORIAL DEL PERFIL (Lógica de Kim - Vital para el Perfil)
-  const historial = JSON.parse(localStorage.getItem("misCompras") || "[]");
-  historial.unshift({ 
-    id: orderNum,
-    nombre: resumen.carrito.length > 1 ? `${resumen.carrito[0].nombre} y más...` : resumen.carrito[0].nombre,
-    talla: resumen.carrito[0].talla || "M",
-    color: resumen.carrito[0].color || "Varios",
-    precio: resumen.total,
-    fecha: hoy,
-    estado: "proceso",
-    emoji: "🛍️",
-    detalleCompleto: compraRealizada // Esto permite ver el ticket después
-  });
-  localStorage.setItem("misCompras", JSON.stringify(historial));
+      enviando = true;
+      const botones = document.querySelectorAll('.payment-option-body button, .btn-paypal');
+      botones.forEach(b => b.disabled = true);
 
-  // 5. Limpiar datos temporales
-  localStorage.removeItem("carrito");
-  localStorage.removeItem("cuponAplicado");
+      try {
+        // Se vuelve a revisar el stock justo antes de pagar, por si cambió
+        // mientras la persona llenaba el formulario.
+        productosActuales = await obtenerProductosScm();
 
-  // 6. Interfaz de Confirmación (Combinado)
-  const stepPayment = document.getElementById('step-payment');
-  const stepShipping = document.getElementById('step-shipping');
-  const stepConfirm = document.getElementById('step-confirm');
-  const stepTitle = document.getElementById('step-title');
+        const metodoInput = document.querySelector('input[name="pay-method"]:checked');
+        const metodoSeleccionado = metodoInput ? metodoInput.value : "No especificado";
 
-  if (stepPayment) stepPayment.classList.add('hidden');
-  if (stepShipping) stepShipping.classList.add('hidden');
-  if (stepConfirm) stepConfirm.classList.remove('hidden');
-  if (stepTitle) stepTitle.innerText = "Confirmación";
-  
-  document.getElementById('confirm-order-num').textContent = `Número de pedido: ${orderNum}`;
-  
-  window.scrollTo(0, 0);
-  
-  // Actualizar el badge del carrito si la función existe
-  if (typeof actualizarBadgeCarrito === 'function') {
-    actualizarBadgeCarrito();
-  }
-}
+        const nombreCompleto = `${document.getElementById("fname").value.trim()} ${document.getElementById("lname").value.trim()}`.trim()
+          || perfilCliente?.nombre || usuarioActual.email;
 
-// Inicialización al cargar la página
-window.onload = function() {
-  if (typeof renderSummary === 'function') renderSummary();
-  if (typeof generateOrderRef === 'function') generateOrderRef();
-};
+        const direccionEnvio = {
+          nombre: nombreCompleto,
+          pais: document.getElementById("country").value.trim(),
+          calle: document.getElementById("street").value.trim(),
+          ciudad: document.getElementById("city").value.trim(),
+          estado: document.getElementById("state").value.trim(),
+          cp: document.getElementById("zip").value.trim(),
+          telefono: document.getElementById("phone").value.trim(),
+          correo: document.getElementById("email").value.trim(),
+          notas: document.getElementById("notes").value.trim(),
+        };
+
+        const items = resumen.carrito.map(item => ({
+          productoId: item.id,
+          nombre: item.nombre,
+          precio: Number(item.precio),
+          cantidad: Number(item.cantidad),
+        }));
+
+        const datosVenta = {
+          clienteId: usuarioActual.uid,
+          clienteNombre: nombreCompleto,
+          clienteCorreo: usuarioActual.email,
+          items,
+          subtotal: resumen.subtotal,
+          descuento: resumen.descuento,
+          cupon: resumen.cupon ? resumen.cupon.codigo : null,
+          descripcionCupon: resumen.descripcionCupon,
+          envio: resumen.envio,
+          total: resumen.total,
+          direccionEnvio,
+          metodoPago: metodoSeleccionado,
+        };
+
+        const venta = await crearVenta(datosVenta, productosActuales);
+        const hoy = new Date().toISOString().split('T')[0];
+
+        // Se conserva este objeto en localStorage porque factura.html todavía
+        // lo lee para armar el ticket inmediatamente después de comprar.
+        const compraRealizada = {
+          pedido: venta.folio,
+          factura: venta.folio,
+          fecha: hoy,
+          cliente: nombreCompleto,
+          productos: resumen.carrito,
+          subtotal: resumen.subtotal,
+          descuento: resumen.descuento,
+          cupon: resumen.cupon ? resumen.cupon.codigo : null,
+          descripcionCupon: resumen.descripcionCupon,
+          envio: resumen.envio,
+          total: resumen.total,
+          metodo: metodoSeleccionado,
+        };
+        localStorage.setItem("ultimaCompra", JSON.stringify(compraRealizada));
+
+        localStorage.removeItem("carrito");
+        localStorage.removeItem("cuponAplicado");
+
+        const stepPayment = document.getElementById('step-payment');
+        const stepShipping = document.getElementById('step-shipping');
+        const stepConfirm = document.getElementById('step-confirm');
+        const stepTitle = document.getElementById('step-title');
+
+        if (stepPayment) stepPayment.classList.add('hidden');
+        if (stepShipping) stepShipping.classList.add('hidden');
+        if (stepConfirm) stepConfirm.classList.remove('hidden');
+        if (stepTitle) stepTitle.innerText = "Confirmación";
+
+        document.getElementById('confirm-order-num').textContent = `Número de pedido: ${venta.folio}`;
+
+        window.scrollTo(0, 0);
+        if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "No se pudo completar tu pedido. Intenta de nuevo.");
+      } finally {
+        enviando = false;
+        botones.forEach(b => b.disabled = false);
+      }
+    }
+
+    // Precarga los datos de envío con lo que el cliente ya tiene guardado en su perfil.
+    function precargarDireccion(perfil) {
+      if (!perfil) return;
+      const [primero, ...resto] = (perfil.nombre || "").split(" ");
+      if (primero && !document.getElementById("fname").value) document.getElementById("fname").value = primero;
+      if (resto.length && !document.getElementById("lname").value) document.getElementById("lname").value = resto.join(" ");
+      if (perfil.telefono && !document.getElementById("phone").value) document.getElementById("phone").value = perfil.telefono;
+    }
+
+    // El script ahora es un módulo: los atributos onclick del HTML necesitan
+    // que estas funciones existan explícitamente en window.
+    window.validateAndShowPayment = validateAndShowPayment;
+    window.selectMethod = selectMethod;
+    window.showShipping = showShipping;
+    window.switchTransfer = switchTransfer;
+    window.formatCard = formatCard;
+    window.formatExpiry = formatExpiry;
+    window.confirmarPedido = confirmarPedido;
+
+    (async function iniciar() {
+      // El checkout requiere una cuenta real: si nadie inició sesión, se manda
+      // a login y de ahí de regreso aquí mismo (?next=Checkout.html).
+      usuarioActual = await obtenerUsuarioActual();
+      if (!usuarioActual) {
+        window.location.href = 'login.html?next=' + encodeURIComponent('Checkout.html');
+        return;
+      }
+
+      if (!document.getElementById("email").value) {
+        document.getElementById("email").value = usuarioActual.email || "";
+      }
+
+      try {
+        perfilCliente = await obtenerPerfilCliente(usuarioActual.uid);
+        precargarDireccion(perfilCliente);
+      } catch (err) {
+        console.error(err);
+      }
+
+      await sincronizarConStockReal();
+      renderSummary();
+    })();
   </script>
 </body>
 </html>

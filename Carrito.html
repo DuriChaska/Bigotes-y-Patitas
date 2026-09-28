@@ -57,8 +57,8 @@
 
     <div class="cart-actions" id="cart-actions" style="display:none;">
       <input type="text" placeholder="Código de descuento" id="coupon-code" />
-      <button class="apply-coupon" onclick="aplicarCuponDesdeCarrito()">Aplicar Cupón</button>
-      <button class="update-cart" onclick="renderCart()">Actualizar Carrito</button>
+      <button class="apply-coupon" id="btn-coupon">Aplicar Cupón</button>
+      <button class="update-cart" id="btn-actualizar">Actualizar Carrito</button>
     </div>
 
     <div class="cart-totals" id="cart-totals" style="display:none;">
@@ -66,14 +66,16 @@
       <p id="discount-line" style="display:none;">Descuento: <span id="discount">-$0.00</span></p>
       <p id="coupon-line" style="display:none;"><span id="coupon-message"></span></p>
       <p><strong>Total: <span id="total">$0.00</span></strong></p>
-      <button class="checkout-btn" onclick="window.location.href='checkout.html'">Proceder a pagar</button>
+      <button class="checkout-btn" id="btn-checkout">Proceder a pagar</button>
     </div>
   </section>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script>
+  <script type="module">
+  import { obtenerProductosScm, obtenerUsuarioActual } from './firebase-db.js';
+
   // 1. Configuración de Cupones
   const codigosDisponibles = {
     "CUTECANDY50": { codigo: "CUTECANDY50", tipo: "porcentaje", valor: 50 },
@@ -88,6 +90,7 @@
 
   function guardarCarrito(carrito) {
     localStorage.setItem("carrito", JSON.stringify(carrito));
+    window.dispatchEvent(new Event('actualizarCarrito'));
   }
 
   function obtenerCupon() {
@@ -102,7 +105,54 @@
     return `$${Number(valor).toFixed(2)}`;
   }
 
-  // 3. Lógica de Cálculos
+  // 3. Validación contra el stock real (Firestore) ------------------------
+  // El carrito vive en localStorage, pero el stock puede haber cambiado desde
+  // que se agregó (alguien más compró, un admin lo editó, etc.). Antes de
+  // pintar el carrito, se ajusta contra el catálogo real: si un producto ya
+  // no existe se quita, y si queda menos stock del que hay en el carrito se
+  // recorta a lo disponible.
+  async function sincronizarConStockReal() {
+    let carrito = obtenerCarrito();
+    if (carrito.length === 0) return carrito;
+
+    let productos;
+    try {
+      productos = await obtenerProductosScm();
+    } catch (err) {
+      console.error(err);
+      return carrito; // sin conexión: se muestra el carrito tal cual, sin bloquear a la persona
+    }
+
+    const avisos = [];
+    const ajustado = [];
+    carrito.forEach(item => {
+      const real = productos.find(p => p.id === item.id);
+      if (!real) {
+        avisos.push(`"${item.nombre}" ya no está disponible y se quitó del carrito.`);
+        return;
+      }
+      const stock = Number(real.stock) || 0;
+      if (stock <= 0) {
+        avisos.push(`"${item.nombre}" está agotado y se quitó del carrito.`);
+        return;
+      }
+      let cantidad = Number(item.cantidad) || 1;
+      if (cantidad > stock) {
+        avisos.push(`Solo quedaban ${stock} de "${item.nombre}"; se ajustó la cantidad.`);
+        cantidad = stock;
+      }
+      // El precio también se refresca por si cambió desde que se agregó.
+      ajustado.push({ id: item.id, nombre: real.nombre, precio: Number(real.precio) || 0, imagen: real.img || item.imagen, cantidad });
+    });
+
+    if (avisos.length) {
+      guardarCarrito(ajustado);
+      alert(avisos.join('\n'));
+    }
+    return ajustado;
+  }
+
+  // 4. Lógica de Cálculos
   function calcularDescuento(carrito, subtotal, cupon) {
     if (!cupon) return { descuento: 0, descripcion: "" };
 
@@ -118,13 +168,12 @@
 
       case "tercera_prenda":
         if (cantidadTotal >= 3) {
-          // Obtenemos todos los precios individuales para encontrar el de la tercera prenda
           const precios = [];
           carrito.forEach(item => {
             for (let i = 0; i < item.cantidad; i++) precios.push(Number(item.precio));
           });
-          precios.sort((a, b) => b - a); // Opcional: ordenar de mayor a menor
-          const terceraPrendaPrecio = precios[2]; 
+          precios.sort((a, b) => b - a);
+          const terceraPrendaPrecio = precios[2];
           descuento = terceraPrendaPrecio * (Number(cupon.valor) / 100);
           descripcion = `${cupon.codigo} aplicado (${cupon.valor}% en la 3ra prenda)`;
         } else {
@@ -139,7 +188,7 @@
     return { descuento, descripcion };
   }
 
-  // 4. Funciones de Interfaz (Render)
+  // 5. Funciones de Interfaz (Render)
   function aplicarCuponDesdeCarrito() {
     const input = document.getElementById("coupon-code");
     const codigo = input.value.trim().toUpperCase();
@@ -191,12 +240,12 @@
         <td>${item.nombre}</td>
         <td>${formatearMoneda(item.precio)}</td>
         <td>
-          <button class="qty-btn" onclick="cambiarCantidad(${index}, -1)">−</button>
+          <button class="qty-btn" data-accion="menos" data-index="${index}">−</button>
           <input type="number" value="${item.cantidad}" readonly style="width:40px; text-align:center; border:none;">
-          <button class="qty-btn" onclick="cambiarCantidad(${index}, 1)">+</button>
+          <button class="qty-btn" data-accion="mas" data-index="${index}">+</button>
         </td>
         <td>${formatearMoneda(itemSubtotal)}</td>
-        <td><button class="remove-item" onclick="eliminarItem(${index})">×</button></td>
+        <td><button class="remove-item" data-accion="eliminar" data-index="${index}">×</button></td>
       `;
       tbody.appendChild(row);
     });
@@ -208,7 +257,6 @@
     document.getElementById("subtotal").textContent = formatearMoneda(subtotal);
     document.getElementById("total").textContent = formatearMoneda(total);
 
-    // Manejo visual de líneas de descuento
     const discLine = document.getElementById("discount-line");
     const coupLine = document.getElementById("coupon-line");
 
@@ -226,33 +274,64 @@
       coupLine.style.display = "none";
     }
 
-    // Actualizar el globo del carrito en el header
     if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
   }
 
-  // 5. Acciones del Usuario
+  // 6. Acciones del Usuario
   function cambiarCantidad(index, delta) {
-  let carrito = obtenerCarrito();
-  carrito[index].cantidad = Math.max(1, Number(carrito[index].cantidad) + delta);
-  guardarCarrito(carrito);
-  renderCart();
+    let carrito = obtenerCarrito();
+    carrito[index].cantidad = Math.max(1, Number(carrito[index].cantidad) + delta);
+    guardarCarrito(carrito);
+    renderCart();
+  }
 
-  // ESTO DISPARA EL CAMBIO EN EL LOGO AL INSTANTE:
-  window.dispatchEvent(new Event('actualizarCarrito')); 
+  function eliminarItem(index) {
+    let carrito = obtenerCarrito();
+    carrito.splice(index, 1);
+    guardarCarrito(carrito);
+    renderCart();
+  }
 
-}
+  document.getElementById("cart-items").addEventListener("click", (e) => {
+    const boton = e.target.closest("button[data-accion]");
+    if (!boton) return;
+    const index = Number(boton.dataset.index);
+    if (boton.dataset.accion === "menos") cambiarCantidad(index, -1);
+    else if (boton.dataset.accion === "mas") cambiarCantidad(index, 1);
+    else if (boton.dataset.accion === "eliminar") eliminarItem(index);
+  });
 
-function eliminarItem(index) {
-  let carrito = obtenerCarrito();
-  carrito.splice(index, 1);
-  guardarCarrito(carrito);
-  renderCart();
+  document.getElementById("btn-coupon").addEventListener("click", aplicarCuponDesdeCarrito);
 
-  // ESTO DISPARA EL CAMBIO EN EL LOGO AL INSTANTE:
-  window.dispatchEvent(new Event('actualizarCarrito'));
-}
+  document.getElementById("btn-actualizar").addEventListener("click", async () => {
+    await sincronizarConStockReal();
+    renderCart();
+  });
 
-  window.onload = renderCart;
+  document.getElementById("btn-checkout").addEventListener("click", async () => {
+    const carrito = obtenerCarrito();
+    if (carrito.length === 0) return;
+    const boton = document.getElementById("btn-checkout");
+    boton.disabled = true;
+    const textoOriginal = boton.textContent;
+    boton.textContent = "Verificando…";
+    try {
+      const usuario = await obtenerUsuarioActual();
+      if (!usuario) {
+        window.location.href = 'login.html?next=' + encodeURIComponent('Checkout.html');
+        return;
+      }
+      window.location.href = 'Checkout.html';
+    } finally {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
+  });
+
+  (async function iniciar() {
+    await sincronizarConStockReal();
+    renderCart();
+  })();
 </script>
 </body>
 </html>

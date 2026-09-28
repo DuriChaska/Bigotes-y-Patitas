@@ -29,7 +29,7 @@
       <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
 
       <!-- Resumen rápido -->
-      <div class="admin-stats" style="grid-template-columns:repeat(4,1fr); margin:18px 0;">
+      <div class="admin-stats" id="statsInventario" style="grid-template-columns:repeat(4,1fr); margin:18px 0;">
         <div class="admin-stat-card">
           <div class="admin-stat-top"><div class="admin-stat-icon green"><span data-bp-icon="package"></span></div></div>
           <span class="stat-num" id="statTotal">0</span>
@@ -53,7 +53,7 @@
       </div>
 
       <!-- Filtros -->
-      <div class="admin-panel" style="margin-bottom:18px;">
+      <div class="admin-panel" id="panelFiltrosInv" style="margin-bottom:18px;">
         <div class="admin-filters-row">
           <div class="admin-search" style="flex:1; min-width:220px;">
             <span data-bp-icon="search"></span>
@@ -109,60 +109,78 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    // TODO (conexión a Firebase): cuando el catálogo real de admin-scm-productos.html
-    // tenga datos, reemplazar este arreglo local por un listener en tiempo real,
-    // igual que hace esa pantalla con escucharProductosScm() en firebase-db.js.
-    // Por ahora se deja como datos de ejemplo para poder construir y probar el
-    // flujo completo de Inventario / Movimientos / Logística sin depender de la base.
-    let productos = [
-      { id: 1, nombre: "Croquetas para perro adulto 15kg", categoria: "Alimento",   stock: 40, stockMin: 10, estrategia: "PUSH" },
-      { id: 2, nombre: "Croquetas para gato interior 3kg",  categoria: "Alimento",   stock: 8,  stockMin: 10, estrategia: "PULL" },
-      { id: 3, nombre: "Arena sanitaria aglomerante 10kg",  categoria: "Accesorios", stock: 25, stockMin: 8,  estrategia: "PUSH" },
-      { id: 4, nombre: "Correa retráctil 5m",               categoria: "Accesorios", stock: 15, stockMin: 5,  estrategia: "PULL" },
-      { id: 5, nombre: "Pelota mordedora de goma",          categoria: "Juguetes",   stock: 6,  stockMin: 10, estrategia: "PULL" },
-      { id: 6, nombre: "Cama acolchada para perro mediano", categoria: "Accesorios", stock: 12, stockMin: 4,  estrategia: "PUSH" },
-      { id: 7, nombre: "Snacks dentales para perro",        categoria: "Alimento",   stock: 30, stockMin: 12, estrategia: "PUSH" },
-      { id: 8, nombre: "Ratón de peluche con cascabel",     categoria: "Juguetes",   stock: 20, stockMin: 6,  estrategia: "PULL" },
-    ];
+  <script type="module">
+    import { escucharProductosScm } from './firebase-db.js';
+    import { pintarBannerStockBajo } from './admin-stock-alertas.js';
+
+    const $ = (id) => document.getElementById(id);
+    let productos = [];
+    let cargado = false;
+    let errorCarga = null;
 
     const claseEstrategia = { "PUSH": "info", "PULL": "warn" };
-    function estadoStock(p) { return p.stock <= p.stockMin ? "Stock bajo" : "Normal"; }
-    function claseEstado(p) { return p.stock <= p.stockMin ? "warn" : "ok"; }
+    function estadoStock(p) { return Number(p.stock) <= Number(p.stockMin) ? "Stock bajo" : "Normal"; }
+    function claseEstado(p) { return Number(p.stock) <= Number(p.stockMin) ? "warn" : "ok"; }
+
+    function esc(v) { return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
     function pintarInventario() {
-      const cuerpo = document.getElementById('cuerpoInventario');
+      const cuerpo = $('cuerpoInventario');
+
+      pintarBannerStockBajo(productos, 'statsInventario');
+
+      if (errorCarga) {
+        cuerpo.innerHTML = '';
+        $('sinResultadosInv').classList.remove('hidden');
+        $('sinResultadosInv').innerHTML = `<span class="icon" data-bp-icon="warning"></span><br>
+          <span class="scm-error">No se pudo cargar el inventario.</span><br><small>${esc(errorCarga)}</small>`;
+        pintarIconosBP();
+        return;
+      }
+
+      if (!cargado) {
+        cuerpo.innerHTML = `<tr><td colspan="7">Cargando inventario…</td></tr>`;
+        return;
+      }
+
+      // Llena las opciones de categoría dinámicamente según lo que haya en el catálogo
+      const categorias = [...new Set(productos.map(p => p.categoria).filter(Boolean))].sort();
+      const catActual = $('filtroCategoria').value;
+      $('filtroCategoria').innerHTML = '<option value="">Todas las categorías</option>' +
+        categorias.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      $('filtroCategoria').value = categorias.includes(catActual) ? catActual : '';
+
       cuerpo.innerHTML = productos.map(p => `
-        <tr data-id="${p.id}" data-nombre="${p.nombre}" data-categoria="${p.categoria}" data-estado="${estadoStock(p)}">
-          <td>${p.nombre}</td>
-          <td>${p.categoria}</td>
-          <td>${p.stock}</td>
-          <td>${p.stockMin}</td>
+        <tr data-id="${esc(p.id)}" data-nombre="${esc(p.nombre)}" data-categoria="${esc(p.categoria)}" data-estado="${estadoStock(p)}">
+          <td>${esc(p.nombre)}</td>
+          <td>${esc(p.categoria)}</td>
+          <td>${Number(p.stock) || 0}</td>
+          <td>${Number(p.stockMin) || 0}</td>
           <td><span class="admin-tag ${claseEstado(p)}">${estadoStock(p)}</span></td>
-          <td><span class="admin-tag ${claseEstrategia[p.estrategia]}">${p.estrategia}</span></td>
+          <td><span class="admin-tag ${claseEstrategia[p.estrategia] || 'muted'}">${esc(p.estrategia)}</span></td>
           <td class="admin-table-actions">
-            <button title="Ver movimientos" onclick="verMovimientos('${p.nombre}')">${bpIcon('eye')}</button>
+            <button title="Ver movimientos" onclick="verMovimientos('${esc(p.nombre)}')">${bpIcon('eye')}</button>
           </td>
         </tr>
       `).join('');
 
-      document.getElementById('statTotal').textContent = productos.length;
-      document.getElementById('statBajo').textContent = productos.filter(p => p.stock <= p.stockMin).length;
-      document.getElementById('statPush').textContent = productos.filter(p => p.estrategia === "PUSH").length;
-      document.getElementById('statPull').textContent = productos.filter(p => p.estrategia === "PULL").length;
+      $('statTotal').textContent = productos.length;
+      $('statBajo').textContent = productos.filter(p => Number(p.stock) <= Number(p.stockMin)).length;
+      $('statPush').textContent = productos.filter(p => p.estrategia === "PUSH").length;
+      $('statPull').textContent = productos.filter(p => p.estrategia === "PULL").length;
 
       filtrarInventario();
     }
 
-    function verMovimientos(nombre) {
+    window.verMovimientos = function (nombre) {
       window.location.href = 'admin-scm-movimientos.html?producto=' + encodeURIComponent(nombre);
-    }
+    };
 
-    function filtrarInventario() {
-      const texto = document.getElementById('buscarProducto').value.trim().toLowerCase();
-      const categoria = document.getElementById('filtroCategoria').value;
-      const estado = document.getElementById('filtroEstado').value;
-      const filas = document.querySelectorAll('#tablaInventario tbody tr');
+    window.filtrarInventario = function () {
+      const texto = $('buscarProducto').value.trim().toLowerCase();
+      const categoria = $('filtroCategoria').value;
+      const estado = $('filtroEstado').value;
+      const filas = document.querySelectorAll('#tablaInventario tbody tr[data-id]');
       let visibles = 0;
 
       filas.forEach(fila => {
@@ -174,11 +192,30 @@
         if (mostrar) visibles++;
       });
 
-      document.getElementById('contadorInventario').textContent = `${visibles} producto${visibles === 1 ? '' : 's'}`;
-      document.getElementById('sinResultadosInv').classList.toggle('hidden', visibles !== 0);
+      $('contadorInventario').textContent = `${visibles} producto${visibles === 1 ? '' : 's'}`;
+      $('sinResultadosInv').classList.toggle('hidden', visibles !== 0 || !cargado);
+    };
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      iniciado = true;
+      pintarInventario();
+      escucharProductosScm(
+        (lista) => { productos = lista; cargado = true; errorCarga = null; pintarInventario(); },
+        (err) => {
+          console.error(err);
+          cargado = true;
+          errorCarga = err && err.code === 'permission-denied'
+            ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'
+            : 'Revisa tu conexión con Firebase.';
+          pintarInventario();
+        }
+      );
     }
 
-    pintarInventario();
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
   </script>
 </body>
 </html>
