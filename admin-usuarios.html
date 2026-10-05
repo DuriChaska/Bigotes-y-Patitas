@@ -16,7 +16,7 @@
       <div class="admin-topbar">
         <div>
           <h1>Usuarios</h1>
-          <p class="admin-breadcrumb">Panel de administración · Administradores y vendedores con acceso al panel</p>
+          <p class="admin-breadcrumb">Panel de administración · Administradores, vendedores y logística con acceso al panel</p>
         </div>
         <div class="admin-topbar-right">
           <button class="admin-quick-btn primary" onclick="abrirModalUsuario()">
@@ -27,8 +27,9 @@
 
       <div class="admin-panel" style="margin-bottom:18px;">
         <p style="color:var(--gray); font-size:.85rem; margin:0;">
-          <strong>Administrador:</strong> acceso completo, incluida esta pantalla para dar de alta a otros administradores o vendedores.
-          <strong>Vendedor:</strong> el mismo acceso a clientes, interacciones, reportes y mi actividad, pero sin poder entrar aquí.
+          <strong>Administrador:</strong> acceso completo (CRM, SCM y esta pantalla para dar de alta a otras personas).
+          <strong>Vendedor:</strong> solo CRM (clientes, interacciones, reportes y mi actividad).
+          <strong>Logística:</strong> solo SCM (productos, proveedores, inventario, pedidos, logística, reportes SCM y nivel de madurez).
         </p>
       </div>
 
@@ -81,8 +82,9 @@
         <div class="admin-form-group">
           <label for="u-rol">Rol</label>
           <select id="u-rol" class="admin-select" style="width:100%;">
-            <option value="vendedor">Vendedor</option>
-            <option value="administrador">Administrador</option>
+            <option value="vendedor">Vendedor (solo CRM)</option>
+            <option value="logistica">Logística (solo SCM)</option>
+            <option value="administrador">Administrador (todo)</option>
           </select>
         </div>
 
@@ -118,6 +120,7 @@
             <td>
               <select class="admin-select" style="min-width:150px;" onchange="cambiarRol('${u.uid}', this.value)" ${u.uid === window.BP_SESION?.uid ? 'disabled title="No puedes cambiar tu propio rol aquí"' : ''}>
                 <option value="vendedor" ${u.rol === 'vendedor' ? 'selected' : ''}>Vendedor</option>
+                <option value="logistica" ${u.rol === 'logistica' ? 'selected' : ''}>Logística</option>
                 <option value="administrador" ${u.rol === 'administrador' ? 'selected' : ''}>Administrador</option>
               </select>
             </td>
@@ -165,7 +168,7 @@
       boton.textContent = 'Creando...';
       try {
         await crearUsuarioConRol({ nombre, correo, contrasena, rol });
-        mostrarToast(`Usuario ${nombre} creado como ${rol}`);
+        mostrarToast(`Usuario ${nombre} creado como ${{ administrador: 'administrador', vendedor: 'vendedor', logistica: 'logística' }[rol] || rol}`);
         cerrarModalUsuario();
       } catch (err) {
         const mensajes = {

@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
-<body data-solo-admin>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -87,6 +87,7 @@
                 <th>Categoría</th>
                 <th>Stock actual</th>
                 <th>Stock mínimo</th>
+                <th>En pedido</th>
                 <th>Estado</th>
                 <th>Estrategia</th>
                 <th style="text-align:right;">Acciones</th>
@@ -110,17 +111,29 @@
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
   <script type="module">
-    import { escucharProductosScm } from './firebase-db.js';
+    import { escucharProductosScm, escucharPedidosScm, generarReposicionesAutomaticas } from './firebase-db.js';
     import { pintarBannerStockBajo } from './admin-stock-alertas.js';
 
     const $ = (id) => document.getElementById(id);
     let productos = [];
+    let pedidos = [];
     let cargado = false;
     let errorCarga = null;
 
     const claseEstrategia = { "PUSH": "info", "PULL": "warn" };
     function estadoStock(p) { return Number(p.stock) <= Number(p.stockMin) ? "Stock bajo" : "Normal"; }
     function claseEstado(p) { return Number(p.stock) <= Number(p.stockMin) ? "warn" : "ok"; }
+
+    // Pedidos de reposición (tipo "Reposición") que siguen abiertos
+    // (Pendiente o En proceso) para un producto -- así Inventario refleja
+    // que ya se generó/está en camino un pedido, sin tener que ir a Pedidos.
+    function pedidosAbiertosDe(productoId) {
+      return pedidos.filter(p =>
+        p.productoId === productoId &&
+        p.tipo === 'Reposición' &&
+        (p.estado === 'Pendiente' || p.estado === 'En proceso')
+      );
+    }
 
     function esc(v) { return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
@@ -139,7 +152,7 @@
       }
 
       if (!cargado) {
-        cuerpo.innerHTML = `<tr><td colspan="7">Cargando inventario…</td></tr>`;
+        cuerpo.innerHTML = `<tr><td colspan="8">Cargando inventario…</td></tr>`;
         return;
       }
 
@@ -150,19 +163,28 @@
         categorias.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
       $('filtroCategoria').value = categorias.includes(catActual) ? catActual : '';
 
-      cuerpo.innerHTML = productos.map(p => `
+      cuerpo.innerHTML = productos.map(p => {
+        const abiertos = pedidosAbiertosDe(p.id);
+        const enCamino = abiertos.reduce((suma, x) => suma + (Number(x.cantidad) || 0), 0);
+        const folios = abiertos.map(x => `${x.folio || ''} (${x.estado})`).join(', ');
+        const celdaPedido = enCamino > 0
+          ? `<span class="admin-tag info" title="${esc(folios)}">📦 +${enCamino} en camino</span>`
+          : '<span style="color:var(--gray);">—</span>';
+        return `
         <tr data-id="${esc(p.id)}" data-nombre="${esc(p.nombre)}" data-categoria="${esc(p.categoria)}" data-estado="${estadoStock(p)}">
           <td>${esc(p.nombre)}</td>
           <td>${esc(p.categoria)}</td>
           <td>${Number(p.stock) || 0}</td>
           <td>${Number(p.stockMin) || 0}</td>
+          <td>${celdaPedido}</td>
           <td><span class="admin-tag ${claseEstado(p)}">${estadoStock(p)}</span></td>
           <td><span class="admin-tag ${claseEstrategia[p.estrategia] || 'muted'}">${esc(p.estrategia)}</span></td>
           <td class="admin-table-actions">
             <button title="Ver movimientos" onclick="verMovimientos('${esc(p.nombre)}')">${bpIcon('eye')}</button>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
       $('statTotal').textContent = productos.length;
       $('statBajo').textContent = productos.filter(p => Number(p.stock) <= Number(p.stockMin)).length;
@@ -196,13 +218,38 @@
       $('sinResultadosInv').classList.toggle('hidden', visibles !== 0 || !cargado);
     };
 
+    // Reposición automática PUSH: si algún producto PUSH está en su stock mínimo,
+    // se repone solo (pedido + entrada de stock) y aquí se ve subir en vivo.
+    let pedidosCargados = false;
+    let revisandoReposicion = false;
+    async function revisarReposicionAutomatica() {
+      if (revisandoReposicion || !cargado || !pedidosCargados || !productos.length) return;
+      revisandoReposicion = true;
+      try {
+        const generados = await generarReposicionesAutomaticas(productos, pedidos);
+        if (generados > 0) {
+          mostrarToast(`Reposición automática PUSH: ${generados} producto${generados === 1 ? '' : 's'} rellenado${generados === 1 ? '' : 's'}`);
+        }
+      } catch (err) {
+        console.error('No se pudo generar la reposición automática:', err);
+      } finally {
+        revisandoReposicion = false;
+      }
+    }
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2800);
+    }
+
     let iniciado = false;
     function iniciar(sesion) {
-      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
       iniciado = true;
       pintarInventario();
       escucharProductosScm(
-        (lista) => { productos = lista; cargado = true; errorCarga = null; pintarInventario(); },
+        (lista) => { productos = lista; cargado = true; errorCarga = null; pintarInventario(); revisarReposicionAutomatica(); },
         (err) => {
           console.error(err);
           cargado = true;
@@ -211,6 +258,10 @@
             : 'Revisa tu conexión con Firebase.';
           pintarInventario();
         }
+      );
+      escucharPedidosScm(
+        (lista) => { pedidos = lista; pedidosCargados = true; pintarInventario(); revisarReposicionAutomatica(); },
+        (err) => console.error(err)
       );
     }
 

@@ -9,7 +9,10 @@
 //
 //  El menú tiene dos secciones plegables tipo acordeón
 //  (CRM y SCM); Usuarios y Configuración quedan fuera,
-//  como enlaces sueltos. El estado abierto/cerrado de
+//  como enlaces sueltos. Cada sección lleva la clase
+//  "sec-crm" / "sec-scm" / "sec-admin" y styles.css la
+//  oculta según el rol (vendedor: solo CRM; logística:
+//  solo SCM; administrador: todo). El estado abierto/cerrado de
 //  cada sección se recuerda en localStorage, y la sección
 //  de la página en la que estás siempre se muestra abierta.
 // ============================================
@@ -18,7 +21,7 @@ const adminPaginaActual = window.location.pathname.split('/').pop();
 
 const adminNavGroups = [
   {
-    key: 'crm', label: 'CRM', icon: 'home',
+    key: 'crm', label: 'CRM', icon: 'home', seccion: 'crm',
     items: [
       { href: 'admin.html',                     label: 'Dashboard',      icon: 'home' },
       { href: 'admin-clientes.html',             label: 'Clientes',       icon: 'users' },
@@ -28,7 +31,7 @@ const adminNavGroups = [
     ],
   },
   {
-    key: 'scm', label: 'SCM', icon: 'layers', soloAdmin: true,
+    key: 'scm', label: 'SCM', icon: 'layers', seccion: 'scm',
     items: [
       { href: 'admin-scm.html',             label: 'Resumen',          icon: 'layers' },
       { href: 'admin-scm-productos.html',   label: 'Productos',        icon: 'package' },
@@ -44,7 +47,7 @@ const adminNavGroups = [
 
 // Usuarios y Configuración quedan fuera de los acordeones, siempre visibles.
 const adminStandaloneLinks = [
-  { href: 'admin-usuarios.html',      label: 'Usuarios',      icon: 'shield', soloAdmin: true },
+  { href: 'admin-usuarios.html',      label: 'Usuarios',      icon: 'shield', seccion: 'admin' },
   { href: 'admin-configuracion.html', label: 'Configuración', icon: 'settings' },
 ];
 
@@ -70,7 +73,7 @@ function guardarMenuAbierto(estado) {
 
 function itemNavHTML(link) {
   return `
-    <li${link.soloAdmin ? ' class="solo-admin"' : ''}>
+    <li${link.seccion ? ` class="sec-${link.seccion}"` : ''}>
       <a href="${link.href}" class="${adminPaginaActiva === link.href ? 'active' : ''}">
         <span class="nav-icon">${bpIcon(link.icon)}</span>
         <span class="nav-label">${link.label}</span>
@@ -82,7 +85,7 @@ function itemNavHTML(link) {
 function grupoNavHTML(grupo, estadoGuardado) {
   const abierto = grupoTieneActiva(grupo) || estadoGuardado[grupo.key] === true;
   return `
-    <li class="admin-nav-group${grupo.soloAdmin ? ' solo-admin' : ''}${abierto ? ' open' : ''}" data-grupo="${grupo.key}">
+    <li class="admin-nav-group${grupo.seccion ? ' sec-' + grupo.seccion : ''}${abierto ? ' open' : ''}" data-grupo="${grupo.key}">
       <button type="button" class="admin-nav-group-btn" aria-expanded="${abierto}">
         <span class="nav-icon">${bpIcon(grupo.icon)}</span>
         <span class="nav-label">${grupo.label}</span>
