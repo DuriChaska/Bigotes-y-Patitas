@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
-<body data-solo-admin>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -499,7 +499,7 @@
     // ─────────────────────────────────────────────
     let iniciado = false;
     function iniciar(sesion) {
-      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
       iniciado = true;
       pintar();
       escucharProveedoresScm(

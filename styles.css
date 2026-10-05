@@ -1513,10 +1513,16 @@ html.admin-autenticado .admin-shell { visibility: visible; }
 /* ===========================
    Admin - Roles (administrador / vendedor)
 =========================== */
+/* Qué ve cada rol en el menú: vendedor = solo CRM, logística = solo SCM, administrador = todo */
+html.rol-vendedor .sec-scm,
+html.rol-vendedor .sec-admin { display: none !important; }
+html.rol-logistica .sec-crm,
+html.rol-logistica .sec-admin { display: none !important; }
 html.rol-vendedor .solo-admin { display: none !important; }
 
 .admin-tag.rol-administrador { background: #e6ddfa; color: #5b3fae; }
 .admin-tag.rol-vendedor { background: #dcecf8; color: #2b6690; }
+.admin-tag.rol-logistica { background: #dff3e8; color: #23704a; }
 
 /* ===========================
    Admin - SCM / Cadena de suministros

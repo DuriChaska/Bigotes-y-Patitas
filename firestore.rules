@@ -4,29 +4,44 @@ rules_version = '2';
 // Cópialas en Firebase Console → Firestore Database → Reglas,
 // o despliégalas con la CLI de Firebase (firebase deploy --only firestore:rules).
 //
-// Hay TRES tipos de cuenta de Firebase Authentication en este proyecto:
-//  - Administrador / vendedor: tienen perfil en "usuarios" (colección solo
-//    de personal). Es lo que antes era "cualquier usuario con sesión".
+// Hay dos familias de cuenta de Firebase Authentication en este proyecto:
+//  - Personal del panel: tiene perfil en "usuarios" con un rol:
+//      administrador -> todo (CRM + SCM + gestión de usuarios)
+//      vendedor      -> solo CRM (clientes e interacciones)
+//      logistica     -> solo SCM (productos, proveedores, inventario,
+//                       pedidos, movimientos y nivel de madurez)
 //  - Cliente: tiene perfil en "clientes/{uid}" (mismo id que su cuenta de
 //    Authentication). Se registra desde el sitio público.
-// Por eso ya NO se puede usar "request.auth != null" a secas para dar acceso
-// de personal: eso ahora también es verdad para un cliente cualquiera. Las
-// funciones esStaff()/esAdmin() (más abajo) son las que de verdad distinguen
-// personal de clientes.
+// Por eso NO se puede usar "request.auth != null" a secas para dar acceso
+// de personal: eso también es verdad para un cliente cualquiera. Las
+// funciones esAdmin()/esStaff()/esScm() (más abajo) son las que de verdad
+// distinguen quién puede qué.
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---- Helpers de rol (usados por TODA la colección, no solo SCM) ----
-    function esAdmin() {
+    // Rol guardado en el perfil de quien hace la petición ('' si no tiene perfil).
+    function rolActual() {
       return request.auth != null
         && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'administrador';
+        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol
+        : '';
     }
-    // Personal (administrador o vendedor): cualquiera con perfil en "usuarios".
+    function esAdmin() {
+      return rolActual() == 'administrador';
+    }
+    // CRM (clientes, interacciones, ventas): administrador y vendedor.
     function esStaff() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+      return rolActual() in ['administrador', 'vendedor'];
+    }
+    // SCM (cadena de suministros): administrador y logística.
+    function esScm() {
+      return rolActual() in ['administrador', 'logistica'];
+    }
+    // Cualquier persona del panel, sea cual sea su rol (solo para leer perfiles).
+    function esPersonal() {
+      return rolActual() in ['administrador', 'vendedor', 'logistica'];
     }
 
     // ---- Clientes: CRM (personal) + cuentas reales de clientes ----
@@ -57,14 +72,19 @@ service cloud.firestore {
       allow read, write: if esStaff();
     }
 
-    // ---- Usuarios (perfiles de personal): solo el personal puede leerlos,
-    // solo un administrador puede crear/editar/borrar perfiles de otros ----
+    // ---- Usuarios (perfiles de personal): cualquier persona del panel puede
+    // leerlos (el panel necesita leer su propio rol al entrar); solo un
+    // administrador puede crear/editar/borrar perfiles, y solo con un rol válido ----
+    function rolValido(d) {
+      return d.rol in ['administrador', 'vendedor', 'logistica'];
+    }
     match /usuarios/{uid} {
-      allow read: if esStaff();
-      allow create, update, delete: if esAdmin();
+      allow read: if esPersonal();
+      allow create, update: if esAdmin() && rolValido(request.resource.data);
+      allow delete: if esAdmin();
     }
 
-    // ---- SCM (cadena de suministros): gestión SOLO administradores.
+    // ---- SCM (cadena de suministros): gestión de administradores y logística.
     // La única excepción es la LECTURA del catálogo (scm_productos), que es
     // pública porque alimenta las páginas de la tienda, y la actualización de
     // stock/el registro del movimiento que hace una compra real de un cliente
@@ -90,9 +110,9 @@ service cloud.firestore {
 
     match /scm_productos/{productoId} {
       allow read: if true; // catálogo público: lo usan index/shop/producto sin necesidad de sesión
-      allow delete: if esAdmin();
-      allow create: if esAdmin() && productoScmValido(request.resource.data);
-      allow update: if (esAdmin() && productoScmValido(request.resource.data)) || esDescuentoDeStockPorVenta();
+      allow delete: if esScm();
+      allow create: if esScm() && productoScmValido(request.resource.data);
+      allow update: if (esScm() && productoScmValido(request.resource.data)) || esDescuentoDeStockPorVenta();
     }
 
     function proveedorScmValido(d) {
@@ -104,8 +124,8 @@ service cloud.firestore {
     }
 
     match /scm_proveedores/{proveedorId} {
-      allow read, delete: if esAdmin();
-      allow create, update: if esAdmin() && proveedorScmValido(request.resource.data);
+      allow read, delete: if esScm();
+      allow create, update: if esScm() && proveedorScmValido(request.resource.data);
     }
 
     function pedidoScmValido(d) {
@@ -118,8 +138,8 @@ service cloud.firestore {
     }
 
     match /scm_pedidos/{pedidoId} {
-      allow read, delete: if esAdmin();
-      allow create, update: if esAdmin() && pedidoScmValido(request.resource.data);
+      allow read, delete: if esScm();
+      allow create, update: if esScm() && pedidoScmValido(request.resource.data);
     }
 
     function movimientoScmValido(d) {
@@ -130,10 +150,10 @@ service cloud.firestore {
     }
 
     match /scm_movimientos/{movimientoId} {
-      allow read: if esAdmin();
-      // El personal registra entradas y salidas manuales; una compra real de un
+      allow read: if esScm();
+      // El personal de SCM registra entradas y salidas manuales; una compra real de un
       // cliente registra su propia salida (siempre autenticado, siempre "Salida").
-      allow create: if (esAdmin() && movimientoScmValido(request.resource.data))
+      allow create: if (esScm() && movimientoScmValido(request.resource.data))
                     || (request.auth != null && movimientoScmValido(request.resource.data)
                         && request.resource.data.tipo == 'Salida');
       // Los movimientos son un historial: no se editan ni se borran, solo se agregan.
@@ -141,8 +161,8 @@ service cloud.firestore {
 
     // Checklist manual del nivel de madurez SCM (un solo documento: "madurez").
     match /scm_estado/{estadoId} {
-      allow read: if esAdmin();
-      allow write: if esAdmin() && request.resource.data.items is map;
+      allow read: if esScm();
+      allow write: if esScm() && request.resource.data.items is map;
     }
 
     // ---- Ventas: compras reales hechas por clientes desde la tienda ----

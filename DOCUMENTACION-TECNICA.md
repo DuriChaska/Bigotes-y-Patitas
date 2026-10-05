@@ -117,8 +117,12 @@ tres cosas, en este orden:
    ahorita?" Si no, manda a `admin-login.html`.
 2. Si sí hay sesión, busca en Firestore el documento de esa persona en la
    colección `usuarios` (ahí vive su nombre y su rol).
-3. Si la página tiene marcado `data-solo-admin` (solo `admin-usuarios.html`
-   la tiene) y el rol no es `administrador`, la regresa al dashboard.
+3. Cada página declara su sección en el `<body>`: `data-seccion="crm"`
+   (clientes, interacciones, reportes CRM), `data-seccion="scm"` (todo lo de
+   cadena de suministros), `data-solo-admin` (solo `admin-usuarios.html`) o
+   nada (Configuración). El guard compara esa sección con lo que permite el
+   rol (`administrador`: todo; `vendedor`: solo CRM; `logistica`: solo SCM) y,
+   si no le toca, la regresa a su página de inicio (Dashboard o SCM).
 
 Mientras esto se confirma, el panel completo está oculto con CSS
 (`visibility: hidden`) para que nadie vea ni un parpadeo de contenido antes
@@ -137,7 +141,7 @@ los datos de una sola cosa (un cliente, una interacción, un usuario).
 usuarios/{uid}
   nombre: string
   correo: string
-  rol: "administrador" | "vendedor"
+  rol: "administrador" | "vendedor" | "logistica"
 
 clientes/{idAutogenerado}
   nombre: string
@@ -203,8 +207,10 @@ guardar el ID correcto y de filtrar por él cuando hace falta (por ejemplo,
 4. El guard busca `usuarios/{uid}` en Firestore para saber su nombre y su
    rol.
 5. Si el rol es `administrador`, ve absolutamente todo, incluyendo
-   Usuarios. Si es `vendedor`, ve todo excepto Usuarios (esa opción
-   desaparece del menú y la URL directa lo rebota al dashboard).
+   Usuarios. Si es `vendedor`, solo ve el CRM (clientes, interacciones,
+   reportes, mi actividad). Si es `logistica`, solo ve el SCM (inventario,
+   pedidos, productos, proveedores, etc.). Lo que no le toca desaparece del
+   menú y la URL directa lo rebota a su página de inicio.
 
 ### Crear un usuario nuevo sin perder tu propia sesión
 
@@ -246,11 +252,13 @@ match /usuarios/{uid} {
 
 En palabras simples:
 - **Clientes:** cualquiera (incluso sin sesión) puede *crear* un cliente nuevo — eso es lo que usa el formulario público de registro del sitio (`Interfaz Usuario - Registro .html`) para darse de alta como prospecto. Pero **leer, editar o borrar** clientes sigue exigiendo sesión iniciada, o sea, solo desde el panel admin.
-- **Interacciones:** cualquiera con sesión iniciada (admin o vendedor) puede leer y escribir. Sin sesión, cero acceso.
-- **Usuarios:** cualquiera con sesión puede *leer* (necesario para que el
+- **Interacciones:** administrador y vendedor pueden leer y escribir (la logística no). Sin sesión, cero acceso.
+- **SCM (productos, proveedores, pedidos, movimientos, madurez):** administrador y logística pueden leer y escribir; el vendedor no. La lectura del catálogo de productos sigue siendo pública (la usa la tienda).
+- **Usuarios:** cualquier persona del panel puede *leer* (necesario para que el
   guard sepa tu propio rol al entrar), pero solo alguien cuyo *propio*
   documento diga `rol: "administrador"` puede crear, editar o borrar
-  perfiles de otras personas.
+  perfiles de otras personas, y el rol solo puede ser `administrador`,
+  `vendedor` o `logistica`.
 - Cualquier otra colección que no esté listada queda bloqueada por
   completo (`allow read, write: if false`), por si en el futuro se crea
   una por error.
@@ -344,6 +352,21 @@ Firestore" — para no duplicarlo aquí. Un resumen de lo más importante:
 - **El perfil del cliente (`Interfaz Cliente - Perfil.html`) muestra su
   historial de compras real**, leyendo `ventas` filtradas por su propio
   `clienteId` (no puede ver las compras de otros clientes).
+- **Reposición automática de productos PUSH** (`generarReposicionesAutomaticas`
+  en `firebase-db.js`): cuando un producto con estrategia PUSH llega a su
+  `stockMin`, el sistema genera solo el pedido de reposición, lo deja como
+  "Surtido", sube el stock hasta el doble del mínimo y registra el movimiento
+  de "Entrada" — todo en una transacción de Firestore, así que si dos
+  pestañas lo detectan a la vez solo una lo repone. Corre en el navegador
+  cada vez que alguien con acceso a SCM tiene abierto Resumen, Inventario o
+  Pedidos (no hay servidor: para que corra aunque nadie tenga el panel
+  abierto haría falta una Cloud Function programada). Si se prefiere que el
+  pedido automático quede "Pendiente" hasta que llegue la mercancía, se
+  cambia `PUSH_SURTIR_AUTOMATICO` a `false`.
+- **Pedidos surtidos y el inventario:** marcar un pedido como "Surtido" (o
+  registrarlo ya surtido) mueve el stock: Reposición suma y registra una
+  "Entrada"; Venta resta y registra una "Salida". Inventario muestra además
+  cuánto viene en camino (pedidos de reposición Pendientes o En proceso).
 - **El nivel de madurez del SCM** (`admin-scm-madurez.html`) es un checklist
   manual, no un cálculo automático: alguien del panel marca a mano qué
   puntos ya se cumplen, y de ahí sale la barra de avance y si el proyecto se

@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
-<body data-solo-admin>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -117,7 +117,7 @@
             <label for="f-fecha">Fecha</label>
             <input type="date" id="f-fecha" required />
           </div>
-          <div class="admin-form-group" id="grupoEstado" style="display:none;">
+          <div class="admin-form-group" id="grupoEstado">
             <label for="f-estado">Estado</label>
             <select id="f-estado">
               <option value="Pendiente">Pendiente</option>
@@ -149,8 +149,8 @@
   <script src="admin-components.js"></script>
   <script type="module">
     import {
-      escucharPedidosScm, crearPedidoScm, actualizarPedidoScm, eliminarPedidoScm,
-      escucharProductosScm, escucharProveedoresScm,
+      escucharPedidosScm, crearPedidoScm, actualizarPedidoScm, eliminarPedidoScm, marcarPedidoSurtido,
+      escucharProductosScm, escucharProveedoresScm, generarReposicionesAutomaticas,
     } from './firebase-db.js';
     import { pintarBannerStockBajo } from './admin-stock-alertas.js';
 
@@ -266,7 +266,6 @@
       $('form').reset();
       $('pedidoId').value = pedido ? pedido.id : '';
       $('modalTitulo').textContent = pedido ? 'Editar pedido' : 'Nuevo pedido';
-      $('grupoEstado').style.display = pedido ? '' : 'none';
       $('f-fecha').value = pedido ? pedido.fecha : new Date().toISOString().slice(0, 10);
       $('f-cantidad').value = pedido ? pedido.cantidad : 1;
 
@@ -278,6 +277,12 @@
         $('f-estado').value = pedido.estado || 'Pendiente';
         $('f-notas').value = pedido.notas || '';
       }
+
+      // Un pedido ya surtido ya movió el inventario: producto, cantidad, tipo y
+      // estado se bloquean para que no quede un stock distinto a lo registrado
+      // (solo se pueden editar proveedor, fecha y notas).
+      const bloqueado = !!(pedido && pedido.estado === 'Surtido');
+      ['f-producto', 'f-cantidad', 'f-tipo', 'f-estado'].forEach(id => { $(id).disabled = bloqueado; });
 
       $('modal').classList.remove('hidden');
     }
@@ -313,17 +318,37 @@
         fecha: $('f-fecha').value,
         notas: $('f-notas').value.trim(),
       };
-      if (id) datos.estado = $('f-estado').value;
 
       const boton = $('btnGuardar');
       boton.disabled = true;
       try {
         if (id) {
-          await actualizarPedidoScm(id, datos);
-          mostrarToast('Pedido actualizado con éxito');
+          const anterior = pedidos.find(p => p.id === id);
+          const estadoNuevo = $('f-estado').value;
+          // Si se marca como Surtido (sea Reposición o Venta), se ajusta el
+          // stock del producto y se registra el movimiento correspondiente en
+          // la misma operación -- para que de verdad se refleje en
+          // Inventario, no solo cambie la etiqueta de estado.
+          if (estadoNuevo === 'Surtido' && anterior) {
+            datos.folio = anterior.folio;
+            const productoActual = productos.find(p => p.id === productoId);
+            await marcarPedidoSurtido(id, datos, anterior.estado, productoActual);
+            mostrarToast(datos.tipo === 'Venta'
+              ? 'Pedido surtido: se descontó el stock en Inventario'
+              : 'Pedido surtido: se sumó el stock en Inventario');
+          } else {
+            datos.estado = estadoNuevo;
+            await actualizarPedidoScm(id, datos);
+            mostrarToast('Pedido actualizado con éxito');
+          }
         } else {
-          await crearPedidoScm(datos);
-          mostrarToast('Pedido generado con éxito');
+          datos.estado = $('f-estado').value;
+          await crearPedidoScm(datos, prod);
+          mostrarToast(datos.estado === 'Surtido'
+            ? (datos.tipo === 'Venta'
+                ? 'Pedido registrado como surtido: se descontó el stock en Inventario'
+                : 'Pedido registrado como surtido: se sumó el stock en Inventario')
+            : 'Pedido generado con éxito');
         }
         cerrarModal();
       } catch (err) {
@@ -360,16 +385,44 @@
       setTimeout(() => $('toast').classList.remove('show'), 2800);
     }
 
+    // ---------- Reposición automática (estrategia PUSH) ----------
+    // Cada vez que se actualiza el catálogo o la lista de pedidos, revisa si
+    // algún producto PUSH ya llegó a su stock mínimo y le falta un pedido de
+    // reposición abierto; si es así, lo genera solo, sin esperar a que
+    // alguien le dé clic a "Generar pedido"; el pedido queda como Surtido y el
+    // stock se rellena solo (ver PUSH_SURTIR_AUTOMATICO en firebase-db.js).
+    // Con "revisando" se evita lanzar
+    // varias revisiones encimadas mientras la anterior todavía no termina.
+    let revisandoReposicion = false;
+    async function revisarReposicionAutomatica() {
+      if (revisandoReposicion || !cargado || !productos.length) return;
+      revisandoReposicion = true;
+      try {
+        const generados = await generarReposicionesAutomaticas(productos, pedidos);
+        if (generados > 0) {
+          mostrarToast(`Reposición automática PUSH: ${generados} producto${generados === 1 ? '' : 's'} rellenado${generados === 1 ? '' : 's'} (ya se ve en Inventario)`);
+        }
+      } catch (err) {
+        console.error('No se pudo generar la reposición automática:', err);
+      } finally {
+        revisandoReposicion = false;
+      }
+    }
+
     // ---------- Arranque ----------
     let iniciado = false;
     function iniciar(sesion) {
-      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
       iniciado = true;
       pintar();
-      escucharProductosScm((lista) => { productos = lista; pintarBannerStockBajo(productos, 'panelFiltrosPedidos'); }, (err) => console.error(err));
+      escucharProductosScm((lista) => {
+        productos = lista;
+        pintarBannerStockBajo(productos, 'panelFiltrosPedidos');
+        revisarReposicionAutomatica();
+      }, (err) => console.error(err));
       escucharProveedoresScm((lista) => { proveedores = lista; }, (err) => console.error(err));
       escucharPedidosScm(
-        (lista) => { pedidos = lista; cargado = true; errorCarga = null; pintar(); },
+        (lista) => { pedidos = lista; cargado = true; errorCarga = null; pintar(); revisarReposicionAutomatica(); },
         (err) => {
           console.error(err);
           cargado = true;

@@ -13,7 +13,7 @@
 //                          los que el CRM agrega a mano tienen un id al azar.
 //    interacciones/{id} { clienteId, clienteNombre, tipo,
 //                          descripcion, fecha, usuario, creadoEn }
-//    usuarios/{uid}     { nombre, correo, rol: "administrador"|"vendedor" }
+//    usuarios/{uid}     { nombre, correo, rol: "administrador"|"vendedor"|"logistica" }
 //    ventas/{id}        { clienteId (uid), clienteNombre, clienteCorreo,
 //                          items: [{ productoId, nombre, precio, cantidad }],
 //                          subtotal, descuento, cupon, total, folio,
@@ -28,7 +28,7 @@
 //    scm_movimientos/{id} { productoId, producto, tipo: "Entrada"|"Salida", cantidad,
 //                          motivo, fecha, usuario }
 //    scm_estado/madurez  { items: { <idDelPunto>: true|false }, actualizadoEn }
-//                          (todas las colecciones SCM: SOLO administradores, ver firestore.rules)
+//                          (todas las colecciones SCM: administradores y logística, ver firestore.rules)
 // ============================================
 
 import { auth, db, firebaseConfig } from "./firebase-config.js";
@@ -48,7 +48,7 @@ import {
 import {
   collection, doc,
   addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  onSnapshot, query, where, orderBy, serverTimestamp, writeBatch,
+  onSnapshot, query, where, orderBy, serverTimestamp, writeBatch, runTransaction,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const clientesRef = collection(db, "clientes");
@@ -78,7 +78,7 @@ export async function obtenerPerfilUsuario(uid) {
   return snap.exists() ? { uid, ...snap.data() } : null;
 }
 
-/** Escucha en tiempo real la lista de usuarios (administradores y vendedores). */
+/** Escucha en tiempo real la lista de usuarios (administradores, vendedores y logística). */
 export function escucharUsuarios(callback) {
   const q = query(usuariosRef, orderBy("nombre"));
   return onSnapshot(q, (snap) => {
@@ -413,13 +413,49 @@ export function escucharPedidosScm(callback, onError) {
  * cuántos pedidos existen ya (suficiente para el volumen de este panel; en un
  * sistema con altísima concurrencia se usaría un contador transaccional aparte).
  */
-export async function crearPedidoScm(datos) {
+export async function crearPedidoScm(datos, productoActual) {
   const totalSnap = await getDocs(scmPedidosRef);
   const folio = "PC-" + String(totalSnap.size + 1).padStart(3, "0");
-  return addDoc(scmPedidosRef, {
-    ...datos,
-    folio,
-    estado: datos.estado || "Pendiente",
+  const estado = datos.estado || "Pendiente";
+
+  // Un pedido que se registra YA como "Surtido" también mueve el inventario
+  // (necesita el producto para saber su stock actual).
+  if (estado === "Surtido" && !productoActual) {
+    throw new Error("Falta el producto para poder ajustar su stock.");
+  }
+
+  const pedidoRef = doc(scmPedidosRef);
+  const lote = writeBatch(db);
+  lote.set(pedidoRef, { ...datos, folio, estado, creadoEn: serverTimestamp() });
+  if (estado === "Surtido") {
+    ajustarStockPorPedidoSurtido(lote, datos, folio, productoActual.stock, "Sistema (pedido surtido)");
+  }
+  await lote.commit();
+  return pedidoRef;
+}
+
+/**
+ * Agrega a un writeBatch el ajuste de inventario de un pedido surtido:
+ *  - Reposición: llegó mercancía -> SUMA stock y registra una "Entrada".
+ *  - Venta: se entregó al cliente -> RESTA stock (sin bajar de 0) y registra una "Salida".
+ */
+function ajustarStockPorPedidoSurtido(lote, pedido, folio, stockActual, usuario) {
+  const esVenta = pedido.tipo === "Venta";
+  const cantidad = Number(pedido.cantidad) || 0;
+  const base = Number(stockActual) || 0;
+
+  lote.update(doc(db, "scm_productos", pedido.productoId), {
+    stock: esVenta ? Math.max(0, base - cantidad) : base + cantidad,
+    actualizadoEn: serverTimestamp(),
+  });
+  lote.set(doc(collection(db, "scm_movimientos")), {
+    productoId: pedido.productoId,
+    producto: pedido.producto,
+    tipo: esVenta ? "Salida" : "Entrada",
+    cantidad,
+    motivo: esVenta ? `Pedido de venta surtido (${folio})` : `Pedido de reposición surtido (${folio})`,
+    fecha: new Date().toISOString().slice(0, 10),
+    usuario,
     creadoEn: serverTimestamp(),
   });
 }
@@ -434,6 +470,122 @@ export function actualizarEstadoPedidoScm(id, estado) {
 
 export function eliminarPedidoScm(id) {
   return deleteDoc(doc(db, "scm_pedidos", id));
+}
+
+/**
+ * Marca un pedido (de Reposición o de Venta) como "Surtido" y, en la MISMA
+ * operación atómica, ajusta el stock del producto y registra el movimiento
+ * correspondiente (ver ajustarStockPorPedidoSurtido).
+ * Si el pedido YA estaba surtido (se vuelve a guardar el formulario sin
+ * cambiar el estado), no se vuelve a mover el stock ni se duplica el
+ * movimiento -- solo se guardan los demás campos que se hayan editado.
+ */
+export async function marcarPedidoSurtido(id, datosPedido, estadoAnterior, productoActual) {
+  const lote = writeBatch(db);
+  lote.update(doc(db, "scm_pedidos", id), { ...datosPedido, estado: "Surtido", actualizadoEn: serverTimestamp() });
+
+  if (estadoAnterior !== "Surtido") {
+    ajustarStockPorPedidoSurtido(lote, datosPedido, datosPedido.folio || id, productoActual?.stock, "Sistema (pedido surtido)");
+  }
+
+  await lote.commit();
+}
+
+/**
+ * Si es true, la reposición automática de un producto PUSH se SURTE sola:
+ * el pedido queda registrado como "Surtido" y el stock sube en ese mismo
+ * momento (se rellena solo). Si lo cambias a false, el pedido automático se
+ * crea como "Pendiente" y alguien debe marcarlo "Surtido" a mano cuando llegue.
+ */
+const PUSH_SURTIR_AUTOMATICO = true;
+
+/**
+ * Estrategia PUSH: revisa el catálogo y, para cada producto PUSH cuyo stock
+ * ya llegó a su mínimo (o menos), genera solo el pedido de reposición y --con
+ * PUSH_SURTIR_AUTOMATICO-- también rellena el stock hasta el doble del mínimo,
+ * registrando el pedido (estado Surtido) y el movimiento de "Entrada".
+ *
+ * Se hace dentro de una transacción por producto: si dos pestañas/usuarios
+ * detectan el mismo producto al mismo tiempo, solo la primera lo repone (la
+ * segunda vuelve a leer el stock, ve que ya está arriba del mínimo y no hace
+ * nada), así no se duplica la reposición.
+ * Si el producto ya tiene un pedido de reposición abierto (Pendiente o En
+ * proceso, p. ej. uno hecho a mano que viene en camino) se respeta y no se
+ * genera otro.
+ * Devuelve cuántos productos repuso/pidió (para avisar en la interfaz).
+ */
+export async function generarReposicionesAutomaticas(productos, pedidos) {
+  const conPedidoAbierto = new Set(
+    (pedidos || [])
+      .filter(p => p.tipo === "Reposición" && (p.estado === "Pendiente" || p.estado === "En proceso"))
+      .map(p => p.productoId)
+  );
+
+  const candidatos = (productos || []).filter(p =>
+    p.estrategia === "PUSH" &&
+    Number(p.stock) <= Number(p.stockMin) &&
+    !conPedidoAbierto.has(p.id)
+  );
+  if (candidatos.length === 0) return 0;
+
+  const totalSnap = await getDocs(scmPedidosRef);
+  let siguiente = totalSnap.size + 1;
+  let generados = 0;
+
+  for (const p of candidatos) {
+    const productoRef = doc(db, "scm_productos", p.id);
+    const folio = "PC-" + String(siguiente).padStart(3, "0");
+    const hoy = new Date().toISOString().slice(0, 10);
+
+    const repuesto = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(productoRef);
+      if (!snap.exists()) return false;
+      const actual = snap.data();
+      const stock = Number(actual.stock) || 0;
+      const minimo = Number(actual.stockMin) || 0;
+      if (actual.estrategia !== "PUSH" || stock > minimo) return false; // ya lo repuso otra pestaña
+
+      const objetivo = Math.max(minimo * 2, minimo + 1);
+      const cantidad = Math.max(1, objetivo - stock);
+      const surtir = PUSH_SURTIR_AUTOMATICO;
+
+      tx.set(doc(scmPedidosRef), {
+        folio,
+        productoId: p.id,
+        producto: actual.nombre,
+        cantidad,
+        tipo: "Reposición",
+        estado: surtir ? "Surtido" : "Pendiente",
+        proveedorId: actual.proveedorId || "",
+        proveedor: actual.proveedor || "",
+        fecha: hoy,
+        notas: surtir
+          ? `Reposición automática PUSH: el stock llegó al mínimo (${stock}/${minimo}) y se repuso solo hasta ${stock + cantidad}.`
+          : "Generado automáticamente: producto con estrategia PUSH en su stock mínimo.",
+        automatico: true,
+        creadoEn: serverTimestamp(),
+      });
+
+      if (surtir) {
+        tx.update(productoRef, { stock: stock + cantidad, actualizadoEn: serverTimestamp() });
+        tx.set(doc(collection(db, "scm_movimientos")), {
+          productoId: p.id,
+          producto: actual.nombre,
+          tipo: "Entrada",
+          cantidad,
+          motivo: `Reposición automática PUSH (${folio})`,
+          fecha: hoy,
+          usuario: "Sistema (PUSH automático)",
+          creadoEn: serverTimestamp(),
+        });
+      }
+      return true;
+    });
+
+    if (repuesto) { generados++; siguiente++; }
+  }
+
+  return generados;
 }
 
 // ---------- SCM: movimientos de inventario (solo administradores) ----------

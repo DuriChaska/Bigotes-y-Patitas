@@ -51,7 +51,7 @@ Guarden el archivo. Con eso todas las páginas del panel (que importan de
 
 ## 4.1 Crear el primer perfil de administrador (paso obligatorio)
 
-El panel ahora maneja dos roles (**administrador** y **vendedor**) guardados
+El panel maneja tres roles (**administrador**, **vendedor** y **logistica**) guardados
 en una colección de Firestore llamada `usuarios`. El propio panel permite
 crear usuarios nuevos desde **Configuración → Usuarios**, pero esa pantalla
 solo la puede usar alguien que YA sea administrador — para el primer
@@ -73,9 +73,20 @@ administrador y les va a dejar entrar a **Configuración → Usuarios** para
 crear ahí, desde la interfaz, a los siguientes administradores y vendedores
 — ya no van a necesitar tocar la consola de Firebase de nuevo para eso.
 
-> **Nota:** el rol "vendedor" tiene acceso a todo lo mismo que "administrador"
-> (clientes, interacciones, reportes, mi actividad) excepto a la pantalla de
-> Usuarios, que queda oculta y bloqueada solo para administradores.
+> **Qué puede hacer cada rol:**
+>
+> | Rol | CRM (clientes, interacciones, reportes) | SCM (inventario, pedidos, productos...) | Usuarios |
+> |---|---|---|---|
+> | `administrador` | Sí | Sí | Sí |
+> | `vendedor` | Sí | No | No |
+> | `logistica` | No | Sí | No |
+>
+> Configuración (cambiar nombre, correo o contraseña propios) la ven los tres.
+> Quien entra a una sección que no le toca es regresado a su página de inicio
+> (vendedor → Dashboard, logística → SCM). Los permisos reales los aplican las
+> reglas de Firestore (`firestore.rules`), no solo el menú: **después de
+> actualizar el proyecto hay que volver a publicar `firestore.rules`** en la
+> consola de Firebase (Firestore Database → Reglas → Publicar).
 
 > **Sobre "eliminar" un usuario:** el botón de eliminar en Usuarios les quita
 > el acceso al panel (borra su perfil de Firestore), pero no borra su cuenta
@@ -145,7 +156,7 @@ de cliente reales). Ambas viven en el mismo proyecto de Firebase.
 usuarios/{uid}          (uid = el mismo ID que le da Firebase Authentication)
   nombre: string
   correo: string
-  rol: "administrador" | "vendedor"
+  rol: "administrador" | "vendedor" | "logistica"
 
 clientes/{id}
   # Esta colección tiene DOS orígenes posibles para el mismo documento:
