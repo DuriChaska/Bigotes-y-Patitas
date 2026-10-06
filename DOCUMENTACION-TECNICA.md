@@ -354,15 +354,16 @@ Firestore" — para no duplicarlo aquí. Un resumen de lo más importante:
   `clienteId` (no puede ver las compras de otros clientes).
 - **Reposición automática de productos PUSH** (`generarReposicionesAutomaticas`
   en `firebase-db.js`): cuando un producto con estrategia PUSH llega a su
-  `stockMin`, el sistema genera solo el pedido de reposición, lo deja como
-  "Surtido", sube el stock hasta el doble del mínimo y registra el movimiento
-  de "Entrada" — todo en una transacción de Firestore, así que si dos
-  pestañas lo detectan a la vez solo una lo repone. Corre en el navegador
+  `stockMin`, el sistema genera solo un pedido de reposición "Pendiente" por
+  la cantidad que falta para llegar al doble del mínimo; el stock sube hasta
+  que alguien lo marca "Surtido" en Pedidos (ahí se registra la "Entrada").
+  Mientras no esté surtido, Inventario lo muestra como "en camino" y no se
+  genera otro pedido para ese producto. Con `PUSH_SURTIR_AUTOMATICO = true`
+  el pedido se surte solo y el stock sube al instante, dentro de una
+  transacción de Firestore. Corre en el navegador
   cada vez que alguien con acceso a SCM tiene abierto Resumen, Inventario o
   Pedidos (no hay servidor: para que corra aunque nadie tenga el panel
-  abierto haría falta una Cloud Function programada). Si se prefiere que el
-  pedido automático quede "Pendiente" hasta que llegue la mercancía, se
-  cambia `PUSH_SURTIR_AUTOMATICO` a `false`.
+  abierto haría falta una Cloud Function programada).
 - **Pedidos surtidos y el inventario:** marcar un pedido como "Surtido" (o
   registrarlo ya surtido) mueve el stock: Reposición suma y registra una
   "Entrada"; Venta resta y registra una "Salida". Inventario muestra además

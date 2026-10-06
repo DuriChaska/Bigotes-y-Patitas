@@ -124,7 +124,7 @@
       try {
         const generados = await generarReposicionesAutomaticas(productos, pedidos);
         if (generados > 0) {
-          mostrarToast(`Reposición automática PUSH: ${generados} producto${generados === 1 ? '' : 's'} rellenado${generados === 1 ? '' : 's'} (ya se ve en Inventario)`);
+          mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
         }
       } catch (err) {
         console.error('No se pudo generar la reposición automática:', err);

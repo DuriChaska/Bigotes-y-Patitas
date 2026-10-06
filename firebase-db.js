@@ -492,12 +492,14 @@ export async function marcarPedidoSurtido(id, datosPedido, estadoAnterior, produ
 }
 
 /**
- * Si es true, la reposición automática de un producto PUSH se SURTE sola:
- * el pedido queda registrado como "Surtido" y el stock sube en ese mismo
- * momento (se rellena solo). Si lo cambias a false, el pedido automático se
- * crea como "Pendiente" y alguien debe marcarlo "Surtido" a mano cuando llegue.
+ * Qué pasa con el pedido que genera solo un producto PUSH:
+ *  - false (actual): el pedido nace "Pendiente"; el stock NO cambia hasta que
+ *    alguien lo marque "Surtido" en Pedidos (ahí sí suma el stock y registra
+ *    la Entrada). Mientras tanto Inventario lo muestra como "en camino".
+ *  - true: el pedido se SURTE solo: queda "Surtido" y el stock sube en ese
+ *    mismo momento, sin que nadie intervenga.
  */
-const PUSH_SURTIR_AUTOMATICO = true;
+const PUSH_SURTIR_AUTOMATICO = false;
 
 /**
  * Estrategia PUSH: revisa el catálogo y, para cada producto PUSH cuyo stock
@@ -545,11 +547,22 @@ export async function generarReposicionesAutomaticas(productos, pedidos) {
       const minimo = Number(actual.stockMin) || 0;
       if (actual.estrategia !== "PUSH" || stock > minimo) return false; // ya lo repuso otra pestaña
 
-      const objetivo = Math.max(minimo * 2, minimo + 1);
-      const cantidad = Math.max(1, objetivo - stock);
       const surtir = PUSH_SURTIR_AUTOMATICO;
 
-      tx.set(doc(scmPedidosRef), {
+      // Con el pedido "Pendiente" el stock no cambia, así que no basta con mirar el
+      // stock para evitar duplicados si dos pestañas lo detectan a la vez: el
+      // producto recuerda cuál fue su último pedido automático y, si ese sigue
+      // abierto (Pendiente / En proceso), no se genera otro.
+      if (!surtir && actual.pedidoAutoId) {
+        const previo = await tx.get(doc(db, "scm_pedidos", actual.pedidoAutoId));
+        if (previo.exists() && ["Pendiente", "En proceso"].includes(previo.data().estado)) return false;
+      }
+
+      const objetivo = Math.max(minimo * 2, minimo + 1);
+      const cantidad = Math.max(1, objetivo - stock);
+      const pedidoRef = doc(scmPedidosRef);
+
+      tx.set(pedidoRef, {
         folio,
         productoId: p.id,
         producto: actual.nombre,
@@ -566,7 +579,9 @@ export async function generarReposicionesAutomaticas(productos, pedidos) {
         creadoEn: serverTimestamp(),
       });
 
-      if (surtir) {
+      if (!surtir) {
+        tx.update(productoRef, { pedidoAutoId: pedidoRef.id, actualizadoEn: serverTimestamp() });
+      } else {
         tx.update(productoRef, { stock: stock + cantidad, actualizadoEn: serverTimestamp() });
         tx.set(doc(collection(db, "scm_movimientos")), {
           productoId: p.id,
