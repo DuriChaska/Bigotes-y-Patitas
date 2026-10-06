@@ -109,6 +109,33 @@
     import { escucharProductosScm } from './firebase-db.js';
     import { pintarBannerStockBajo } from './admin-stock-alertas.js';
 
+<<<<<<< Updated upstream
+=======
+    // Este hub es la primera pantalla que ve cualquier administrador al
+    // entrar a SCM, así que también revisa aquí la reposición automática de
+    // productos PUSH (mismo mecanismo que en la página de Pedidos) -- para
+    // que no dependa de que alguien entre justo a Pedidos para que se genere.
+    let productos = [];
+    let pedidos = [];
+    let pedidosCargados = false;
+    let revisandoReposicion = false;
+
+    async function revisarReposicionAutomatica() {
+      if (revisandoReposicion || !pedidosCargados || !productos.length) return;
+      revisandoReposicion = true;
+      try {
+        const generados = await generarReposicionesAutomaticas(productos, pedidos);
+        if (generados > 0) {
+          mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
+        }
+      } catch (err) {
+        console.error('No se pudo generar la reposición automática:', err);
+      } finally {
+        revisandoReposicion = false;
+      }
+    }
+
+>>>>>>> Stashed changes
     let iniciado = false;
     function iniciar(sesion) {
       if (iniciado || !sesion || sesion.rol !== 'administrador') return;

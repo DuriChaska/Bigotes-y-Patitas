@@ -196,6 +196,34 @@
       $('sinResultadosInv').classList.toggle('hidden', visibles !== 0 || !cargado);
     };
 
+<<<<<<< Updated upstream
+=======
+    // Reposición automática PUSH: si algún producto PUSH está en su stock mínimo,
+    // se repone solo (pedido + entrada de stock) y aquí se ve subir en vivo.
+    let pedidosCargados = false;
+    let revisandoReposicion = false;
+    async function revisarReposicionAutomatica() {
+      if (revisandoReposicion || !cargado || !pedidosCargados || !productos.length) return;
+      revisandoReposicion = true;
+      try {
+        const generados = await generarReposicionesAutomaticas(productos, pedidos);
+        if (generados > 0) {
+          mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
+        }
+      } catch (err) {
+        console.error('No se pudo generar la reposición automática:', err);
+      } finally {
+        revisandoReposicion = false;
+      }
+    }
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2800);
+    }
+
+>>>>>>> Stashed changes
     let iniciado = false;
     function iniciar(sesion) {
       if (iniciado || !sesion || sesion.rol !== 'administrador') return;
