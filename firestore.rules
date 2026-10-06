@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Reglas de seguridad de Firestore para "Bigotes y Patitas".
+// Reglas de seguridad de Firestore para "Bigotes y Patitas".push automatico
 // Cópialas en Firebase Console → Firestore Database → Reglas,
 // o despliégalas con la CLI de Firebase (firebase deploy --only firestore:rules).
 //
