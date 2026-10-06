@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
-<body data-solo-admin>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -20,11 +20,11 @@
           <p class="admin-breadcrumb">Panel de administración · Cadena de suministros</p>
         </div>
         <div class="admin-topbar-right">
-          <span class="admin-tag rol-administrador">Solo administradores</span>
+          <span class="admin-tag rol-administrador">Administración y logística</span>
         </div>
       </div>
 
-      <div class="admin-panel" style="margin-bottom:18px;">
+      <div class="admin-panel" id="panelIntroScm" style="margin-bottom:18px;">
         <p style="color:var(--gray); font-size:.85rem; margin:0;">
           <strong>Módulo 1 · Acceso al módulo de cadena de suministros.</strong>
           Haz clic en un módulo para ingresar a la gestión correspondiente.
@@ -54,12 +54,12 @@
   <span class="scm-card-cta">Ver inventario <span data-bp-icon="arrow_right"></span></span>
         </a>
 
-        <button type="button" class="scm-card proximamente" data-modulo="Pedidos">
+        <a href="admin-scm-pedidos.html" class="scm-card">
           <div class="scm-card-icon yellow" data-bp-icon="clipboard"></div>
           <h3>Pedidos</h3>
           <p>Reposición y suministro</p>
-          <span class="scm-card-cta">Próximamente</span>
-        </button>
+          <span class="scm-card-cta">Ver pedidos <span data-bp-icon="arrow_right"></span></span>
+        </a>
 
         <a href="admin-scm-logistica.html" class="scm-card">
   <div class="scm-card-icon orange" data-bp-icon="refresh"></div>
@@ -68,12 +68,19 @@
   <span class="scm-card-cta">Configurar <span data-bp-icon="arrow_right"></span></span>
         </a>
 
-        <button type="button" class="scm-card proximamente" data-modulo="Reportes">
+        <a href="admin-scm-reportes.html" class="scm-card">
           <div class="scm-card-icon purple" data-bp-icon="chart"></div>
           <h3>Reportes</h3>
           <p>Métricas y análisis</p>
-          <span class="scm-card-cta">Próximamente</span>
-        </button>
+          <span class="scm-card-cta">Ver reportes <span data-bp-icon="arrow_right"></span></span>
+        </a>
+
+        <a href="admin-scm-madurez.html" class="scm-card">
+          <div class="scm-card-icon green" data-bp-icon="trending_up"></div>
+          <h3>Nivel de madurez</h3>
+          <p>Checklist de avance del SCM</p>
+          <span class="scm-card-cta">Ver nivel <span data-bp-icon="arrow_right"></span></span>
+        </a>
 
       </div>
     </main>
@@ -97,6 +104,51 @@
         mostrarToast('El módulo de ' + card.dataset.modulo + ' estará disponible próximamente');
       });
     });
+  </script>
+  <script type="module">
+    import { escucharProductosScm, escucharPedidosScm, generarReposicionesAutomaticas } from './firebase-db.js';
+    import { pintarBannerStockBajo } from './admin-stock-alertas.js';
+
+    // Este hub es la primera pantalla que ve cualquier administrador al
+    // entrar a SCM, así que también revisa aquí la reposición automática de
+    // productos PUSH (mismo mecanismo que en la página de Pedidos) -- para
+    // que no dependa de que alguien entre justo a Pedidos para que se genere.
+    let productos = [];
+    let pedidos = [];
+    let pedidosCargados = false;
+    let revisandoReposicion = false;
+
+    async function revisarReposicionAutomatica() {
+      if (revisandoReposicion || !pedidosCargados || !productos.length) return;
+      revisandoReposicion = true;
+      try {
+        const generados = await generarReposicionesAutomaticas(productos, pedidos);
+        if (generados > 0) {
+          mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
+        }
+      } catch (err) {
+        console.error('No se pudo generar la reposición automática:', err);
+      } finally {
+        revisandoReposicion = false;
+      }
+    }
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
+      iniciado = true;
+      escucharProductosScm(
+        (lista) => { productos = lista; pintarBannerStockBajo(productos, 'panelIntroScm'); revisarReposicionAutomatica(); },
+        (err) => console.error(err)
+      );
+      escucharPedidosScm(
+        (lista) => { pedidos = lista; pedidosCargados = true; revisarReposicionAutomatica(); },
+        (err) => console.error(err)
+      );
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
   </script>
 </body>
 </html>

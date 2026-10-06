@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reportes SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Reportes SCM</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Métricas y análisis</p>
+        </div>
+      </div>
+
+      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+
+      <!-- Dashboard -->
+      <div id="tabDashboard">
+        <div class="admin-stats" style="grid-template-columns:repeat(4,1fr); margin-bottom:20px;">
+          <div class="admin-stat-card">
+            <div class="admin-stat-top"><div class="admin-stat-icon green"><span data-bp-icon="package"></span></div></div>
+            <span class="stat-num" id="statProductos">0</span>
+            <span class="stat-label">Productos</span>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-top"><div class="admin-stat-icon blue"><span data-bp-icon="users"></span></div></div>
+            <span class="stat-num" id="statProveedores">0</span>
+            <span class="stat-label">Proveedores</span>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-top"><div class="admin-stat-icon yellow"><span data-bp-icon="clipboard"></span></div></div>
+            <span class="stat-num" id="statPedidos">0</span>
+            <span class="stat-label">Pedidos en proceso</span>
+          </div>
+          <div class="admin-stat-card">
+            <div class="admin-stat-top"><div class="admin-stat-icon orange"><span data-bp-icon="warning"></span></div></div>
+            <span class="stat-num" id="statStockBajo">0</span>
+            <span class="stat-label">Productos en stock bajo</span>
+          </div>
+        </div>
+
+        <div class="admin-panels">
+          <div class="admin-panel">
+            <h2>Productos con más salidas</h2>
+            <p class="panel-sub">Según los movimientos de salida registrados</p>
+            <div class="admin-bars" id="barrasVendidos"></div>
+          </div>
+
+          <div class="admin-panel">
+            <h2>Rotación de inventario</h2>
+            <p class="panel-sub">Productos con al menos un movimiento registrado</p>
+            <div class="admin-donut-wrap">
+              <div class="admin-donut" id="donutRotacion"><span id="donutRotacionTexto">0%</span></div>
+              <ul class="admin-legend">
+                <li><span class="dot green"></span>Con movimientos</li>
+                <li><span class="dot orange"></span>Sin movimientos</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel" style="margin-bottom:18px;">
+          <div class="admin-panel-head"><h2>Inventario crítico</h2></div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Producto</th><th>Stock actual</th><th>Stock mínimo</th></tr></thead>
+              <tbody id="cuerpoInventarioCritico"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Comparativa PUSH vs PULL</h2></div>
+          <p class="panel-sub">Pedidos de reposición por mes, según la estrategia del producto</p>
+          <div id="pushpullVacio" class="admin-empty-state hidden" style="padding:24px 20px;">
+            Aún no hay suficientes pedidos con fecha para esta comparativa.
+          </div>
+          <div class="pushpull-chart" id="pushpullChart"></div>
+          <div class="pushpull-legend">
+            <span><span class="dot" style="background:var(--pink-medio);"></span>PUSH</span>
+            <span><span class="dot" style="background:#3b6ea5;"></span>PULL</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { calcularMetricasScm } from './firebase-db.js';
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function pintarDashboard(m) {
+      $('statProductos').textContent = m.totalProductos;
+      $('statProveedores').textContent = m.totalProveedores;
+      $('statPedidos').textContent = m.pedidosEnProceso;
+      $('statStockBajo').textContent = m.stockBajo.length;
+
+      // Barras: productos con más salidas
+      const barras = $('barrasVendidos');
+      if (m.productosMasVendidos.length === 0) {
+        barras.innerHTML = `<p class="panel-sub" style="margin:0;">Aún no hay movimientos de salida registrados.</p>`;
+      } else {
+        const max = Math.max(1, ...m.productosMasVendidos.map(p => p.cantidad));
+        barras.innerHTML = m.productosMasVendidos.map(p => `
+          <div class="admin-bar-col">
+            <span class="bar-num">${p.cantidad}</span>
+            <div class="admin-bar" style="height:${Math.max(4, Math.round((p.cantidad / max) * 100))}%; background:var(--admin-green);"></div>
+            <span class="bar-label">${esc(p.producto)}</span>
+          </div>
+        `).join('');
+      }
+
+      // Dona de rotación
+      $('donutRotacion').style.background = m.totalProductos
+        ? `conic-gradient(var(--admin-green) 0% ${m.rotacion}%, var(--pink-medio) ${m.rotacion}% 100%)`
+        : '#e6ddd0';
+      $('donutRotacionTexto').textContent = m.rotacion + '%';
+
+      // Inventario crítico
+      $('cuerpoInventarioCritico').innerHTML = m.stockBajo.length
+        ? m.stockBajo.map(p => `
+            <tr>
+              <td>${esc(p.nombre)}</td>
+              <td style="color:var(--admin-danger); font-weight:700;">${Number(p.stock) || 0}</td>
+              <td>${Number(p.stockMin) || 0}</td>
+            </tr>
+          `).join('')
+        : `<tr><td colspan="3">No hay productos con stock por debajo del mínimo. 🎉</td></tr>`;
+
+      // Comparativa PUSH vs PULL
+      const chart = $('pushpullChart');
+      const vacio = $('pushpullVacio');
+      if (m.comparativaPushPull.length === 0) {
+        chart.innerHTML = '';
+        vacio.classList.remove('hidden');
+      } else {
+        vacio.classList.add('hidden');
+        const max = Math.max(1, ...m.comparativaPushPull.map(c => Math.max(c.PUSH, c.PULL)));
+        chart.innerHTML = m.comparativaPushPull.map(c => `
+          <div class="pushpull-col">
+            <div class="pushpull-bars">
+              <div class="pushpull-bar push" style="height:${Math.max(4, Math.round((c.PUSH / max) * 100))}%;" title="PUSH: ${c.PUSH}"></div>
+              <div class="pushpull-bar pull" style="height:${Math.max(4, Math.round((c.PULL / max) * 100))}%;" title="PULL: ${c.PULL}"></div>
+            </div>
+            <span class="col-label">${esc(c.mes)}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function cargar() {
+      try {
+        const m = await calcularMetricasScm();
+        pintarDashboard(m);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
+      iniciado = true;
+      cargar();
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

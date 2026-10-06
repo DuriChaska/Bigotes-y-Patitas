@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
-<body data-solo-admin>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -120,12 +120,8 @@
             </select>
           </div>
           <div class="admin-form-group">
-            <label for="movUsuario">Usuario</label>
-            <select id="movUsuario" class="admin-select" style="width:100%;">
-              <option value="Admin">Admin</option>
-              <option value="Usuario1">Usuario1</option>
-              <option value="Usuario2">Usuario2</option>
-            </select>
+            <label>Usuario</label>
+            <p id="movUsuarioNombre" style="margin:8px 0 0; font-size:.86rem; color:var(--gray);">—</p>
           </div>
         </div>
 
@@ -143,64 +139,63 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
-  <script>
-    // TODO (conexión a Firebase): mismo catálogo mock que admin-scm-inventario.html.
-    // Cuando se conecte todo a Firestore, este arreglo se reemplaza por el listener
-    // real de productos y los movimientos se guardan en su propia colección
-    // (por ejemplo scm_movimientos), igual que hace admin-scm-productos.html con
-    // crearProductoScm / escucharProductosScm en firebase-db.js.
-    let productos = [
-      { id: 1, nombre: "Croquetas para perro adulto 15kg", categoria: "Alimento",   stock: 40, stockMin: 10, estrategia: "PUSH" },
-      { id: 2, nombre: "Croquetas para gato interior 3kg",  categoria: "Alimento",   stock: 8,  stockMin: 10, estrategia: "PULL" },
-      { id: 3, nombre: "Arena sanitaria aglomerante 10kg",  categoria: "Accesorios", stock: 25, stockMin: 8,  estrategia: "PUSH" },
-      { id: 4, nombre: "Correa retráctil 5m",               categoria: "Accesorios", stock: 15, stockMin: 5,  estrategia: "PULL" },
-      { id: 5, nombre: "Pelota mordedora de goma",          categoria: "Juguetes",   stock: 6,  stockMin: 10, estrategia: "PULL" },
-      { id: 6, nombre: "Cama acolchada para perro mediano", categoria: "Accesorios", stock: 12, stockMin: 4,  estrategia: "PUSH" },
-      { id: 7, nombre: "Snacks dentales para perro",        categoria: "Alimento",   stock: 30, stockMin: 12, estrategia: "PUSH" },
-      { id: 8, nombre: "Ratón de peluche con cascabel",     categoria: "Juguetes",   stock: 20, stockMin: 6,  estrategia: "PULL" },
-    ];
+  <script type="module">
+    import { escucharProductosScm, escucharMovimientosScm, crearMovimientoScm } from './firebase-db.js';
 
-    let movimientos = [
-      { id: 1, fecha: "2026-09-15", producto: "Croquetas para perro adulto 15kg", tipo: "Entrada", cantidad: 20, motivo: "Compra",  usuario: "Admin" },
-      { id: 2, fecha: "2026-09-16", producto: "Croquetas para gato interior 3kg",  tipo: "Salida",  cantidad: 5,  motivo: "Venta",   usuario: "Usuario1" },
-      { id: 3, fecha: "2026-09-17", producto: "Pelota mordedora de goma",          tipo: "Salida",  cantidad: 4,  motivo: "Venta",   usuario: "Usuario2" },
-      { id: 4, fecha: "2026-09-18", producto: "Arena sanitaria aglomerante 10kg",  tipo: "Entrada", cantidad: 15, motivo: "Compra",  usuario: "Admin" },
-      { id: 5, fecha: "2026-09-19", producto: "Correa retráctil 5m", tipo: "Salida", cantidad: 2, motivo: "Ajuste", usuario: "Admin" }
-    ];
-    let siguienteIdMov = 6;
-    const claseTipo = { "Entrada": "ok", "Salida": "warn" };
     const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+    let productos = [];
+    let movimientos = [];
+    let cargado = false;
+    let errorCarga = null;
+    const claseTipo = { "Entrada": "ok", "Salida": "warn" };
 
     function llenarSelectProductos() {
-      const opciones = productos.map(p => `<option value="${p.nombre}">${p.nombre}</option>`).join('');
-      $('movProducto').innerHTML = opciones;
-      $('filtroProducto').innerHTML = '<option value="">Todos los productos</option>' + opciones;
+      const opciones = productos.map(p => `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('');
+      $('movProducto').innerHTML = opciones || '<option value="">No hay productos en el catálogo</option>';
+      const opcionesFiltro = productos.map(p => `<option value="${esc(p.nombre)}">${esc(p.nombre)}</option>`).join('');
+      const actual = $('filtroProducto').value;
+      $('filtroProducto').innerHTML = '<option value="">Todos los productos</option>' + opcionesFiltro;
+      $('filtroProducto').value = actual;
     }
 
     function formatearFecha(iso) {
+      if (!iso) return '—';
       const [y, m, d] = iso.split('-');
       return `${d}/${m}/${y}`;
     }
 
     function pintarMovimientos() {
       const cuerpo = $('cuerpoMovimientos');
-      const ordenados = [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha));
-      cuerpo.innerHTML = ordenados.map(m => `
-        <tr data-tipo="${m.tipo}" data-producto="${m.producto}">
+
+      if (errorCarga) {
+        cuerpo.innerHTML = `<tr><td colspan="6"><span class="scm-error">No se pudo cargar el historial: ${esc(errorCarga)}</span></td></tr>`;
+        return;
+      }
+      if (!cargado) {
+        cuerpo.innerHTML = `<tr><td colspan="6">Cargando movimientos…</td></tr>`;
+        return;
+      }
+
+      cuerpo.innerHTML = movimientos.map(m => `
+        <tr data-tipo="${esc(m.tipo)}" data-producto="${esc(m.producto)}">
           <td>${formatearFecha(m.fecha)}</td>
-          <td>${m.producto}</td>
-          <td><span class="admin-tag ${claseTipo[m.tipo] || 'info'}">${m.tipo}</span></td>
-          <td>${m.cantidad}</td>
-          <td>${m.motivo}</td>
-          <td>${m.usuario}</td>
+          <td>${esc(m.producto)}</td>
+          <td><span class="admin-tag ${claseTipo[m.tipo] || 'info'}">${esc(m.tipo)}</span></td>
+          <td>${Number(m.cantidad) || 0}</td>
+          <td>${esc(m.motivo)}</td>
+          <td>${esc(m.usuario)}</td>
         </tr>
       `).join('');
       filtrarMovimientos();
     }
 
     function abrirModal() {
+      if (!productos.length) { mostrarToast('Registra al menos un producto en el catálogo primero'); return; }
       $('form').reset();
       $('movFecha').value = new Date().toISOString().slice(0, 10);
+      $('movUsuarioNombre').textContent = (window.BP_SESION && window.BP_SESION.nombre) || '—';
       $('modal').classList.remove('hidden');
     }
     function cerrarModal() {
@@ -213,27 +208,37 @@
       if (e.key === 'Escape' && !$('modal').classList.contains('hidden')) cerrarModal();
     });
 
-    $('form').addEventListener('submit', (e) => {
+    $('form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const nombreProducto = $('movProducto').value;
+      const productoId = $('movProducto').value;
+      const prod = productos.find(p => p.id === productoId);
+      if (!prod) { mostrarToast('Selecciona un producto'); return; }
+
       const tipo = document.querySelector('input[name="movTipo"]:checked').value;
-      const cantidad = Number($('movCantidad').value);
+      const cantidad = Math.max(1, parseInt($('movCantidad').value, 10) || 0);
       const fecha = $('movFecha').value;
       const motivo = $('movMotivo').value;
-      const usuario = $('movUsuario').value;
+      const usuario = (window.BP_SESION && window.BP_SESION.nombre) || 'Administrador';
 
-      movimientos.push({ id: siguienteIdMov++, fecha, producto: nombreProducto, tipo, cantidad, motivo, usuario });
-
-      // Refleja el movimiento en el stock del producto (mismo patrón que Inventario)
-      const prod = productos.find(p => p.nombre === nombreProducto);
-      if (prod) {
-        prod.stock += (tipo === "Entrada") ? cantidad : -cantidad;
-        if (prod.stock < 0) prod.stock = 0;
+      if (tipo === 'Salida' && cantidad > Number(prod.stock || 0)) {
+        mostrarToast(`No hay suficiente stock de "${prod.nombre}" (disponible: ${prod.stock})`);
+        return;
       }
 
-      pintarMovimientos();
-      cerrarModal();
-      mostrarToast(`Movimiento de ${tipo.toLowerCase()} registrado para ${nombreProducto}`);
+      const boton = $('form').querySelector('button[type="submit"]');
+      boton.disabled = true;
+      try {
+        await crearMovimientoScm(
+          { productoId, producto: prod.nombre, tipo, cantidad, motivo, fecha, usuario },
+          Number(prod.stock) || 0
+        );
+        cerrarModal();
+        mostrarToast(`Movimiento de ${tipo.toLowerCase()} registrado para ${prod.nombre}`);
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
+      }
+      boton.disabled = false;
     });
 
     function mostrarToast(msg) {
@@ -242,10 +247,10 @@
       setTimeout(() => $('toast').classList.remove('show'), 2600);
     }
 
-    function filtrarMovimientos() {
+    window.filtrarMovimientos = function () {
       const tipo = $('filtroTipo').value;
       const producto = $('filtroProducto').value;
-      const filas = document.querySelectorAll('#tablaMovimientos tbody tr');
+      const filas = document.querySelectorAll('#tablaMovimientos tbody tr[data-producto]');
       let visibles = 0;
 
       filas.forEach(fila => {
@@ -257,19 +262,41 @@
       });
 
       $('contadorMovimientos').textContent = `${visibles} movimiento${visibles === 1 ? '' : 's'}`;
-      $('sinResultadosMov').classList.toggle('hidden', visibles !== 0);
-    }
-
-    llenarSelectProductos();
-    pintarMovimientos();
+      $('sinResultadosMov').classList.toggle('hidden', visibles !== 0 || !cargado);
+    };
 
     // Si se llegó desde "Ver movimientos" en Inventario, preseleccionar el filtro de producto
     const paramsUrl = new URLSearchParams(window.location.search);
     const productoUrl = paramsUrl.get('producto');
-    if (productoUrl) {
-      $('filtroProducto').value = productoUrl;
-      filtrarMovimientos();
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
+      iniciado = true;
+      pintarMovimientos();
+      escucharProductosScm(
+        (lista) => { productos = lista; llenarSelectProductos(); },
+        (err) => console.error(err)
+      );
+      escucharMovimientosScm(
+        (lista) => { movimientos = lista; cargado = true; errorCarga = null; pintarMovimientos(); },
+        (err) => {
+          console.error(err);
+          cargado = true;
+          errorCarga = err && err.code === 'permission-denied'
+            ? 'permiso denegado. Publica firestore.rules y entra con una cuenta de administrador.'
+            : 'revisa tu conexión con Firebase.';
+          pintarMovimientos();
+        }
+      );
+      if (productoUrl) {
+        $('filtroProducto').value = productoUrl;
+        filtrarMovimientos();
+      }
     }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
   </script>
 </body>
 </html>

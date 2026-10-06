@@ -51,7 +51,7 @@ Guarden el archivo. Con eso todas las páginas del panel (que importan de
 
 ## 4.1 Crear el primer perfil de administrador (paso obligatorio)
 
-El panel ahora maneja dos roles (**administrador** y **vendedor**) guardados
+El panel maneja tres roles (**administrador**, **vendedor** y **logistica**) guardados
 en una colección de Firestore llamada `usuarios`. El propio panel permite
 crear usuarios nuevos desde **Configuración → Usuarios**, pero esa pantalla
 solo la puede usar alguien que YA sea administrador — para el primer
@@ -73,9 +73,20 @@ administrador y les va a dejar entrar a **Configuración → Usuarios** para
 crear ahí, desde la interfaz, a los siguientes administradores y vendedores
 — ya no van a necesitar tocar la consola de Firebase de nuevo para eso.
 
-> **Nota:** el rol "vendedor" tiene acceso a todo lo mismo que "administrador"
-> (clientes, interacciones, reportes, mi actividad) excepto a la pantalla de
-> Usuarios, que queda oculta y bloqueada solo para administradores.
+> **Qué puede hacer cada rol:**
+>
+> | Rol | CRM (clientes, interacciones, reportes) | SCM (inventario, pedidos, productos...) | Usuarios |
+> |---|---|---|---|
+> | `administrador` | Sí | Sí | Sí |
+> | `vendedor` | Sí | No | No |
+> | `logistica` | No | Sí | No |
+>
+> Configuración (cambiar nombre, correo o contraseña propios) la ven los tres.
+> Quien entra a una sección que no le toca es regresado a su página de inicio
+> (vendedor → Dashboard, logística → SCM). Los permisos reales los aplican las
+> reglas de Firestore (`firestore.rules`), no solo el menú: **después de
+> actualizar el proyecto hay que volver a publicar `firestore.rules`** en la
+> consola de Firebase (Firestore Database → Reglas → Publicar).
 
 > **Sobre "eliminar" un usuario:** el botón de eliminar en Usuarios les quita
 > el acceso al panel (borra su perfil de Firestore), pero no borra su cuenta
@@ -114,22 +125,46 @@ Si algo no conecta, abran la consola del navegador (F12 → pestaña
 copiadas, reglas que bloquean el acceso, etc.).
 
 > **Nota sobre índices:** la primera vez que abran el historial de
-> interacciones de un cliente (`admin-interacciones.html`), es posible que
-> Firestore muestre en la consola un error como *"The query requires an
-> index"* con un enlace azul. Es normal — Firestore necesita crear un
-> índice para poder filtrar por cliente y ordenar por fecha al mismo
-> tiempo. Solo hagan clic en ese enlace, esperen 1-2 minutos a que se
+> interacciones de un cliente (`admin-interacciones.html`), o la primera vez
+> que un cliente real abra su perfil (`Interfaz Cliente - Perfil.html`) y se
+> pida su historial de compras, es posible que Firestore muestre en la
+> consola un error como *"The query requires an index"* con un enlace azul.
+> Es normal — Firestore necesita crear un índice para poder filtrar por
+> cliente y ordenar por fecha al mismo tiempo (pasa con `interacciones` y con
+> `ventas`). Solo hagan clic en ese enlace, esperen 1-2 minutos a que se
 > construya el índice, y recarguen la página.
 
+## 7. Cargar el catálogo de ejemplo (SCM / tienda)
+
+Las páginas públicas (`index.html`, `shop.html`, `Producto.html`) y todo el
+módulo SCM leen productos reales de la colección `scm_productos` — si esa
+colección está vacía, la tienda se ve vacía. Para arrancar con datos:
+
+1. Entren al panel como administrador y abran **SCM → Catálogo de productos**
+   (`admin-scm-productos.html`).
+2. Si la colección está vacía, la página ofrece un botón para cargar el
+   catálogo de ejemplo (`scm-config.js`, ya con productos y proveedores para
+   mascotas). Con eso la tienda pública queda poblada de inmediato.
+
 ## Estructura de datos en Firestore
+
+Hay dos partes en este proyecto: el **CRM** (panel de administración, solo
+personal) y la **tienda pública + SCM** (catálogo, carrito, checkout, cuentas
+de cliente reales). Ambas viven en el mismo proyecto de Firebase.
 
 ```
 usuarios/{uid}          (uid = el mismo ID que le da Firebase Authentication)
   nombre: string
   correo: string
-  rol: "administrador" | "vendedor"
+  rol: "administrador" | "vendedor" | "logistica"
 
-clientes/{idAutogenerado}
+clientes/{id}
+  # Esta colección tiene DOS orígenes posibles para el mismo documento:
+  # - Prospectos que el personal agrega a mano desde el CRM (id autogenerado).
+  # - Cuentas reales de clientes que se registran en el sitio público
+  #   (Interfaz Usuario - Registro .html): en ese caso el id del documento
+  #   es EXACTAMENTE el mismo uid que Firebase Authentication le dio a esa
+  #   cuenta, para poder relacionarlos.
   nombre: string
   mascota: string
   correo: string
@@ -147,6 +182,50 @@ interacciones/{idAutogenerado}
   usuario: string
   fecha: string (dd/mm/aaaa)
   creadoEn: timestamp
+
+scm_productos/{idAutogenerado}   (catálogo — lectura PÚBLICA, la usa la tienda)
+  nombre: string
+  categoria: string
+  proveedor, proveedorId: string
+  costo: number            (costo interno de compra/suministro)
+  precio: number           (precio de venta al público, el que ve la tienda)
+  stock: number (int)
+  stockMin: number (int)   (debajo de esto se considera "bajo stock")
+  estrategia: "PUSH" | "PULL"
+  img: string (ruta o URL de la imagen)
+  creadoEn / actualizadoEn: timestamp
+
+scm_proveedores/{idAutogenerado}
+  nombre, contacto, correo, telefono, direccion: string
+
+scm_pedidos/{idAutogenerado}      (pedidos de reposición a proveedores)
+  folio: string ("PC-001", ...)
+  productoId, cantidad, tipo, estado, fecha, ...
+
+scm_movimientos/{idAutogenerado}  (historial de entradas/salidas de inventario)
+  productoId, producto, tipo: "Entrada" | "Salida", cantidad, motivo, fecha,
+  usuario, creadoEn
+
+scm_estado/madurez   (un solo documento: checklist manual del nivel de madurez SCM)
+  items: map<string, boolean>   (se marca a mano desde admin-scm-madurez.html)
+
+ventas/{idAutogenerado}   (compras REALES hechas por clientes desde la tienda)
+  clienteId: string        (uid de la cuenta que compró)
+  clienteNombre, clienteCorreo: string
+  items: [{ productoId, nombre, precio, cantidad }]
+  subtotal, descuento, envio, total: number
+  cupon, descripcionCupon: string | null
+  direccionEnvio: { nombre, pais, calle, ciudad, estado, cp, telefono, correo, notas }
+  metodoPago: string
+  folio: string ("CC-AAMMDD-XXXX")
+  estado: "Confirmada" (no hay todavía pantalla de admin para cambiarlo a
+    "Enviada"/"Entregada"; las reglas y el badge del perfil ya lo soportan
+    si en el futuro se agrega)
+  creadoEn: timestamp
+
+  # Al crearse (función crearVenta en firebase-db.js) TAMBIÉN, en la misma
+  # operación atómica: descuenta el stock del producto en scm_productos y
+  # registra un movimiento de "Salida" en scm_movimientos.
 ```
 
 ## Archivos involucrados
@@ -154,9 +233,20 @@ interacciones/{idAutogenerado}
 | Archivo | Qué hace |
 |---|---|
 | `firebase-config.js` | Inicializa Firebase con las llaves del proyecto (aquí pegan su configuración). |
-| `firebase-db.js` | Todas las funciones para leer/crear/editar/eliminar clientes, interacciones y usuarios, más las de login/logout/cuenta propia. El resto de las páginas importan de aquí. |
+| `firebase-db.js` | Todas las funciones para leer/crear/editar/eliminar clientes, interacciones, usuarios y el módulo SCM completo, más las de cuentas de cliente reales (registro/login/perfil) y de compras (`crearVenta`). El resto de las páginas importan de aquí. |
 | `admin-auth-guard.js` | Se incluye en cada página del panel (menos el login) para exigir sesión iniciada, cargar el perfil/rol y bloquear `admin-usuarios.html` a quien no sea administrador. |
-| `firestore.rules` | Reglas de seguridad a copiar en la consola de Firebase. |
+| `components.js` | Header/footer de las páginas públicas de la tienda; también decide si mostrar "Iniciar sesión" o el nombre del cliente con sesión iniciada. |
+| `scm-config.js` | Catálogo y proveedores de ejemplo (mascotas) para poblar `scm_productos`/`scm_proveedores` la primera vez. |
+| `firestore.rules` | Reglas de seguridad a copiar en la consola de Firebase (cubren CRM, SCM y la tienda/cuentas de cliente). |
+
+> **Importante sobre roles y cuentas de cliente:** desde que la tienda tiene
+> cuentas reales de clientes (Firebase Authentication), `request.auth != null`
+> YA NO significa "es personal del panel" — un cliente cualquiera también
+> tiene sesión. Las reglas usan `esStaff()`/`esAdmin()` (que revisan que
+> exista un documento en `usuarios`) para distinguir al personal de un
+> cliente común. Si en algún momento agregan una colección nueva, revisen
+> que sus reglas usen `esStaff()`/`esAdmin()` y no `request.auth != null` a
+> secas, para no abrir por accidente datos de personal a cualquier cliente.
 
 ## Si el login no te deja entrar
 

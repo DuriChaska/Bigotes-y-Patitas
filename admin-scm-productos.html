@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-solo-admin: admin-auth-guard.js saca de aquí a cualquiera que no sea administrador -->
-<body data-solo-admin>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -29,7 +29,7 @@
       <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
 
       <!-- Búsqueda y filtro -->
-      <div class="admin-panel" style="margin-bottom:18px;">
+      <div class="admin-panel" id="panelFiltros" style="margin-bottom:18px;">
         <div class="admin-filters-row">
           <div class="admin-search" style="flex:1; min-width:220px;">
             <span data-bp-icon="search"></span>
@@ -54,6 +54,7 @@
                 <th>Imagen</th>
                 <th>Nombre</th>
                 <th>Categoría</th>
+                <th>Precio</th>
                 <th>Stock</th>
                 <th>Stock mín.</th>
                 <th>Estrategia</th>
@@ -132,6 +133,19 @@
           </div>
         </div>
 
+        <div class="admin-form-group">
+          <label for="f-precio">Precio de venta al público ($)</label>
+          <input type="number" id="f-precio" min="0" step="0.01" value="0.00" required />
+          <small style="display:block; margin-top:6px; color:var(--gray); font-size:.74rem;">
+            Es lo que ve y paga el cliente en la tienda. El costo unitario es solo para uso interno.
+          </small>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-img">Imagen del producto (URL o ruta del proyecto)</label>
+          <input type="text" id="f-img" placeholder="Imagenes/Mascotas/prod-....svg o https://..." />
+        </div>
+
         <div class="admin-modal-actions">
           <button type="button" class="admin-btn-secondary" id="btnCancelar">Cancelar</button>
           <button type="submit" class="admin-btn-primary" id="btnGuardar">Guardar</button>
@@ -153,6 +167,7 @@
       escucharProveedoresScm, cargarProveedoresScmEjemplo,
     } from './firebase-db.js';
     import { CATEGORIAS, EJEMPLOS_PROVEEDORES, EJEMPLOS_PRODUCTOS } from './scm-config.js';
+    import { pintarBannerStockBajo } from './admin-stock-alertas.js';
 
     const IMG_VACIA = 'data:image/svg+xml;utf8,' + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="10" fill="#f1ece1"/>' +
@@ -170,8 +185,15 @@
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    // Solo se aceptan imágenes http(s); cualquier otra cosa cae al recuadro por defecto.
-    const urlImagen = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u)) ? u : IMG_VACIA;
+    // Se aceptan URLs http(s) o rutas relativas del proyecto (p. ej. "Imagenes/...").
+    // Cualquier otro esquema (javascript:, data:, etc.) cae al recuadro por defecto.
+    const urlImagen = (u) => {
+      if (typeof u !== 'string' || !u.trim()) return IMG_VACIA;
+      const val = u.trim();
+      if (/^https?:\/\//i.test(val)) return val;
+      if (!/^[a-z][a-z0-9+.-]*:/i.test(val)) return val;
+      return IMG_VACIA;
+    };
 
     function mostrarToast(msg) {
       $('toastMsg').textContent = msg;
@@ -252,6 +274,8 @@
       const vacio = $('estadoVacio');
       const lista = filtrados();
 
+      pintarBannerStockBajo(productos, 'panelFiltros');
+
       if (errorCarga) {
         cuerpo.innerHTML = '';
         $('contador').textContent = '—';
@@ -279,6 +303,7 @@
             <td><img class="scm-thumb" src="${esc(urlImagen(p.img))}" alt="${esc(p.nombre)}" loading="lazy" /></td>
             <td><strong>${esc(p.nombre)}</strong></td>
             <td>${esc(p.categoria)}</td>
+            <td class="scm-num">$${(Number(p.precio) || 0).toFixed(2)}</td>
             <td class="scm-num">${Number(p.stock) || 0}</td>
             <td class="scm-num" style="color:var(--gray);">${Number(p.stockMin) || 0}</td>
             <td><span class="admin-tag ${esPush ? 'ok' : 'info'}">${esc(p.estrategia)}</span></td>
@@ -328,6 +353,8 @@
       $('f-stock').value = 0;
       $('f-stockMin').value = 0;
       $('f-costo').value = '0.000';
+      $('f-precio').value = '0.00';
+      $('f-img').value = '';
 
       // Qué proveedor tiene seleccionado el producto (por id; o por nombre en productos antiguos)
       let seleccion = '';
@@ -352,6 +379,8 @@
         $('f-stockMin').value = producto.stockMin ?? 0;
         $('f-estrategia').value = producto.estrategia === 'PULL' ? 'PULL' : 'PUSH';
         $('f-costo').value = producto.costo ?? 0;
+        $('f-precio').value = producto.precio ?? 0;
+        $('f-img').value = producto.img ?? '';
       }
       $('modal').classList.remove('hidden');
       $('f-nombre').focus();
@@ -397,6 +426,8 @@
         stockMin: Math.max(0, parseInt($('f-stockMin').value, 10) || 0),
         estrategia: $('f-estrategia').value === 'PULL' ? 'PULL' : 'PUSH',
         costo: Math.max(0, parseFloat($('f-costo').value) || 0),
+        precio: Math.max(0, parseFloat($('f-precio').value) || 0),
+        img: $('f-img').value.trim(),
       };
 
       const boton = $('btnGuardar');
@@ -468,7 +499,7 @@
     // ─────────────────────────────────────────────
     let iniciado = false;
     function iniciar(sesion) {
-      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
       iniciado = true;
       pintar();
       escucharProveedoresScm(

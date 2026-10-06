@@ -112,8 +112,8 @@
   <script type="module">
     import { cambiarNombrePropio, cambiarCorreoPropio, cambiarContrasenaPropia } from './firebase-db.js';
 
-    const claseRol = { administrador: 'rol-administrador', vendedor: 'rol-vendedor' };
-    const etiquetaRol = { administrador: 'Administrador', vendedor: 'Vendedor' };
+    const claseRol = { administrador: 'rol-administrador', vendedor: 'rol-vendedor', logistica: 'rol-logistica' };
+    const etiquetaRol = { administrador: 'Administrador', vendedor: 'Vendedor', logistica: 'Logística' };
 
     document.addEventListener('bp-sesion-lista', (e) => {
       const s = e.detail;
@@ -150,7 +150,6 @@
         await cambiarNombrePropio(document.getElementById('cfg-nombre').value.trim());
         mostrarToast('Nombre actualizado correctamente');
       } catch (err) {
-        console.error(err);
         mostrarToast(mensajeErrorAuth(err.code));
       }
       return false;
@@ -168,7 +167,6 @@
         document.getElementById('cfg-correo-actual').value = nuevo;
         mostrarToast('Correo actualizado correctamente');
       } catch (err) {
-        console.error(err);
         mostrarToast(mensajeErrorAuth(err.code));
       }
       return false;
@@ -191,7 +189,6 @@
         document.getElementById('form-pass').reset();
         mostrarToast('Contraseña actualizada correctamente');
       } catch (err) {
-        console.error(err);
         mostrarToast(mensajeErrorAuth(err.code));
       }
       return false;

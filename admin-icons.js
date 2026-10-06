@@ -37,6 +37,7 @@ const ADMIN_ICONS = {
   refresh:     '<path d="M20 11a8 8 0 0 0-14-4.5L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4.5L20 15"/><path d="M20 20v-5h-5"/>',
   swap:        '<path d="M4 8h12"/><path d="M13 4l4 4-4 4"/><path d="M20 16H8"/><path d="M11 12l-4 4 4 4"/>',
   arrow_right: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  trending_up: '<path d="M3 17l6-6 4 4 8-8"/><path d="M15 6h6v6"/>',
 };
 
 function bpIcon(name, cls) {

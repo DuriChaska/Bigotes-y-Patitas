@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pedidos SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Pedidos</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Gestión de pedidos de reposición o suministro</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn primary" id="btnNuevo">
+            <span data-bp-icon="plus"></span><span>Generar pedido</span>
+          </button>
+        </div>
+      </div>
+
+      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+
+      <!-- Filtros -->
+      <div class="admin-panel" id="panelFiltrosPedidos" style="margin:18px 0;">
+        <div class="admin-filters-row">
+          <select id="filtroEstado" class="admin-select">
+            <option value="">Todos los estados</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Surtido">Surtido</option>
+            <option value="Cancelado">Cancelado</option>
+          </select>
+          <select id="filtroTipo" class="admin-select">
+            <option value="">Todos los tipos</option>
+            <option value="Reposición">Reposición</option>
+            <option value="Venta">Venta</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Pedidos</h2>
+          <span class="admin-count-pill" id="contador">0 pedidos</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="tablaPedidos">
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th style="text-align:right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo"></tbody>
+          </table>
+          <div id="estadoVacio" class="admin-empty-state hidden" style="padding:34px 20px;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Nuevo / Editar pedido -->
+  <div id="modal" class="admin-modal-overlay hidden">
+    <div class="admin-modal scm-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <div class="admin-modal-head">
+        <h3><span data-bp-icon="clipboard"></span><span id="modalTitulo">Nuevo pedido</span></h3>
+        <button type="button" class="admin-modal-close" id="btnCerrar" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <form id="form" novalidate>
+        <input type="hidden" id="pedidoId" value="" />
+
+        <div class="admin-form-group">
+          <label for="f-producto">Producto</label>
+          <select id="f-producto" required>
+            <option value="" disabled selected>Selecciona un producto</option>
+          </select>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-cantidad">Cantidad</label>
+            <input type="number" id="f-cantidad" min="1" step="1" value="1" required />
+          </div>
+          <div class="admin-form-group">
+            <label for="f-tipo">Tipo</label>
+            <select id="f-tipo" required>
+              <option value="Reposición">Reposición</option>
+              <option value="Venta">Venta</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-proveedor">Proveedor</label>
+          <select id="f-proveedor">
+            <option value="">Selecciona un proveedor (opcional)</option>
+          </select>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-fecha">Fecha</label>
+            <input type="date" id="f-fecha" required />
+          </div>
+          <div class="admin-form-group" id="grupoEstado">
+            <label for="f-estado">Estado</label>
+            <select id="f-estado">
+              <option value="Pendiente">Pendiente</option>
+              <option value="En proceso">En proceso</option>
+              <option value="Surtido">Surtido</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-notas">Notas</label>
+          <textarea id="f-notas" rows="3" maxlength="400" placeholder="Notas..."></textarea>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="admin-btn-primary" id="btnGuardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      escucharPedidosScm, crearPedidoScm, actualizarPedidoScm, eliminarPedidoScm, marcarPedidoSurtido,
+      escucharProductosScm, escucharProveedoresScm, generarReposicionesAutomaticas,
+    } from './firebase-db.js';
+    import { pintarBannerStockBajo } from './admin-stock-alertas.js';
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const claseEstado = { Pendiente: 'warn', 'En proceso': 'info', Surtido: 'ok', Cancelado: 'muted' };
+
+    // ---------- Estado ----------
+    let pedidos = [];
+    let productos = [];
+    let proveedores = [];
+    let cargado = false;
+    let errorCarga = null;
+
+    function formatearFecha(iso) {
+      if (!iso) return '—';
+      const [y, m, d] = iso.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    // ---------- Tabla ----------
+    function filtrados() {
+      const estado = $('filtroEstado').value;
+      const tipo = $('filtroTipo').value;
+      return pedidos.filter(p => (!estado || p.estado === estado) && (!tipo || p.tipo === tipo));
+    }
+
+    function pintar() {
+      const cuerpo = $('cuerpo');
+      const vacio = $('estadoVacio');
+      const lista = filtrados();
+
+      if (errorCarga) {
+        cuerpo.innerHTML = '';
+        $('contador').textContent = '—';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = `<span class="icon" data-bp-icon="warning"></span><br>
+          <span class="scm-error">No se pudieron cargar los pedidos.</span><br><small>${esc(errorCarga)}</small>`;
+        pintarIconosBP();
+        return;
+      }
+
+      if (!cargado) {
+        cuerpo.innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = 'Cargando pedidos…';
+        return;
+      }
+
+      $('contador').textContent = `${lista.length} pedido${lista.length === 1 ? '' : 's'}`;
+
+      cuerpo.innerHTML = lista.map(p => `
+        <tr data-id="${esc(p.id)}">
+          <td><strong>${esc(p.folio)}</strong></td>
+          <td>${formatearFecha(p.fecha)}</td>
+          <td>${esc(p.producto)}</td>
+          <td class="scm-num">${Number(p.cantidad) || 0}</td>
+          <td>${esc(p.tipo)}</td>
+          <td><span class="admin-tag ${claseEstado[p.estado] || 'muted'}">${esc(p.estado)}</span></td>
+          <td>
+            <div class="admin-table-actions">
+              <button type="button" title="Editar" aria-label="Editar" data-accion="editar">${bpIcon('pencil')}</button>
+              <button type="button" title="Eliminar" aria-label="Eliminar" class="danger" data-accion="eliminar">${bpIcon('trash')}</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      if (lista.length === 0) {
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = pedidos.length === 0
+          ? `<span class="icon" data-bp-icon="clipboard"></span><br>Todavía no hay pedidos registrados.`
+          : `<span class="icon" data-bp-icon="search"></span><br>No se encontraron pedidos con los criterios seleccionados.`;
+        pintarIconosBP();
+      } else {
+        vacio.classList.add('hidden');
+      }
+    }
+
+    $('filtroEstado').addEventListener('change', pintar);
+    $('filtroTipo').addEventListener('change', pintar);
+
+    // ---------- Selects del modal ----------
+    function pintarOpcionesProducto(seleccion) {
+      const select = $('f-producto');
+      select.innerHTML = productos.length
+        ? '<option value="" disabled' + (seleccion ? '' : ' selected') + '>Selecciona un producto</option>'
+        : '<option value="">No hay productos en el catálogo</option>';
+      productos.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = p.nombre;
+        select.appendChild(o);
+      });
+      select.value = productos.some(p => p.id === seleccion) ? seleccion : '';
+    }
+
+    function pintarOpcionesProveedor(seleccion) {
+      const select = $('f-proveedor');
+      select.innerHTML = '<option value="">Selecciona un proveedor (opcional)</option>';
+      proveedores.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = p.nombre;
+        select.appendChild(o);
+      });
+      select.value = proveedores.some(p => p.id === seleccion) ? seleccion : '';
+    }
+
+    // ---------- Modal ----------
+    function abrirModal(pedido) {
+      if (!productos.length && !pedido) { mostrarToast('Registra al menos un producto en el catálogo primero'); return; }
+      $('form').reset();
+      $('pedidoId').value = pedido ? pedido.id : '';
+      $('modalTitulo').textContent = pedido ? 'Editar pedido' : 'Nuevo pedido';
+      $('f-fecha').value = pedido ? pedido.fecha : new Date().toISOString().slice(0, 10);
+      $('f-cantidad').value = pedido ? pedido.cantidad : 1;
+
+      pintarOpcionesProducto(pedido ? pedido.productoId : '');
+      pintarOpcionesProveedor(pedido ? pedido.proveedorId : '');
+
+      if (pedido) {
+        $('f-tipo').value = pedido.tipo === 'Venta' ? 'Venta' : 'Reposición';
+        $('f-estado').value = pedido.estado || 'Pendiente';
+        $('f-notas').value = pedido.notas || '';
+      }
+
+      // Un pedido ya surtido ya movió el inventario: producto, cantidad, tipo y
+      // estado se bloquean para que no quede un stock distinto a lo registrado
+      // (solo se pueden editar proveedor, fecha y notas).
+      const bloqueado = !!(pedido && pedido.estado === 'Surtido');
+      ['f-producto', 'f-cantidad', 'f-tipo', 'f-estado'].forEach(id => { $(id).disabled = bloqueado; });
+
+      $('modal').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+      $('modal').classList.add('hidden');
+      $('form').reset();
+    }
+
+    $('btnNuevo').addEventListener('click', () => abrirModal(null));
+    $('btnCerrar').addEventListener('click', cerrarModal);
+    $('btnCancelar').addEventListener('click', cerrarModal);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !$('modal').classList.contains('hidden')) cerrarModal();
+    });
+
+    $('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = $('pedidoId').value;
+      const productoId = $('f-producto').value;
+      const prod = productos.find(p => p.id === productoId);
+      if (!prod) { mostrarToast('Selecciona un producto'); return; }
+
+      const proveedorId = $('f-proveedor').value;
+      const prov = proveedores.find(p => p.id === proveedorId);
+
+      const datos = {
+        productoId, producto: prod.nombre,
+        cantidad: Math.max(1, parseInt($('f-cantidad').value, 10) || 1),
+        tipo: $('f-tipo').value === 'Venta' ? 'Venta' : 'Reposición',
+        proveedorId: prov ? prov.id : '',
+        proveedor: prov ? prov.nombre : '',
+        fecha: $('f-fecha').value,
+        notas: $('f-notas').value.trim(),
+      };
+
+      const boton = $('btnGuardar');
+      boton.disabled = true;
+      try {
+        if (id) {
+          const anterior = pedidos.find(p => p.id === id);
+          const estadoNuevo = $('f-estado').value;
+          // Si se marca como Surtido (sea Reposición o Venta), se ajusta el
+          // stock del producto y se registra el movimiento correspondiente en
+          // la misma operación -- para que de verdad se refleje en
+          // Inventario, no solo cambie la etiqueta de estado.
+          if (estadoNuevo === 'Surtido' && anterior) {
+            datos.folio = anterior.folio;
+            const productoActual = productos.find(p => p.id === productoId);
+            await marcarPedidoSurtido(id, datos, anterior.estado, productoActual);
+            mostrarToast(datos.tipo === 'Venta'
+              ? 'Pedido surtido: se descontó el stock en Inventario'
+              : 'Pedido surtido: se sumó el stock en Inventario');
+          } else {
+            datos.estado = estadoNuevo;
+            await actualizarPedidoScm(id, datos);
+            mostrarToast('Pedido actualizado con éxito');
+          }
+        } else {
+          datos.estado = $('f-estado').value;
+          await crearPedidoScm(datos, prod);
+          mostrarToast(datos.estado === 'Surtido'
+            ? (datos.tipo === 'Venta'
+                ? 'Pedido registrado como surtido: se descontó el stock en Inventario'
+                : 'Pedido registrado como surtido: se sumó el stock en Inventario')
+            : 'Pedido generado con éxito');
+        }
+        cerrarModal();
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
+      }
+      boton.disabled = false;
+    });
+
+    $('cuerpo').addEventListener('click', async (e) => {
+      const boton = e.target.closest('button[data-accion]');
+      if (!boton) return;
+      const id = boton.closest('tr').dataset.id;
+      const pedido = pedidos.find(p => p.id === id);
+      if (!pedido) return;
+
+      if (boton.dataset.accion === 'editar') {
+        abrirModal(pedido);
+      } else if (boton.dataset.accion === 'eliminar') {
+        if (!confirm(`¿Eliminar el pedido ${pedido.folio}? Esta acción no se puede deshacer.`)) return;
+        try {
+          await eliminarPedidoScm(id);
+          mostrarToast(`Pedido ${pedido.folio} eliminado`);
+        } catch (err) {
+          console.error(err);
+          mostrarToast('No se pudo eliminar. Revisa tu conexión y los permisos en Firebase.');
+        }
+      }
+    });
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2800);
+    }
+
+    // ---------- Reposición automática (estrategia PUSH) ----------
+    // Cada vez que se actualiza el catálogo o la lista de pedidos, revisa si
+    // algún producto PUSH ya llegó a su stock mínimo y le falta un pedido de
+    // reposición abierto; si es así, lo genera solo, sin esperar a que
+    // alguien le dé clic a "Generar pedido"; el pedido nace Pendiente y el stock
+    // sube hasta que se marque Surtido (ver PUSH_SURTIR_AUTOMATICO en firebase-db.js).
+    // Con "revisando" se evita lanzar
+    // varias revisiones encimadas mientras la anterior todavía no termina.
+    let revisandoReposicion = false;
+    async function revisarReposicionAutomatica() {
+      if (revisandoReposicion || !cargado || !productos.length) return;
+      revisandoReposicion = true;
+      try {
+        const generados = await generarReposicionesAutomaticas(productos, pedidos);
+        if (generados > 0) {
+          mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
+        }
+      } catch (err) {
+        console.error('No se pudo generar la reposición automática:', err);
+      } finally {
+        revisandoReposicion = false;
+      }
+    }
+
+    // ---------- Arranque ----------
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
+      iniciado = true;
+      pintar();
+      escucharProductosScm((lista) => {
+        productos = lista;
+        pintarBannerStockBajo(productos, 'panelFiltrosPedidos');
+        revisarReposicionAutomatica();
+      }, (err) => console.error(err));
+      escucharProveedoresScm((lista) => { proveedores = lista; }, (err) => console.error(err));
+      escucharPedidosScm(
+        (lista) => { pedidos = lista; cargado = true; errorCarga = null; pintar(); revisarReposicionAutomatica(); },
+        (err) => {
+          console.error(err);
+          cargado = true;
+          errorCarga = err && err.code === 'permission-denied'
+            ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'
+            : 'Revisa tu conexión con Firebase.';
+          pintar();
+        }
+      );
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>
