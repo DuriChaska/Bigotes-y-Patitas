@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clientes - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-panels" style="grid-template-columns: 1.5fr 1fr; gap: 20px;">
+        
+        <!-- Tarjeta de Edición -->
+        <div class="admin-panel edit-card">
+          <h2>Editar etapa CRM</h2>
+          <p class="panel-sub" id="client-name">María López</p>
+
+          <div class="admin-field" style="margin-bottom: 16px;">
+            <label for="crm-stage">Nueva etapa</label>
+            <div class="admin-input-wrap">
+              <select id="crm-stage" style="width: 100%; padding: 12px 14px; font-size: .92rem; border: 1.5px solid #e6ddd0; border-radius: 10px; outline: none; background: #fdfbf7; color: var(--text);">
+                <option value="Prospecto">Prospecto</option>
+                <option value="Activo">Activo</option>
+                <option value="Frecuente" selected>Frecuente</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="admin-stat-card" style="margin-bottom: 20px; background: var(--purple-card); padding: 15px; border-radius: 10px; box-shadow: none;">
+            <p style="font-size: 0.85rem; color: var(--text);">Los cambios en la etapa ayudan a dar mejor seguimiento y priorizar a tus clientes.</p>
+          </div>
+
+          <div class="admin-quick">
+            <button class="admin-quick secondary" id="btn-cancelar">Cancelar</button>
+            <button class="admin-quick primary" id="btn-guardar" style="border: none; cursor: pointer;">Guardar cambios</button>
+          </div>
+        </div>
+
+        <!-- Tarjeta de Filtro -->
+        <div class="admin-panel filter-card">
+          <h2>Filtrar por etapa</h2>
+          <p class="panel-sub">Selecciona una categoría</p>
+          <ul class="admin-list" id="filter-list" style="margin-top: 10px;">
+            <li data-value="Todas" style="padding: 10px; cursor: pointer; border-radius: 8px;">Todas</li>
+            <li data-value="Prospecto" style="padding: 10px; cursor: pointer; border-radius: 8px;">Prospecto</li>
+            <li data-value="Activo" style="padding: 10px; cursor: pointer; border-radius: 8px;">Activo</li>
+            <li data-value="Frecuente" class="active" style="padding: 10px; cursor: pointer; border-radius: 8px; background: rgba(107,143,113,.15); font-weight: bold;">Frecuente</li>
+            <li data-value="Inactivo" style="padding: 10px; cursor: pointer; border-radius: 8px;">Inactivo</li>
+          </ul>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Referencias a los elementos del DOM
+    const selectStage = document.getElementById('crm-stage');
+    const filterListItems = document.querySelectorAll('#filter-list li');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const btnCancelar = document.getElementById('btn-cancelar');
+    const clientName = document.getElementById('client-name').innerText;
+
+    // Guardamos el estado inicial para el botón "Cancelar"
+    let estadoOriginal = selectStage.value;
+
+    // Función: Actualiza el resaltado en la lista de la derecha acorde al estilo admin
+    function actualizarResaltadoLista(valorSeleccionado) {
+      filterListItems.forEach(item => {
+        if(item.dataset.value === valorSeleccionado) {
+          item.classList.add('active');
+          item.style.background = 'rgba(107,143,113,.15)';
+          item.style.fontWeight = 'bold';
+        } else {
+          item.classList.remove('active');
+          item.style.background = 'transparent';
+          item.style.fontWeight = 'normal';
+        }
+      });
+    }
+
+    // Evento 1: Cuando cambias la opción en el Select (desplegable)
+    selectStage.addEventListener('change', (e) => {
+      const nuevoValor = e.target.value;
+      actualizarResaltadoLista(nuevoValor);
+    });
+
+    // Evento 2: Cuando das clic en algún elemento de la lista de la derecha
+    filterListItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        const valorClickeado = e.target.dataset.value;
+        
+        // Evitamos seleccionar "Todas" en el select porque es solo para filtros
+        if(valorClickeado !== 'Todas') {
+          selectStage.value = valorClickeado;
+        }
+        actualizarResaltadoLista(valorClickeado);
+      });
+    });
+
+    // Evento 3: Acción del botón "Guardar cambios"
+    btnGuardar.addEventListener('click', () => {
+      const nuevaEtapa = selectStage.value;
+      estadoOriginal = nuevaEtapa; // Actualizamos el estado original para futuros canceles
+      alert(`¡Éxito! La etapa de ${clientName} ha sido guardada como: ${nuevaEtapa}`);
+    });
+
+    // Evento 4: Acción del botón "Cancelar"
+    btnCancelar.addEventListener('click', () => {
+      // Revertimos el select y la lista al último estado guardado
+      selectStage.value = estadoOriginal;
+      actualizarResaltadoLista(estadoOriginal);
+    });
+  </script>
+
+  <script src="admin-components.js"></script>
+</body>
+</html>

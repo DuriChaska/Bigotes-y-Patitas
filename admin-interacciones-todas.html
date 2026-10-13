@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interacciones - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<body data-seccion="crm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Interacciones</h1>
+          <p class="admin-breadcrumb">Panel de administración · Todas las interacciones con clientes</p>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:18px;">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscador-inter" placeholder="Buscar por cliente o descripción..." onkeyup="filtrarInteracciones()" />
+          </div>
+          <select id="filtro-tipo" class="admin-search" style="min-width:160px; cursor:pointer;" onchange="filtrarInteracciones()">
+            <option value="todos">Todos los tipos</option>
+            <option value="Llamada">Llamada</option>
+            <option value="Correo">Correo</option>
+            <option value="Reunión">Reunión</option>
+          </select>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+              </tr>
+            </thead>
+            <tbody id="inter-lista"></tbody>
+          </table>
+        </div>
+        <p id="inter-conteo" style="margin-top:14px; font-size:.82rem; color:var(--gray);"></p>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { escucharTodasInteracciones } from './firebase-db.js';
+
+    let todasInteracciones = [];
+
+    function pintarInteracciones(lista) {
+      const cuerpo = document.getElementById('inter-lista');
+      if (lista.length === 0) {
+        cuerpo.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--gray); padding:20px;">No hay interacciones registradas todavía.</td></tr>`;
+      } else {
+        cuerpo.innerHTML = lista.map(i => {
+          const etiquetaRol = i.usuarioRol === 'administrador' ? 'Administrador' : (i.usuarioRol === 'vendedor' ? 'Vendedor' : '—');
+          return `
+          <tr>
+            <td>${i.fecha || '—'}</td>
+            <td>${i.clienteNombre}</td>
+            <td>${i.tipo}</td>
+            <td>${i.descripcion}</td>
+            <td>${i.usuario}</td>
+            <td>${i.usuarioRol ? `<span class="admin-tag rol-${i.usuarioRol}" style="padding:1px 8px; font-size:.72rem;">${etiquetaRol}</span>` : '—'}</td>
+          </tr>
+        `;
+        }).join('');
+      }
+      document.getElementById('inter-conteo').textContent =
+        `Mostrando ${lista.length} de ${todasInteracciones.length} interacciones`;
+    }
+
+    function filtrarInteracciones() {
+      const texto = document.getElementById('buscador-inter').value.toLowerCase();
+      const tipo = document.getElementById('filtro-tipo').value;
+      const filtradas = todasInteracciones.filter(i => {
+        const coincideTexto = i.clienteNombre.toLowerCase().includes(texto) || i.descripcion.toLowerCase().includes(texto);
+        const coincideTipo = tipo === 'todos' || i.tipo === tipo;
+        return coincideTexto && coincideTipo;
+      });
+      pintarInteracciones(filtradas);
+    }
+    window.filtrarInteracciones = filtrarInteracciones;
+
+    escucharTodasInteracciones((lista) => {
+      todasInteracciones = lista;
+      filtrarInteracciones();
+    });
+  </script>
+</body>
+</html>

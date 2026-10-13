@@ -3,36 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Promociones - Cotton Candy Clothing Store</title>
+  <title>Promociones - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <div id="header"></div>
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
 
-  <div class="container" style="padding-top: 64px;">
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Promociones</h1>
+          <p class="admin-breadcrumb">Panel de administración · Promociones y descuentos</p>
+        </div>
+      </div>
 
-    <aside class="sidebar">
-      <ul>
-        <li><a href="editarproducto.html">Productos</a></li>
-        <li><a href="pedidos.html">Pedidos</a></li>
-        <li><a href="promociones.html">Promociones</a></li>
-      </ul>
-    </aside>
-
-    <main class="main-content">
-      <div class="promociones-box">
+      <div class="admin-panel">
         <h2>Detalles de las promociones</h2>
-        <ul>
-          <li>Fecha de inicio</li>
-          <li>Fecha de finalización</li>
-          <li>Estado (Activa / Inactiva / Programada)</li>
+        <p class="panel-sub">Información que debe tener cada promoción</p>
+        <ul class="admin-legend" style="gap:14px;">
+          <li><span class="dot green"></span> Fecha de inicio</li>
+          <li><span class="dot orange"></span> Fecha de finalización</li>
+          <li><span class="dot green"></span> Estado (Activa / Inactiva / Programada)</li>
         </ul>
       </div>
     </main>
-
   </div>
 
-  <script src="components.js"></script>
+  <script src="admin-components.js"></script>
 </body>
 </html>

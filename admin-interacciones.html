@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Historial de interacciones - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<body data-seccion="crm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <a href="admin-clientes.html" class="admin-volver"><span data-bp-icon="arrow_left" style="margin-right:4px;"></span>Volver a clientes</a>
+
+      <div class="admin-topbar">
+        <div>
+          <h1 id="titulo-cliente">Historial de interacciones</h1>
+          <p class="admin-breadcrumb">Panel de administración · Línea de tiempo de interacciones del cliente</p>
+        </div>
+        <div class="admin-topbar-right admin-quick">
+          <a href="#" class="primary" onclick="return nuevaInteraccion(event)"><span data-bp-icon="plus" style="margin-right:6px;"></span>Nueva interacción</a>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <ul class="admin-timeline" id="timeline-lista"></ul>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Nueva interacción -->
+  <div id="modalInteraccion" class="admin-modal-overlay hidden">
+    <div class="admin-modal">
+      <div class="admin-modal-head">
+        <h3><span data-bp-icon="chat"></span><span>Nueva interacción</span></h3>
+        <button class="admin-modal-close" onclick="cerrarModalInteraccion()">&times;</button>
+      </div>
+
+      <form id="formInteraccion" onsubmit="return guardarInteraccion(event)">
+        <div class="admin-form-group">
+          <label for="int-tipo">Tipo de interacción</label>
+          <select id="int-tipo" class="admin-select" style="width:100%;">
+            <option value="Llamada">Llamada</option>
+            <option value="Correo">Correo</option>
+            <option value="Reunión">Reunión</option>
+          </select>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="int-desc">Descripción</label>
+          <textarea id="int-desc" placeholder="Describe brevemente la interacción..." required></textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="admin-form-group">
+            <label for="int-fecha">Fecha</label>
+            <input type="date" id="int-fecha" required>
+          </div>
+          <div class="admin-form-group">
+            <label>Responsable</label>
+            <input type="text" id="int-responsable-display" disabled>
+          </div>
+        </div>
+
+        <div class="admin-modal-actions">
+          <button type="button" class="admin-btn-secondary" onclick="cerrarModalInteraccion()">Cancelar</button>
+          <button type="submit" class="admin-btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Interacción registrada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { escucharInteraccionesDeCliente, crearInteraccion } from './firebase-db.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const clienteId = params.get('cliente');
+    const clienteNombre = params.get('nombre') || 'Cliente';
+    document.getElementById('titulo-cliente').textContent = 'Historial de interacciones — ' + clienteNombre;
+
+    const iconosPorTipo = { "Llamada": ["phone","green"], "Correo": ["mail","blue"], "Reunión": ["group","gray"] };
+    let interacciones = [];
+
+    function pintarTimeline() {
+      const lista = document.getElementById('timeline-lista');
+      if (interacciones.length === 0) {
+        lista.innerHTML = `<li class="admin-timeline-item"><div class="admin-timeline-content"><p>Sin interacciones registradas todavía para este cliente.</p></div></li>`;
+        return;
+      }
+      lista.innerHTML = interacciones.map(i => {
+        const [icono, color] = iconosPorTipo[i.tipo] || ["chat", "gray"];
+        const fecha = i.fecha || (i.creadoEn && i.creadoEn.toDate ? i.creadoEn.toDate().toLocaleDateString('es-MX') : '—');
+        const etiquetaRol = i.usuarioRol === 'administrador' ? 'Administrador' : (i.usuarioRol === 'vendedor' ? 'Vendedor' : null);
+        return `
+        <li class="admin-timeline-item">
+          <div class="admin-timeline-icon ${color}">${bpIcon(icono)}</div>
+          <div class="admin-timeline-content">
+            <div class="admin-timeline-top">
+              <strong>${i.tipo}</strong>
+              <span class="admin-timeline-date">${fecha}</span>
+            </div>
+            <p>${i.descripcion}</p>
+            <span class="admin-timeline-user">Usuario: ${i.usuario}${etiquetaRol ? ` · <span class="admin-tag rol-${i.usuarioRol}" style="padding:1px 8px; font-size:.72rem;">${etiquetaRol}</span>` : ''}</span>
+          </div>
+        </li>`;
+      }).join('');
+    }
+
+    if (clienteId) {
+      escucharInteraccionesDeCliente(clienteId, (lista) => {
+        interacciones = lista;
+        pintarTimeline();
+      });
+    } else {
+      pintarTimeline();
+    }
+
+    function nuevaInteraccion(e) {
+      e.preventDefault();
+      document.getElementById('int-fecha').valueAsDate = new Date();
+      const s = window.BP_SESION;
+      document.getElementById('int-responsable-display').value = s ? `${s.nombre} (${s.rol === 'administrador' ? 'Administrador' : 'Vendedor'})` : 'Cargando...';
+      document.getElementById('modalInteraccion').classList.remove('hidden');
+      return false;
+    }
+    window.nuevaInteraccion = nuevaInteraccion;
+
+    function cerrarModalInteraccion() {
+      document.getElementById('modalInteraccion').classList.add('hidden');
+      document.getElementById('formInteraccion').reset();
+    }
+    window.cerrarModalInteraccion = cerrarModalInteraccion;
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2400);
+    }
+
+    async function guardarInteraccion(e) {
+      e.preventDefault();
+      if (!clienteId) { mostrarToast('No se identificó al cliente.'); return false; }
+      const sesion = window.BP_SESION;
+      if (!sesion) { mostrarToast('Tu sesión aún se está cargando, espera un momento e inténtalo de nuevo.'); return false; }
+
+      const tipo = document.getElementById('int-tipo').value;
+      const descripcion = document.getElementById('int-desc').value;
+      const fechaInput = document.getElementById('int-fecha').value;
+      const fecha = fechaInput
+        ? new Date(fechaInput + 'T00:00:00').toLocaleDateString('es-MX')
+        : new Date().toLocaleDateString('es-MX');
+
+      try {
+        await crearInteraccion({
+          clienteId, clienteNombre, tipo, descripcion, fecha,
+          usuario: sesion.nombre, usuarioRol: sesion.rol, usuarioUid: sesion.uid,
+        });
+        cerrarModalInteraccion();
+        mostrarToast('Interacción registrada correctamente');
+      } catch (err) {
+        mostrarToast('No se pudo guardar: ' + (err.message || 'revisa tu conexión con Firebase.'));
+      }
+      return false;
+    }
+    window.guardarInteraccion = guardarInteraccion;
+  </script>
+</body>
+</html>

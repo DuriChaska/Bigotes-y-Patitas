@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nivel de madurez SCM - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
+<body data-seccion="scm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Nivel de madurez SCM</h1>
+          <p class="admin-breadcrumb">Panel de administración · SCM · Nivel de madurez</p>
+        </div>
+        <div class="admin-topbar-right">
+          <span class="admin-tag rol-administrador">Solo administradores</span>
+        </div>
+      </div>
+
+      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+
+      <div class="admin-panel">
+        <h2>Marca lo que ya está implementado</h2>
+        <p class="panel-sub">
+          Haz clic en cada punto del checklist conforme se vaya cumpliendo. La barra y el nivel
+          (Inicial, En desarrollo u Optimizado) se mueven solos según lo que marques, y el
+          checklist se guarda para que lo vea todo el equipo.
+        </p>
+
+        <div class="madurez-progress"><div class="madurez-progress-fill" id="madurezBarra" style="width:0%;"></div></div>
+
+        <div class="madurez-stages">
+          <div class="madurez-stage" id="stageInicial">
+            <strong>Inicial</strong>
+            <span>Procesos básicos.</span>
+          </div>
+          <div class="madurez-stage" id="stageDesarrollo">
+            <strong>En desarrollo</strong>
+            <span>Integración de procesos.</span>
+          </div>
+          <div class="madurez-stage" id="stageOptimizado">
+            <strong>Optimizado</strong>
+            <span>Procesos avanzados.</span>
+          </div>
+        </div>
+
+        <div class="admin-panels" style="grid-template-columns:1.3fr 1fr;">
+          <div class="admin-panel" style="box-shadow:none; border:1px solid #f0e9dc; padding:18px;">
+            <h2 style="font-size:.92rem;">Checklist de avance (<span id="madurezContador">0/0</span>)</h2>
+            <ul class="madurez-checklist" id="madurezChecklist"></ul>
+          </div>
+          <div class="admin-panel" style="box-shadow:none; border:1px solid #f0e9dc; padding:18px;">
+            <h2 style="font-size:.92rem;">Descripción del nivel</h2>
+            <p class="panel-sub" id="madurezDescripcion" style="margin-bottom:0;">Cargando…</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { escucharMadurezScm, marcarItemMadurezScm } from './firebase-db.js';
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function mostrarToast(msg) {
+      const toast = $('toast');
+      $('toastMsg').textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2600);
+    }
+
+    // Checklist fijo: cada punto representa un avance real del módulo SCM.
+    // El ID de cada punto es la llave que se guarda en Firestore (scm_estado/madurez.items).
+    const ITEMS_MADUREZ = [
+      { id: 'catalogo',         texto: 'Catálogo de productos registrado en el sistema' },
+      { id: 'proveedores',      texto: 'Proveedores registrados y vinculados a sus productos' },
+      { id: 'inventario',       texto: 'Control de inventario en tiempo real (entradas y salidas)' },
+      { id: 'pedidos',          texto: 'Gestión de pedidos de reposición' },
+      { id: 'logistica',        texto: 'Estrategia logística Push/Pull configurada por producto' },
+      { id: 'alertas',          texto: 'Alertas automáticas de stock bajo activas' },
+      { id: 'reportes',         texto: 'Reportes y métricas del módulo SCM' },
+      { id: 'catalogoPublico',  texto: 'Catálogo conectado a las páginas públicas de la tienda' },
+      { id: 'ventasConectadas', texto: 'El proceso de compra descuenta el inventario real' },
+    ];
+
+    let estadoActual = {};
+    let pendientes = new Set();
+
+    function pintar() {
+      const completados = ITEMS_MADUREZ.filter(it => estadoActual[it.id]).length;
+      const total = ITEMS_MADUREZ.length;
+      const porcentaje = total ? Math.round((completados / total) * 100) : 0;
+
+      $('madurezContador').textContent = `${completados}/${total}`;
+
+      $('madurezChecklist').innerHTML = ITEMS_MADUREZ.map(it => {
+        const ok = !!estadoActual[it.id];
+        const guardando = pendientes.has(it.id);
+        return `
+          <li data-id="${it.id}" role="checkbox" aria-checked="${ok}" tabindex="0" class="${guardando ? 'saving' : ''}">
+            <span class="madurez-check-icon ${ok ? 'done' : 'pend'}">${bpIcon(ok ? 'check' : 'clock')}</span>
+            ${esc(it.texto)}
+          </li>
+        `;
+      }).join('');
+      pintarIconosBP();
+
+      $('madurezChecklist').querySelectorAll('li').forEach(li => {
+        li.addEventListener('click', () => alternarItem(li.dataset.id));
+        li.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternarItem(li.dataset.id); }
+        });
+      });
+
+      $('madurezBarra').style.width = porcentaje + '%';
+
+      let nivel = 'Inicial';
+      let descripcion = 'El sistema apenas está arrancando. Marca los puntos del checklist conforme se vayan implementando para avanzar de nivel.';
+      if (porcentaje >= 67) {
+        nivel = 'Optimizado';
+        descripcion = 'El módulo SCM cuenta con todos sus procesos principales funcionando: catálogo, proveedores, inventario, logística, alertas, reportes y conexión total con la tienda.';
+      } else if (porcentaje >= 34) {
+        nivel = 'En desarrollo';
+        descripcion = 'El módulo SCM ya tiene varios procesos funcionando y se están integrando el resto: logística, alertas, reportes o la conexión con la tienda.';
+      }
+      ['Inicial', 'En desarrollo', 'Optimizado'].forEach((n, i) => {
+        const id = ['stageInicial', 'stageDesarrollo', 'stageOptimizado'][i];
+        $(id).classList.toggle('active', n === nivel);
+      });
+      $('madurezDescripcion').textContent = descripcion;
+    }
+
+    async function alternarItem(id) {
+      if (pendientes.has(id)) return;
+      const nuevoValor = !estadoActual[id];
+      estadoActual = { ...estadoActual, [id]: nuevoValor };
+      pendientes.add(id);
+      pintar(); // cambio optimista: se ve de inmediato mientras se guarda
+
+      try {
+        await marcarItemMadurezScm(id, nuevoValor);
+      } catch (err) {
+        console.error(err);
+        estadoActual = { ...estadoActual, [id]: !nuevoValor };
+        mostrarToast('No se pudo guardar el cambio. Revisa tu conexión.');
+      } finally {
+        pendientes.delete(id);
+        pintar();
+      }
+    }
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
+      iniciado = true;
+      escucharMadurezScm((items) => {
+        estadoActual = items || {};
+        pintar();
+      }, (err) => {
+        console.error(err);
+        $('madurezDescripcion').textContent = 'No se pudo cargar el checklist. Revisa tu conexión y los permisos en Firebase.';
+      });
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>
