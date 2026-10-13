@@ -389,8 +389,8 @@
     // Cada vez que se actualiza el catálogo o la lista de pedidos, revisa si
     // algún producto PUSH ya llegó a su stock mínimo y le falta un pedido de
     // reposición abierto; si es así, lo genera solo, sin esperar a que
-    // alguien le dé clic a "Generar pedido"; el pedido queda como Surtido y el
-    // stock se rellena solo (ver PUSH_SURTIR_AUTOMATICO en firebase-db.js).
+    // alguien le dé clic a "Generar pedido"; el pedido nace Pendiente y el stock
+    // sube hasta que se marque Surtido (ver PUSH_SURTIR_AUTOMATICO en firebase-db.js).
     // Con "revisando" se evita lanzar
     // varias revisiones encimadas mientras la anterior todavía no termina.
     let revisandoReposicion = false;
@@ -400,7 +400,7 @@
       try {
         const generados = await generarReposicionesAutomaticas(productos, pedidos);
         if (generados > 0) {
-          mostrarToast(`Reposición automática PUSH: ${generados} producto${generados === 1 ? '' : 's'} rellenado${generados === 1 ? '' : 's'} (ya se ve en Inventario)`);
+          mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
         }
       } catch (err) {
         console.error('No se pudo generar la reposición automática:', err);
