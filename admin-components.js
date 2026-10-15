@@ -43,6 +43,13 @@ const adminNavGroups = [
       { href: 'admin-scm-madurez.html',     label: 'Nivel de madurez', icon: 'trending_up' },
     ],
   },
+  {
+    key: 'erp', label: 'ERP', icon: 'trending_up', seccion: 'erp',
+    items: [
+      { href: 'admin-erp.html',         label: 'Dashboard ERP',    icon: 'home' },
+      { href: 'admin-erp-ordenes.html', label: 'Órdenes de clientes', icon: 'clipboard' },
+    ],
+  },
 ];
 
 // Usuarios y Configuración quedan fuera de los acordeones, siempre visibles.
@@ -56,6 +63,8 @@ const adminAliasActivo = {
   'admin-cliente-detalle.html': 'admin-clientes.html',
   'admin-cliente-etapa.html':   'admin-clientes.html',
   'admin-interacciones.html':   'admin-interacciones-todas.html',
+  'admin-erp-ordenes.html':      'admin-erp-ordenes.html',
+  'admin-erp-nueva-orden.html':  'admin-erp-ordenes.html',
 };
 const adminPaginaActiva = adminAliasActivo[adminPaginaActual] || adminPaginaActual;
 
