@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nueva orden ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+  <style>
+    /* ── Stepper ── */
+    .erp-stepper {
+      display: flex;
+      align-items: center;
+      margin-bottom: 28px;
+      position: relative;
+    }
+    .erp-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      position: relative;
+      z-index: 1;
+    }
+    .erp-step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .85rem;
+      background: var(--border);
+      color: var(--gray);
+      border: 2px solid var(--border);
+      transition: background .2s, color .2s, border-color .2s;
+    }
+    .erp-step.activo .erp-step-num { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .erp-step.listo  .erp-step-num { background: var(--success,#16a34a); color: #fff; border-color: var(--success,#16a34a); }
+    .erp-step-lbl {
+      font-size: .72rem;
+      margin-top: 5px;
+      color: var(--gray);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .erp-step.activo .erp-step-lbl { color: var(--primary); font-weight: 700; }
+    .erp-step.listo  .erp-step-lbl { color: var(--success,#16a34a); }
+    .erp-stepper-line {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      position: relative;
+      top: -10px;
+      z-index: 0;
+      margin: 0 -1px;
+      transition: background .3s;
+    }
+    .erp-stepper-line.listo { background: var(--success,#16a34a); }
+
+    /* ── Tarjeta de cliente ── */
+    .erp-cliente-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      padding: 14px 18px;
+      background: var(--bg-alt,#f8f9fb);
+      margin-top: 10px;
+    }
+    .erp-cliente-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--primary-light,#dbeafe);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .erp-cliente-info { flex: 1; min-width: 0; }
+    .erp-cliente-info strong { display: block; font-size: .95rem; color: var(--text); }
+    .erp-cliente-info span   { font-size: .78rem; color: var(--gray); display: block; }
+
+    /* ── Dropdown clientes ── */
+    .erp-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+    .erp-dropdown-item {
+      padding: 9px 14px;
+      cursor: pointer;
+      font-size: .85rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .erp-dropdown-item:last-child { border-bottom: none; }
+    .erp-dropdown-item:hover { background: var(--bg-alt,#f8f9fb); }
+    .erp-dropdown-init {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      background: var(--primary-light,#dbeafe);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .8rem;
+    }
+
+    /* ── Líneas de producto ── */
+    .erp-prod-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .erp-prod-row:last-child { border-bottom: none; }
+    .erp-prod-name  { font-weight: 600; font-size: .88rem; color: var(--text); }
+    .erp-prod-sub   { font-size: .75rem; color: var(--gray); }
+    .erp-prod-total { font-weight: 700; color: var(--primary); min-width: 80px; text-align: right; }
+    .erp-prod-qty   { width: 70px; }
+
+    /* ── Resumen ── */
+    .erp-resumen-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: .88rem;
+      color: var(--gray);
+    }
+    .erp-resumen-row.total {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 680px) {
+      .erp-prod-row { grid-template-columns: 1fr auto; }
+      .erp-prod-total { display: none; }
+    }
+  </style>
+</head>
+<!-- data-seccion="erp": acceso para administrador y vendedor -->
+<body data-seccion="crm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+
+      <!-- ── Topbar ── -->
+      <div class="admin-topbar">
+        <div>
+          <h1>Nueva orden</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Asistente de registro de orden</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn" id="btnCancelar">
+            <span data-bp-icon="arrow_left"></span><span>Cancelar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Wizard ── -->
+      <div class="admin-panel" style="max-width:680px;">
+
+        <!-- Stepper -->
+        <div class="erp-stepper">
+          <div class="erp-step activo" id="step-ind-1">
+            <div class="erp-step-num">1</div>
+            <div class="erp-step-lbl">Cliente</div>
+          </div>
+          <div class="erp-stepper-line" id="linea-1-2"></div>
+          <div class="erp-step" id="step-ind-2">
+            <div class="erp-step-num">2</div>
+            <div class="erp-step-lbl">Productos</div>
+          </div>
+          <div class="erp-stepper-line" id="linea-2-3"></div>
+          <div class="erp-step" id="step-ind-3">
+            <div class="erp-step-num">3</div>
+            <div class="erp-step-lbl">Confirmar</div>
+          </div>
+        </div>
+
+        <!-- ── PASO 1: Cliente ── -->
+        <div id="paso-1">
+          <p style="font-size:.82rem;color:var(--gray);margin-bottom:14px;">Paso 1 de 3 · Selecciona el cliente que realizó la orden.</p>
+
+          <div style="position:relative;">
+            <div class="admin-search" style="width:100%;">
+              <span data-bp-icon="search"></span>
+              <input type="text" id="buscar-cliente" placeholder="Buscar por nombre, correo…" autocomplete="off" />
+            </div>
+            <div id="dropdown-clientes" class="erp-dropdown hidden"></div>
+          </div>
+
+          <div id="cliente-seleccionado-wrap" class="hidden" style="margin-top:14px;">
+            <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:var(--gray);margin-bottom:6px;">Cliente seleccionado</p>
+            <div class="erp-cliente-card" id="cliente-card"></div>
+          </div>
+
+          <div class="admin-modal-actions" style="margin-top:24px;justify-content:space-between;">
+            <button type="button" class="admin-btn-secondary" id="btnCancelar1">Cancelar</button>
+            <button type="button" class="admin-btn-primary" id="btnPaso2" disabled>
+              Siguiente <span data-bp-icon="arrow_right"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── PASO 2: Productos ── -->
+        <div id="paso-2" class="hidden">
+          <p style="font-size:.82rem;color:var(--gray);margin-bottom:14px;">Paso 2 de 3 · Agrega productos y cantidades.</p>
+
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:18px;align-items:flex-end;">
+            <div class="admin-form-group" style="margin:0;">
+              <label for="sel-producto">Producto</label>
+              <select id="sel-producto" class="admin-select" style="width:100%;"></select>
+            </div>
+            <div class="admin-form-group" style="margin:0;">
+              <label for="sel-cantidad">Cantidad</label>
+              <input type="number" id="sel-cantidad" min="1" value="1" class="admin-input erp-prod-qty" />
+            </div>
+            <button type="button" class="admin-btn-secondary" id="btnAgregarProd" style="grid-column:1/-1;width:fit-content;">
+              <span data-bp-icon="plus"></span> Agregar al pedido
+            </button>
+          </div>
+
+          <div id="lineas-pedido" style="margin-bottom:18px;min-height:60px;">
+            <p style="color:var(--gray);font-size:.85rem;">Aún no has agregado productos.</p>
+          </div>
+
+          <div style="text-align:right;font-weight:700;color:var(--primary);font-size:1rem;" id="subtotal-paso2"></div>
+
+          <div class="admin-modal-actions" style="margin-top:24px;">
+            <button type="button" class="admin-btn-secondary" id="btnVolver1">← Volver</button>
+            <button type="button" class="admin-btn-primary" id="btnPaso3" disabled>
+              Siguiente <span data-bp-icon="arrow_right"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── PASO 3: Confirmación ── -->
+        <div id="paso-3" class="hidden">
+          <p style="font-size:.82rem;color:var(--gray);margin-bottom:18px;">Paso 3 de 3 · Revisa y confirma la orden.</p>
+
+          <div style="background:var(--bg-alt,#f8f9fb);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:18px;">
+            <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:8px;">Cliente</p>
+            <div id="conf-cliente"></div>
+
+            <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin:18px 0 8px;">Productos</p>
+            <div id="conf-lineas"></div>
+
+            <div style="margin-top:16px;padding-top:4px;">
+              <div class="erp-resumen-row"><span>Subtotal</span><span id="conf-subtotal">—</span></div>
+              <div class="erp-resumen-row"><span>Descuento</span><span>$0.00</span></div>
+              <div class="erp-resumen-row total"><span>Total</span><span id="conf-total">—</span></div>
+            </div>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="conf-metodo">Método de pago</label>
+            <select id="conf-metodo" class="admin-select">
+              <option value="Efectivo">Efectivo</option>
+              <option value="Tarjeta">Tarjeta</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
+          <div class="admin-form-group">
+            <label for="conf-direccion">Dirección de envío (opcional)</label>
+            <textarea id="conf-direccion" rows="2" maxlength="300"
+              placeholder="Calle, número, colonia…" class="admin-textarea"></textarea>
+          </div>
+
+          <div class="admin-modal-actions" style="margin-top:24px;">
+            <button type="button" class="admin-btn-secondary" id="btnVolver2">← Volver</button>
+            <button type="button" class="admin-btn-primary" id="btnConfirmar">
+              <span data-bp-icon="check"></span> Registrar orden
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Listo</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      escucharClientes,
+      escucharProductosScm,
+      crearVenta,
+    } from './firebase-db.js';
+
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDec = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+
+    let tempToast;
+    function toast(msg, ms = 3000) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      clearTimeout(tempToast);
+      tempToast = setTimeout(() => $('toast').classList.remove('show'), ms);
+    }
+
+    let clientes  = [];
+    let productos = [];
+
+    let wizCliente = null;
+    let wizLineas  = [];
+
+    // ── Stepper ───────────────────────────────────────────────────────────────
+    function irPaso(n) {
+      [1, 2, 3].forEach(i => {
+        $(`paso-${i}`).classList.toggle('hidden', i !== n);
+        const ind = $(`step-ind-${i}`);
+        ind.classList.remove('activo', 'listo');
+        if (i < n)  ind.classList.add('listo');
+        if (i === n) ind.classList.add('activo');
+      });
+      $('linea-1-2').classList.toggle('listo', n >= 2);
+      $('linea-2-3').classList.toggle('listo', n >= 3);
+      if (typeof pintarIconosBP === 'function') pintarIconosBP();
+    }
+
+    // ── Cancelar → volver a órdenes ───────────────────────────────────────────
+    function volverAOrdenes() {
+      window.location.href = 'admin-erp-ordenes.html';
+    }
+    $('btnCancelar').addEventListener('click',  volverAOrdenes);
+    $('btnCancelar1').addEventListener('click', volverAOrdenes);
+
+    // ── PASO 1: búsqueda de clientes ──────────────────────────────────────────
+    $('buscar-cliente').addEventListener('input', () => {
+      const txt = $('buscar-cliente').value.trim().toLowerCase();
+      const dd  = $('dropdown-clientes');
+      if (!txt) { dd.classList.add('hidden'); return; }
+
+      const matches = clientes
+        .filter(c => [c.nombre, c.correo, c.telefono]
+          .some(v => String(v ?? '').toLowerCase().includes(txt)))
+        .slice(0, 8);
+
+      if (matches.length === 0) {
+        dd.innerHTML = `<div class="erp-dropdown-item" style="color:var(--gray);">Sin resultados</div>`;
+      } else {
+        dd.innerHTML = matches.map(c => `
+          <div class="erp-dropdown-item" data-id="${esc(c.id)}">
+            <div class="erp-dropdown-init">${esc((c.nombre || '?')[0]).toUpperCase()}</div>
+            <div>
+              <strong style="font-size:.85rem;">${esc(c.nombre)}</strong>
+              <span style="font-size:.75rem;color:var(--gray);display:block;">${esc(c.correo || c.empresa || '')}</span>
+            </div>
+          </div>`).join('');
+      }
+      dd.classList.remove('hidden');
+    });
+
+    $('dropdown-clientes').addEventListener('click', e => {
+      const item = e.target.closest('[data-id]');
+      if (!item) return;
+      wizCliente = clientes.find(c => c.id === item.dataset.id);
+      if (!wizCliente) return;
+
+      $('dropdown-clientes').classList.add('hidden');
+      $('buscar-cliente').value = wizCliente.nombre;
+
+      $('cliente-card').innerHTML = `
+        <div class="erp-cliente-avatar">${(wizCliente.nombre || '?')[0].toUpperCase()}</div>
+        <div class="erp-cliente-info">
+          <strong>${esc(wizCliente.nombre)}</strong>
+          ${wizCliente.empresa  ? `<span>Empresa: ${esc(wizCliente.empresa)}</span>` : ''}
+          ${wizCliente.correo   ? `<span>Correo: ${esc(wizCliente.correo)}</span>` : ''}
+          ${wizCliente.telefono ? `<span>Teléfono: ${esc(wizCliente.telefono)}</span>` : ''}
+        </div>
+        <span data-bp-icon="check" style="color:var(--primary);"></span>`;
+      if (typeof pintarIconosBP === 'function') pintarIconosBP();
+
+      $('cliente-seleccionado-wrap').classList.remove('hidden');
+      $('btnPaso2').disabled = false;
+    });
+
+    // Cerrar dropdown al hacer clic fuera
+    document.addEventListener('click', e => {
+      if (!$('buscar-cliente').contains(e.target) && !$('dropdown-clientes').contains(e.target))
+        $('dropdown-clientes').classList.add('hidden');
+    });
+
+    $('btnPaso2').addEventListener('click', () => {
+      irPaso(2);
+      pintarSelectorProductos();
+    });
+
+    // ── PASO 2: productos ─────────────────────────────────────────────────────
+    function pintarSelectorProductos() {
+      const sel  = $('sel-producto');
+      const opts = productos.filter(p => Number(p.stock) > 0 && Number(p.precio) > 0);
+      sel.innerHTML = `<option value="">— Selecciona un producto —</option>` +
+        opts.map(p =>
+          `<option value="${esc(p.id)}">${esc(p.nombre)} — Stock: ${p.stock} · $${Number(p.precio).toFixed(2)}</option>`
+        ).join('');
+      pintarLineas();
+    }
+
+    function pintarLineas() {
+      const wrap       = $('lineas-pedido');
+      const subtotalEl = $('subtotal-paso2');
+
+      if (wizLineas.length === 0) {
+        wrap.innerHTML = `<p style="color:var(--gray);font-size:.85rem;">Aún no has agregado productos.</p>`;
+        subtotalEl.textContent = '';
+        $('btnPaso3').disabled = true;
+        return;
+      }
+      $('btnPaso3').disabled = false;
+
+      const subtotal = wizLineas.reduce((s, l) => s + l.subtotal, 0);
+      subtotalEl.textContent = `Subtotal: ${fmtDec.format(subtotal)}`;
+
+      wrap.innerHTML = wizLineas.map((l, idx) => `
+        <div class="erp-prod-row">
+          <div>
+            <p class="erp-prod-name">${esc(l.nombre)}</p>
+            <p class="erp-prod-sub">${l.cantidad} × ${fmtDec.format(l.precio)}</p>
+          </div>
+          <p class="erp-prod-total">${fmtDec.format(l.subtotal)}</p>
+          <button type="button" data-idx="${idx}" title="Quitar"
+            style="color:var(--danger,#dc2626);background:none;border:none;cursor:pointer;padding:4px;">
+            ${bpIcon('trash')}
+          </button>
+        </div>`).join('');
+
+      wrap.querySelectorAll('button[data-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          wizLineas.splice(Number(btn.dataset.idx), 1);
+          pintarLineas();
+        });
+      });
+    }
+
+    $('btnAgregarProd').addEventListener('click', () => {
+      const prodId = $('sel-producto').value;
+      const cant   = parseInt($('sel-cantidad').value, 10);
+      if (!prodId || cant < 1) { toast('Selecciona un producto y una cantidad válida'); return; }
+      const prod = productos.find(p => p.id === prodId);
+      if (!prod) return;
+
+      const yaExiste  = wizLineas.find(l => l.productoId === prodId);
+      const totalCant = (yaExiste ? yaExiste.cantidad : 0) + cant;
+      if (totalCant > Number(prod.stock)) {
+        toast(`Stock insuficiente. Solo hay ${prod.stock} unidades de "${prod.nombre}".`);
+        return;
+      }
+      if (yaExiste) {
+        yaExiste.cantidad = totalCant;
+        yaExiste.subtotal = yaExiste.cantidad * yaExiste.precio;
+      } else {
+        wizLineas.push({
+          productoId: prod.id,
+          nombre:     prod.nombre,
+          precio:     Number(prod.precio) || 0,
+          cantidad:   cant,
+          subtotal:   cant * (Number(prod.precio) || 0),
+        });
+      }
+      pintarLineas();
+      $('sel-producto').value = '';
+      $('sel-cantidad').value = '1';
+    });
+
+    $('btnVolver1').addEventListener('click', () => irPaso(1));
+    $('btnPaso3').addEventListener('click',  () => { irPaso(3); pintarConfirmacion(); });
+
+    // ── PASO 3: confirmación ──────────────────────────────────────────────────
+    function pintarConfirmacion() {
+      $('conf-cliente').innerHTML = `
+        <div class="erp-cliente-card" style="margin-top:0;">
+          <div class="erp-cliente-avatar">${(wizCliente.nombre || '?')[0].toUpperCase()}</div>
+          <div class="erp-cliente-info">
+            <strong>${esc(wizCliente.nombre)}</strong>
+            ${wizCliente.correo ? `<span>${esc(wizCliente.correo)}</span>` : ''}
+          </div>
+        </div>`;
+
+      $('conf-lineas').innerHTML = wizLineas.map(l => `
+        <div class="erp-prod-row" style="grid-template-columns:1fr auto;">
+          <div>
+            <p class="erp-prod-name">${esc(l.nombre)}</p>
+            <p class="erp-prod-sub">${l.cantidad} × ${fmtDec.format(l.precio)}</p>
+          </div>
+          <p class="erp-prod-total">${fmtDec.format(l.subtotal)}</p>
+        </div>`).join('');
+
+      const subtotal = wizLineas.reduce((s, l) => s + l.subtotal, 0);
+      $('conf-subtotal').textContent = fmtDec.format(subtotal);
+      $('conf-total').textContent    = fmtDec.format(subtotal);
+    }
+
+    $('btnVolver2').addEventListener('click', () => irPaso(2));
+
+    $('btnConfirmar').addEventListener('click', async () => {
+      const btn = $('btnConfirmar');
+      btn.disabled = true;
+      try {
+        const subtotal   = wizLineas.reduce((s, l) => s + l.subtotal, 0);
+        const datosVenta = {
+          clienteId:     wizCliente.id,
+          clienteNombre: wizCliente.nombre,
+          clienteCorreo: wizCliente.correo || '',
+          items: wizLineas.map(l => ({
+            productoId: l.productoId,
+            nombre:     l.nombre,
+            precio:     l.precio,
+            cantidad:   l.cantidad,
+          })),
+          subtotal,
+          descuento:      0,
+          cupon:          '',
+          total:          subtotal,
+          direccionEnvio: $('conf-direccion').value.trim(),
+          metodoPago:     $('conf-metodo').value,
+          estado:         'Confirmada',
+        };
+
+        await crearVenta(datosVenta, productos);
+        toast('¡Orden registrada con éxito! El stock se ha actualizado.', 4000);
+        setTimeout(() => window.location.href = 'admin-erp-ordenes.html', 1500);
+
+      } catch (err) {
+        console.error(err);
+        toast('No se pudo registrar la orden: ' + (err.message || 'error desconocido'), 5000);
+        btn.disabled = false;
+      }
+    });
+
+    // ── Arranque ──────────────────────────────────────────────────────────────
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion) return;
+      iniciado = true;
+      escucharClientes(lista => { clientes = lista; });
+      escucharProductosScm(lista => { productos = lista; }, err => console.error(err));
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', e => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>
