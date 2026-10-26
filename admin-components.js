@@ -48,6 +48,7 @@ const adminNavGroups = [
     items: [
       { href: 'admin-erp.html',         label: 'Dashboard ERP',    icon: 'home' },
       { href: 'admin-erp-ordenes.html', label: 'Órdenes de clientes', icon: 'clipboard' },
+      { href: 'admin-erp-madurez.html', label: 'Nivel de implementación', icon: 'trending_up' },
     ],
   },
 ];
