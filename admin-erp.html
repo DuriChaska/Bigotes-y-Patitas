@@ -14,7 +14,7 @@
       justify-content: space-between;
       gap: 10px;
       height: 180px;
-      padding: 0 4px;
+      padding: 0 4px 0;
       border-bottom: 2px solid var(--border);
       margin-bottom: 8px;
     }
@@ -24,23 +24,21 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-end;
-      height: 100%;
       gap: 4px;
       cursor: default;
     }
     .erp-bar-val {
-      font-size: .68rem;
+      font-size: .65rem;
       font-weight: 700;
       color: var(--gray);
       white-space: nowrap;
-      min-height: 16px;
-      display: flex;
-      align-items: flex-end;
+      line-height: 1;
     }
     .erp-bar {
-      width: 100%;
+      width: 32px;           /* Ancho fijo para que no colapse a 0 */
+      min-width: 24px;
       max-width: 48px;
-      background: var(--primary);
+      background: var(--gray);
       border-radius: 5px 5px 0 0;
       opacity: .82;
       transition: opacity .15s, transform .15s;
@@ -193,30 +191,6 @@
 
       </div>
 
-      <!-- ── Órdenes recientes ── -->
-      <div class="admin-panel">
-        <div class="admin-panel-head">
-          <h2>Órdenes recientes</h2>
-          <a href="admin-erp-ordenes.html" class="admin-count-pill" style="text-decoration:none;cursor:pointer;">Ver todas</a>
-        </div>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Folio</th>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Total</th>
-                <th>Estado</th>
-                <th style="text-align:right;">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-recientes"></tbody>
-          </table>
-          <div id="vacio-recientes" class="admin-empty-state hidden" style="padding:30px 20px;"></div>
-        </div>
-      </div>
-
     </main>
   </div>
 
@@ -279,7 +253,6 @@
 
         pintarGrafica(ventas);
         pintarTopProductos(ventas);
-        pintarTablaRecientes(ventas.slice(0, 10));
 
         if (typeof pintarIconosBP === 'function') pintarIconosBP();
 
@@ -315,12 +288,13 @@
       const maxTotal = Math.max(...meses.map(m => m.total), 1);
       const wrap     = $('grafica-wrap');
 
+      const BAR_MAX_PX = 150; // px máximos de barra (deja ~30px para la etiqueta)
       wrap.innerHTML = meses.map(m => {
-        const pct = Math.max(3, Math.round((m.total / maxTotal) * 100));
+        const px = Math.max(4, Math.round((m.total / maxTotal) * BAR_MAX_PX));
         return `
           <div class="erp-bar-col" title="${m.lbl}: ${fmtDec.format(m.total)}">
             <span class="erp-bar-val">${m.total > 0 ? fmt.format(m.total) : ''}</span>
-            <div class="erp-bar" style="height:${pct}%;"></div>
+            <div class="erp-bar" style="height:${px}px;"></div>
           </div>`;
       }).join('');
 
@@ -345,8 +319,8 @@
         tendEl.textContent = 'Primer mes con ventas';
       } else {
         tendEl.textContent = 'Sin ventas registradas aún';
-        tendEl.style.color = 'var(--gray)';
-        iconEl.style.color = 'var(--gray)';
+        tendEl.style.color = 'var(--#16a34a)';
+        iconEl.style.color = 'var(--#16a34a)';
       }
     }
 
@@ -383,42 +357,6 @@
       }).join('');
     }
 
-    // ── Tabla de órdenes recientes ─────────────────────────────────────────────
-    function pintarTablaRecientes(ventas) {
-      const tbody = $('tabla-recientes');
-      const vacio = $('vacio-recientes');
-
-      if (ventas.length === 0) {
-        tbody.innerHTML = '';
-        vacio.classList.remove('hidden');
-        vacio.innerHTML = `<span data-bp-icon="clipboard"></span><br>No hay órdenes registradas todavía.`;
-        if (typeof pintarIconosBP === 'function') pintarIconosBP();
-        return;
-      }
-      vacio.classList.add('hidden');
-
-      tbody.innerHTML = ventas.map(v => {
-        const ts    = v.creadoEn?.toDate ? v.creadoEn.toDate() : (v.creadoEn ? new Date(v.creadoEn) : null);
-        const fecha = ts ? ts.toLocaleDateString('es-MX') : '—';
-        const color = ESTADO_COLOR[v.estado] || 'muted';
-        return `
-          <tr>
-            <td><strong>${esc(v.folio || v.id.slice(0, 8))}</strong></td>
-            <td>${fecha}</td>
-            <td>${esc(v.clienteNombre || v.clienteCorreo || '—')}</td>
-            <td><strong>${fmtDec.format(Number(v.total) || 0)}</strong></td>
-            <td><span class="admin-tag ${color}">${esc(v.estado || 'Confirmada')}</span></td>
-            <td>
-              <div class="admin-table-actions" style="justify-content:flex-end;">
-                <a href="admin-erp-ordenes.html?ver=${esc(v.id)}" title="Ver detalle" aria-label="Ver detalle">
-                  ${bpIcon('eye')}
-                </a>
-              </div>
-            </td>
-          </tr>`;
-      }).join('');
-    }
-
     // ── Arranque ───────────────────────────────────────────────────────────────
     let iniciado = false;
     function iniciar(sesion) {
@@ -432,4 +370,3 @@
   </script>
 </body>
 </html>
-
