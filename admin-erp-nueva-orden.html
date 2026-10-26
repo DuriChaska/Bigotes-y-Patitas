@@ -163,6 +163,42 @@
       .erp-prod-row { grid-template-columns: 1fr auto; }
       .erp-prod-total { display: none; }
     }
+
+    /* ── Pantalla 5: tabla de resumen ── */
+    .erp-tabla { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .erp-tabla th { text-align: left; font-size: .72rem; text-transform: uppercase; color: var(--gray); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .erp-tabla td { padding: 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .erp-tabla .num { text-align: right; white-space: nowrap; }
+
+    /* ── Pantalla 6: procesamiento ── */
+    .erp-proc { text-align: center; padding: 8px 0 4px; }
+    .erp-proc-icon { width: 56px; height: 56px; margin: 0 auto 10px; color: var(--admin-green); animation: erpGiro 1.6s linear infinite; }
+    .erp-proc-icon svg { width: 100%; height: 100%; }
+    @keyframes erpGiro { to { transform: rotate(360deg); } }
+    .erp-proc h3 { font-size: 1.05rem; margin-bottom: 14px; color: var(--text); }
+    .erp-barra { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+    .erp-barra-fondo { flex: 1; background: #f1ece1; border-radius: 999px; height: 10px; overflow: hidden; }
+    .erp-barra-fill { height: 100%; width: 0%; background: var(--admin-green); transition: width .45s ease; }
+    .erp-barra-pct { font-size: .8rem; font-weight: 700; color: var(--text); min-width: 38px; text-align: right; }
+    .erp-proc-lista { list-style: none; padding: 0; margin: 0 auto; max-width: 340px; text-align: left; display: flex; flex-direction: column; gap: 12px; }
+    .erp-proc-lista li { display: flex; align-items: center; gap: 10px; font-size: .88rem; color: var(--gray); }
+    .erp-proc-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #d9d2c3; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .erp-proc-lista li.activo { color: var(--text); font-weight: 600; }
+    .erp-proc-lista li.activo .erp-proc-dot { border-color: var(--admin-green); }
+    .erp-proc-lista li.listo { color: var(--text); }
+    .erp-proc-lista li.listo .erp-proc-dot { background: var(--admin-green); border-color: var(--admin-green); color: #fff; }
+    .erp-proc-lista li.error .erp-proc-dot { background: #c0392b; border-color: #c0392b; color: #fff; }
+    .erp-proc-dot .bp-icon { width: 12px; height: 12px; }
+
+    /* ── Pantalla 7: éxito ── */
+    .erp-exito { text-align: center; padding: 4px 0; }
+    .erp-exito-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--admin-green); color: #fff; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; }
+    .erp-exito-icon .bp-icon { width: 34px; height: 34px; }
+    .erp-exito h3 { font-size: 1.2rem; margin-bottom: 16px; color: var(--text); }
+    .erp-exito-datos { text-align: left; max-width: 340px; margin: 0 auto 20px; background: var(--bg-alt,#f8f9fb); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; }
+    .erp-exito-datos div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: .88rem; color: var(--gray); }
+    .erp-exito-datos strong { color: var(--text); text-align: right; }
+    .erp-exito-acciones { display: flex; flex-direction: column; gap: 10px; max-width: 340px; margin: 0 auto; }
   </style>
 </head>
 <!-- data-seccion="erp": acceso para administrador y vendedor -->
@@ -272,8 +308,13 @@
             <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:8px;">Cliente</p>
             <div id="conf-cliente"></div>
 
-            <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin:18px 0 8px;">Productos</p>
-            <div id="conf-lineas"></div>
+            <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin:18px 0 8px;">Resumen de la orden</p>
+            <table class="erp-tabla">
+              <thead>
+                <tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Subtotal</th></tr>
+              </thead>
+              <tbody id="conf-lineas"></tbody>
+            </table>
 
             <div style="margin-top:16px;padding-top:4px;">
               <div class="erp-resumen-row"><span>Subtotal</span><span id="conf-subtotal">—</span></div>
@@ -301,8 +342,42 @@
           <div class="admin-modal-actions" style="margin-top:24px;">
             <button type="button" class="admin-btn-secondary" id="btnVolver2">← Volver</button>
             <button type="button" class="admin-btn-primary" id="btnConfirmar">
-              <span data-bp-icon="check"></span> Registrar orden
+              <span data-bp-icon="check"></span> Confirmar orden
             </button>
+          </div>
+        </div>
+
+        <!-- ── PASO 4: Procesamiento de la orden ── -->
+        <div id="paso-4" class="hidden">
+          <div class="erp-proc">
+            <div class="erp-proc-icon" data-bp-icon="settings"></div>
+            <h3 id="procTitulo">Procesando orden…</h3>
+            <div class="erp-barra">
+              <div class="erp-barra-fondo"><div class="erp-barra-fill" id="procBarra"></div></div>
+              <span class="erp-barra-pct" id="procPct">0%</span>
+            </div>
+            <ul class="erp-proc-lista" id="procLista"></ul>
+            <div class="admin-modal-actions hidden" id="procError" style="margin-top:22px;">
+              <button type="button" class="admin-btn-secondary" id="btnProcVolver">← Volver al resumen</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PASO 5: Operación exitosa ── -->
+        <div id="paso-5" class="hidden">
+          <div class="erp-exito">
+            <div class="erp-exito-icon" data-bp-icon="check"></div>
+            <h3>¡Orden registrada con éxito!</h3>
+            <div class="erp-exito-datos">
+              <div><span>Folio:</span><strong id="ok-folio">—</strong></div>
+              <div><span>Cliente:</span><strong id="ok-cliente">—</strong></div>
+              <div><span>Total:</span><strong id="ok-total">—</strong></div>
+              <div><span>Fecha:</span><strong id="ok-fecha">—</strong></div>
+            </div>
+            <div class="erp-exito-acciones">
+              <a class="admin-btn-primary" id="btnVerOrden" href="admin-erp-ordenes.html" style="text-align:center;text-decoration:none;">Ver orden</a>
+              <a class="admin-btn-secondary" href="admin-erp-ordenes.html" style="text-align:center;text-decoration:none;">Ir a órdenes</a>
+            </div>
           </div>
         </div>
 
@@ -344,8 +419,8 @@
 
     // ── Stepper ───────────────────────────────────────────────────────────────
     function irPaso(n) {
+      [1, 2, 3, 4, 5].forEach(i => $(`paso-${i}`).classList.toggle('hidden', i !== n));
       [1, 2, 3].forEach(i => {
-        $(`paso-${i}`).classList.toggle('hidden', i !== n);
         const ind = $(`step-ind-${i}`);
         ind.classList.remove('activo', 'listo');
         if (i < n)  ind.classList.add('listo');
@@ -353,6 +428,8 @@
       });
       $('linea-1-2').classList.toggle('listo', n >= 2);
       $('linea-2-3').classList.toggle('listo', n >= 3);
+      // En procesamiento y éxito el asistente de 3 pasos ya terminó: se oculta.
+      document.querySelector('.erp-stepper').classList.toggle('hidden', n >= 4);
       if (typeof pintarIconosBP === 'function') pintarIconosBP();
     }
 
@@ -516,13 +593,12 @@
         </div>`;
 
       $('conf-lineas').innerHTML = wizLineas.map(l => `
-        <div class="erp-prod-row" style="grid-template-columns:1fr auto;">
-          <div>
-            <p class="erp-prod-name">${esc(l.nombre)}</p>
-            <p class="erp-prod-sub">${l.cantidad} × ${fmtDec.format(l.precio)}</p>
-          </div>
-          <p class="erp-prod-total">${fmtDec.format(l.subtotal)}</p>
-        </div>`).join('');
+        <tr>
+          <td>${esc(l.nombre)}</td>
+          <td class="num">${l.cantidad}</td>
+          <td class="num">${fmtDec.format(l.precio)}</td>
+          <td class="num">${fmtDec.format(l.subtotal)}</td>
+        </tr>`).join('');
 
       const subtotal = wizLineas.reduce((s, l) => s + l.subtotal, 0);
       $('conf-subtotal').textContent = fmtDec.format(subtotal);
@@ -531,9 +607,42 @@
 
     $('btnVolver2').addEventListener('click', () => irPaso(2));
 
+    // ── PASO 4: procesamiento (pantalla 6) ────────────────────────────────────
+    const PROC_PASOS = [
+      'Creando orden',
+      'Validando stock',
+      'Actualizando inventario y registrando movimientos',
+      'Guardando historial',
+      'Finalizando operación',
+    ];
+    const pausa = ms => new Promise(r => setTimeout(r, ms));
+
+    function pintarProceso(actual, error = false) {
+      $('procLista').innerHTML = PROC_PASOS.map((txt, i) => {
+        let cls = '';
+        let icono = '';
+        if (i < actual) { cls = 'listo'; icono = bpIcon('check'); }
+        else if (i === actual) { cls = error ? 'error' : 'activo'; icono = error ? bpIcon('warning') : ''; }
+        return `<li class="${cls}"><span class="erp-proc-dot">${icono}</span>${txt}</li>`;
+      }).join('');
+      const pct = Math.round((actual / PROC_PASOS.length) * 100);
+      $('procBarra').style.width = pct + '%';
+      $('procPct').textContent = pct + '%';
+    }
+
+    $('btnProcVolver').addEventListener('click', () => {
+      $('procError').classList.add('hidden');
+      $('procTitulo').textContent = 'Procesando orden…';
+      $('btnConfirmar').disabled = false;
+      irPaso(3);
+    });
+
     $('btnConfirmar').addEventListener('click', async () => {
       const btn = $('btnConfirmar');
       btn.disabled = true;
+      irPaso(4);
+      let pasoActual = 0;
+      pintarProceso(pasoActual);
       try {
         const subtotal   = wizLineas.reduce((s, l) => s + l.subtotal, 0);
         const datosVenta = {
@@ -555,14 +664,34 @@
           estado:         'Confirmada',
         };
 
-        await crearVenta(datosVenta, productos);
-        toast('¡Orden registrada con éxito! El stock se ha actualizado.', 4000);
-        setTimeout(() => window.location.href = 'admin-erp-ordenes.html', 1500);
+        await pausa(450); pasoActual = 1; pintarProceso(pasoActual);   // orden creada
+        await pausa(450); pasoActual = 2; pintarProceso(pasoActual);   // stock validado
+
+        // crearVenta valida el stock de verdad, descuenta el inventario y
+        // registra los movimientos de salida en una sola operación.
+        const resultado = await crearVenta(datosVenta, productos);
+
+        pasoActual = 3; pintarProceso(pasoActual);
+        await pausa(450); pasoActual = 4; pintarProceso(pasoActual);
+        await pausa(450); pintarProceso(PROC_PASOS.length);
+        $('procTitulo').textContent = 'Orden procesada';
+        await pausa(400);
+
+        // ── PASO 5: operación exitosa (pantalla 7) ──
+        const ahora = new Date();
+        const dos = n => String(n).padStart(2, '0');
+        $('ok-folio').textContent   = resultado?.folio || '—';
+        $('ok-cliente').textContent = wizCliente.nombre;
+        $('ok-total').textContent   = fmtDec.format(subtotal);
+        $('ok-fecha').textContent   = `${dos(ahora.getDate())}/${dos(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${dos(ahora.getHours())}:${dos(ahora.getMinutes())}`;
+        irPaso(5);
 
       } catch (err) {
         console.error(err);
+        $('procTitulo').textContent = 'No se pudo registrar la orden';
+        pintarProceso(pasoActual, true);
+        $('procError').classList.remove('hidden');
         toast('No se pudo registrar la orden: ' + (err.message || 'error desconocido'), 5000);
-        btn.disabled = false;
       }
     });
 

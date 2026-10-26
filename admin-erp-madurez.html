@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nivel de implementación ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+  <style>
+    /* ── Barra de niveles (Básico → Optimizado) ── */
+    .erp-niveles { display: flex; align-items: flex-start; margin: 6px 0 22px; }
+    .erp-nivel { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+    .erp-nivel-dot { width: 30px; height: 30px; border-radius: 50%; background: #f1ece1; color: var(--gray); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; z-index: 1; border: 2px solid #f1ece1; }
+    .erp-nivel-dot .bp-icon { width: 16px; height: 16px; }
+    .erp-nivel.listo .erp-nivel-dot { background: var(--admin-green); border-color: var(--admin-green); color: #fff; }
+    .erp-nivel.actual .erp-nivel-dot { background: #fff; border-color: var(--admin-green); color: var(--admin-green-dk); box-shadow: 0 0 0 4px #e5efe4; }
+    .erp-nivel-lbl { font-size: .78rem; color: var(--gray); font-weight: 500; text-align: center; }
+    .erp-nivel.actual .erp-nivel-lbl, .erp-nivel.listo .erp-nivel-lbl { color: var(--text); font-weight: 700; }
+    .erp-nivel + .erp-nivel::before { content: ''; position: absolute; top: 14px; right: 50%; width: 100%; height: 3px; background: #f1ece1; z-index: 0; }
+    .erp-nivel.listo + .erp-nivel::before, .erp-nivel.actual::before { background: var(--admin-green); }
+
+    .erp-nivel-actual { display: flex; gap: 14px; align-items: flex-start; background: #eef5ec; border: 1px solid #d5e5d3; border-radius: 12px; padding: 16px 18px; margin-bottom: 22px; }
+    .erp-nivel-actual .bp-icon { width: 28px; height: 28px; color: var(--admin-green-dk); flex-shrink: 0; }
+    .erp-nivel-actual strong { display: block; color: var(--admin-green-dk); margin-bottom: 2px; }
+    .erp-nivel-actual p { font-size: .84rem; color: var(--text); margin: 0; }
+
+    .erp-check-auto { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: var(--gray); background: #f1ece1; border-radius: 999px; padding: 2px 8px; margin-left: auto; white-space: nowrap; }
+    .madurez-checklist li.auto { cursor: default; }
+    .madurez-checklist li.auto:hover { background: transparent; }
+  </style>
+</head>
+<!-- data-seccion="admin": solo administradores (el checklist manual se guarda en Firestore y las reglas lo permiten al administrador) -->
+<body data-seccion="admin">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Nivel de implementación ERP</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Nivel de implementación</p>
+        </div>
+        <div class="admin-topbar-right">
+          <span class="admin-tag rol-administrador">Solo administradores</span>
+        </div>
+      </div>
+
+      <a href="admin-erp.html" class="admin-volver">← Volver a ERP</a>
+
+      <div class="admin-panel">
+        <h2>Evalúa el avance en la integración de procesos</h2>
+        <p class="panel-sub">
+          Los tres primeros puntos se marcan solos según los datos reales del sistema (clientes,
+          productos y órdenes). Los demás los marcas tú con un clic cuando ya estén implementados.
+        </p>
+
+        <div class="erp-niveles" id="erpNiveles">
+          <div class="erp-nivel" data-nivel="0"><div class="erp-nivel-dot"></div><span class="erp-nivel-lbl">Básico</span></div>
+          <div class="erp-nivel" data-nivel="1"><div class="erp-nivel-dot"></div><span class="erp-nivel-lbl">Integrado</span></div>
+          <div class="erp-nivel" data-nivel="2"><div class="erp-nivel-dot"></div><span class="erp-nivel-lbl">Automatizado</span></div>
+          <div class="erp-nivel" data-nivel="3"><div class="erp-nivel-dot"></div><span class="erp-nivel-lbl">Optimizado</span></div>
+        </div>
+
+        <div class="erp-nivel-actual">
+          <span data-bp-icon="trending_up"></span>
+          <div>
+            <strong id="nivelActualTitulo">Nivel actual: …</strong>
+            <p id="nivelActualDesc">Cargando…</p>
+          </div>
+        </div>
+
+        <div class="madurez-progress"><div class="madurez-progress-fill" id="madurezBarra" style="width:0%;"></div></div>
+
+        <h2 style="font-size:.92rem;">Checklist de avance (<span id="madurezContador">0/0</span>)</h2>
+        <ul class="madurez-checklist" id="madurezChecklist" style="margin-top:12px;"></ul>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      collection, getDocs, query, limit, doc, onSnapshot, setDoc, serverTimestamp,
+    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { db } from './firebase-config.js';
+    import { escucharClientes, escucharProductosScm } from './firebase-db.js';
+
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    let tempToast;
+    function toast(msg, ms = 2600) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      clearTimeout(tempToast);
+      tempToast = setTimeout(() => $('toast').classList.remove('show'), ms);
+    }
+
+    // Puntos automáticos: se marcan solos según los datos reales.
+    // Puntos manuales: los marca el administrador (se guardan en scm_estado/madurez-erp).
+    const ITEMS = [
+      { id: 'clientes',    auto: true,  texto: 'Clientes integrados (CRM)' },
+      { id: 'productos',   auto: true,  texto: 'Productos e inventario (SCM)' },
+      { id: 'ordenes',     auto: true,  texto: 'Órdenes de clientes funcionando (ERP)' },
+      { id: 'movimientos', auto: false, texto: 'Movimientos de inventario automáticos' },
+      { id: 'reportes',    auto: false, texto: 'Reportes empresariales completos' },
+      { id: 'procesos',    auto: false, texto: 'Procesos optimizados' },
+    ];
+
+    const NIVELES = [
+      { nombre: 'Básico',       desc: 'Los módulos funcionan por separado y apenas comienzan a usarse.' },
+      { nombre: 'Integrado',    desc: 'Los módulos de CRM, SCM y ERP se encuentran integrados y funcionando de manera coordinada.' },
+      { nombre: 'Automatizado', desc: 'Los procesos principales se ejecutan solos: el inventario y los movimientos se actualizan sin captura manual.' },
+      { nombre: 'Optimizado',   desc: 'Todos los procesos están integrados, automatizados y con reportes completos para la toma de decisiones.' },
+    ];
+
+    let datosAuto = { clientes: false, productos: false, ordenes: false };
+    let manual = {};
+    let pendientes = new Set();
+
+    function estaMarcado(it) { return it.auto ? !!datosAuto[it.id] : !!manual[it.id]; }
+
+    function nivelPorAvance(n) {
+      if (n >= 6) return 3;
+      if (n >= 5) return 2;
+      if (n >= 3) return 1;
+      return 0;
+    }
+
+    function pintar() {
+      const marcados = ITEMS.filter(estaMarcado).length;
+      const total = ITEMS.length;
+      const nivel = nivelPorAvance(marcados);
+
+      $('madurezContador').textContent = `${marcados}/${total}`;
+      $('madurezBarra').style.width = Math.round((marcados / total) * 100) + '%';
+
+      document.querySelectorAll('.erp-nivel').forEach(el => {
+        const i = Number(el.dataset.nivel);
+        el.classList.toggle('listo', i < nivel);
+        el.classList.toggle('actual', i === nivel);
+        el.querySelector('.erp-nivel-dot').innerHTML = i < nivel ? bpIcon('check') : String(i + 1);
+      });
+
+      $('nivelActualTitulo').textContent = 'Nivel actual: ' + NIVELES[nivel].nombre;
+      $('nivelActualDesc').textContent = NIVELES[nivel].desc;
+
+      $('madurezChecklist').innerHTML = ITEMS.map(it => {
+        const ok = estaMarcado(it);
+        const guardando = pendientes.has(it.id);
+        return `
+          <li data-id="${it.id}" class="${it.auto ? 'auto' : ''}${guardando ? ' saving' : ''}"
+              ${it.auto ? '' : `role="checkbox" aria-checked="${ok}" tabindex="0"`}>
+            <span class="madurez-check-icon ${ok ? 'done' : 'pend'}">${bpIcon(ok ? 'check' : 'clock')}</span>
+            ${esc(it.texto)}
+            ${it.auto ? '<span class="erp-check-auto">Automático</span>' : ''}
+          </li>`;
+      }).join('');
+      if (typeof pintarIconosBP === 'function') pintarIconosBP();
+
+      $('madurezChecklist').querySelectorAll('li:not(.auto)').forEach(li => {
+        li.addEventListener('click', () => alternar(li.dataset.id));
+        li.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(li.dataset.id); }
+        });
+      });
+    }
+
+    const refManual = doc(db, 'scm_estado', 'madurez-erp');
+
+    async function alternar(id) {
+      if (pendientes.has(id)) return;
+      const nuevo = !manual[id];
+      manual = { ...manual, [id]: nuevo };
+      pendientes.add(id);
+      pintar(); // cambio optimista
+      try {
+        await setDoc(refManual, { items: { [id]: nuevo }, actualizadoEn: serverTimestamp() }, { merge: true });
+      } catch (err) {
+        console.error(err);
+        manual = { ...manual, [id]: !nuevo };
+        toast('No se pudo guardar el cambio. Revisa tu conexión.');
+      } finally {
+        pendientes.delete(id);
+        pintar();
+      }
+    }
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || sesion.rol !== 'administrador') return;
+      iniciado = true;
+      pintar();
+
+      escucharClientes(lista => { datosAuto.clientes = lista.length > 0; pintar(); });
+      escucharProductosScm(lista => { datosAuto.productos = lista.length > 0; pintar(); },
+        err => console.error(err));
+
+      getDocs(query(collection(db, 'ventas'), limit(1)))
+        .then(snap => { datosAuto.ordenes = !snap.empty; pintar(); })
+        .catch(err => console.error(err));
+
+      onSnapshot(refManual, snap => {
+        manual = snap.exists() ? (snap.data().items || {}) : {};
+        pintar();
+      }, err => {
+        console.error(err);
+        toast('No se pudo cargar el checklist manual.');
+      });
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', e => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>
