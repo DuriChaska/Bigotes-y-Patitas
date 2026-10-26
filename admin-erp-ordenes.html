@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Órdenes de clientes ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-seccion="erp": acceso para administrador y vendedor -->
+<body data-seccion="crm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+
+      <!-- ── Topbar ── -->
+      <div class="admin-topbar">
+        <div>
+          <h1>Órdenes de clientes</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Consulta de órdenes registradas</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn primary" id="btnNueva">
+            <span data-bp-icon="plus"></span><span>Nueva orden</span>
+          </button>
+        </div>
+      </div>
+
+      <a href="admin-erp.html" class="admin-volver">← Volver al Dashboard ERP</a>
+
+      <!-- ── Filtros ── -->
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1;min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscar" placeholder="Buscar folio, cliente, estado…" aria-label="Buscar orden" />
+          </div>
+          <select id="filtroEstado" class="admin-select" style="min-width:150px;">
+            <option value="">Todos los estados</option>
+            <option value="Confirmada">Confirmada</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Enviada">Enviada</option>
+            <option value="Entregada">Entregada</option>
+            <option value="Cancelada">Cancelada</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ── Tabla ── -->
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Listado de órdenes</h2>
+          <span class="admin-count-pill" id="contador">0 órdenes</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Productos</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th style="text-align:right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo"></tbody>
+          </table>
+          <div id="estadoVacio" class="admin-empty-state hidden" style="padding:34px 20px;"></div>
+        </div>
+      </div>
+
+      <!-- ── Panel de detalle (oculto por defecto) ── -->
+      <div id="panel-detalle" class="hidden" style="margin-top:18px;">
+        <div class="admin-panel" style="max-width:680px;">
+          <div class="admin-panel-head">
+            <h2 id="det-titulo">Detalle de orden</h2>
+            <button type="button" class="admin-count-pill" id="btnCerrarDetalle" style="cursor:pointer;">✕ Cerrar</button>
+          </div>
+          <div id="det-contenido">
+            <p style="color:var(--gray);">Cargando…</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Listo</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      collection, getDocs, query, orderBy,
+    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { db } from './firebase-config.js';
+
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDec = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+
+    const ESTADO_COLOR = {
+      'Confirmada': 'ok',
+      'En proceso': 'info',
+      'Enviada':    'info',
+      'Entregada':  'ok',
+      'Cancelada':  'danger',
+    };
+
+    let tempToast;
+    function toast(msg, ms = 3000) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      clearTimeout(tempToast);
+      tempToast = setTimeout(() => $('toast').classList.remove('show'), ms);
+    }
+
+    let ordenes    = [];
+    let cargado    = false;
+    let errorCarga = null;
+
+    // ── Filtrar ───────────────────────────────────────────────────────────────
+    function filtradas() {
+      const texto  = $('buscar').value.trim().toLowerCase();
+      const estado = $('filtroEstado').value;
+      return ordenes.filter(o => {
+        if (estado && o.estado !== estado) return false;
+        if (!texto) return true;
+        return [o.folio, o.clienteNombre, o.clienteCorreo, o.estado]
+          .some(v => String(v ?? '').toLowerCase().includes(texto));
+      });
+    }
+
+    // ── Pintar listado ────────────────────────────────────────────────────────
+    function pintarListado() {
+      const lista  = filtradas();
+      const cuerpo = $('cuerpo');
+      const vacio  = $('estadoVacio');
+
+      if (errorCarga) {
+        cuerpo.innerHTML = '';
+        $('contador').textContent = '—';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = `<span data-bp-icon="warning"></span><br><span class="scm-error">${esc(errorCarga)}</span>`;
+        pintarIconosBP();
+        return;
+      }
+      if (!cargado) {
+        cuerpo.innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = 'Cargando órdenes…';
+        return;
+      }
+
+      $('contador').textContent = `${lista.length} orden${lista.length === 1 ? '' : 'es'}`;
+
+      if (lista.length === 0) {
+        cuerpo.innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.innerHTML = ordenes.length === 0
+          ? `<span data-bp-icon="clipboard"></span><br>Todavía no hay órdenes registradas.`
+          : `<span data-bp-icon="search"></span><br>No hay resultados con ese criterio.`;
+        pintarIconosBP();
+        return;
+      }
+      vacio.classList.add('hidden');
+
+      cuerpo.innerHTML = lista.map(o => {
+        const ts    = o.creadoEn?.toDate ? o.creadoEn.toDate() : (o.creadoEn ? new Date(o.creadoEn) : null);
+        const fecha = ts ? ts.toLocaleDateString('es-MX') : '—';
+        const color = ESTADO_COLOR[o.estado] || 'muted';
+        const nProd = (o.items || []).length;
+        return `
+          <tr data-id="${esc(o.id)}">
+            <td><strong>${esc(o.folio || o.id.slice(0, 8))}</strong></td>
+            <td>${fecha}</td>
+            <td>${esc(o.clienteNombre || o.clienteCorreo || '—')}</td>
+            <td style="color:var(--gray);font-size:.82rem;">${nProd} producto${nProd === 1 ? '' : 's'}</td>
+            <td><strong>${fmtDec.format(Number(o.total) || 0)}</strong></td>
+            <td><span class="admin-tag ${color}">${esc(o.estado || 'Confirmada')}</span></td>
+            <td>
+              <div class="admin-table-actions" style="justify-content:flex-end;">
+                <button type="button" title="Ver detalle" aria-label="Ver detalle" data-accion="ver">
+                  ${bpIcon('eye')}
+                </button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    $('buscar').addEventListener('input', pintarListado);
+    $('filtroEstado').addEventListener('change', pintarListado);
+
+    // ── Clic en "Ver" ─────────────────────────────────────────────────────────
+    $('cuerpo').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-accion="ver"]');
+      if (!btn) return;
+      const id = btn.closest('tr').dataset.id;
+      mostrarDetalle(id);
+    });
+
+    // ── Detalle ───────────────────────────────────────────────────────────────
+    function mostrarDetalle(id) {
+      const o = ordenes.find(x => x.id === id);
+      if (!o) return;
+
+      $('panel-detalle').classList.remove('hidden');
+      $('det-titulo').textContent = `Orden ${o.folio || id.slice(0, 8)}`;
+
+      const ts    = o.creadoEn?.toDate ? o.creadoEn.toDate() : (o.creadoEn ? new Date(o.creadoEn) : null);
+      const fecha = ts ? ts.toLocaleString('es-MX') : '—';
+      const color = ESTADO_COLOR[o.estado] || 'muted';
+
+      $('det-contenido').innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);">Folio</p>
+            <p style="font-size:1.1rem;font-weight:700;">${esc(o.folio || id.slice(0, 8))}</p>
+          </div>
+          <span class="admin-tag ${color}" style="font-size:.85rem;padding:5px 12px;">${esc(o.estado || 'Confirmada')}</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+          <div>
+            <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:4px;">Cliente</p>
+            <p style="font-weight:600;">${esc(o.clienteNombre || '—')}</p>
+            <p style="font-size:.8rem;color:var(--gray);">${esc(o.clienteCorreo || '')}</p>
+          </div>
+          <div>
+            <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:4px;">Fecha</p>
+            <p>${fecha}</p>
+            <p style="font-size:.8rem;color:var(--gray);">Método: ${esc(o.metodoPago || '—')}</p>
+          </div>
+        </div>
+
+        <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:10px;">Productos</p>
+        ${(o.items || []).map(item => `
+          <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
+            <div>
+              <p style="font-weight:600;font-size:.88rem;">${esc(item.nombre)}</p>
+              <p style="font-size:.75rem;color:var(--gray);">${item.cantidad} × ${fmtDec.format(Number(item.precio) || 0)}</p>
+            </div>
+            <p style="font-weight:700;color:var(--primary);min-width:80px;text-align:right;">${fmtDec.format((Number(item.precio) || 0) * (Number(item.cantidad) || 0))}</p>
+          </div>`).join('')}
+
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.88rem;color:var(--gray);"><span>Subtotal</span><span>${fmtDec.format(Number(o.subtotal) || Number(o.total) || 0)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:.88rem;color:var(--gray);"><span>Descuento</span><span>${fmtDec.format(Number(o.descuento) || 0)}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-weight:700;font-size:1rem;border-top:1px solid var(--border);margin-top:4px;"><span>Total</span><span>${fmtDec.format(Number(o.total) || 0)}</span></div>
+        </div>
+
+        ${o.direccionEnvio ? `
+        <div style="margin-top:14px;">
+          <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:4px;">Dirección de envío</p>
+          <p style="font-size:.88rem;">${esc(o.direccionEnvio)}</p>
+        </div>` : ''}
+      `;
+
+      // Scroll suave al detalle
+      $('panel-detalle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    $('btnCerrarDetalle').addEventListener('click', () => {
+      $('panel-detalle').classList.add('hidden');
+    });
+
+    // ── Botón Nueva orden → página separada ───────────────────────────────────
+    $('btnNueva').addEventListener('click', () => {
+      window.location.href = 'admin-erp-nueva-orden.html';
+    });
+
+    // ── Cargar órdenes ────────────────────────────────────────────────────────
+    async function cargarOrdenes() {
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'ventas'), orderBy('creadoEn', 'desc'))
+        );
+        ordenes    = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cargado    = true;
+        errorCarga = null;
+      } catch (err) {
+        console.error(err);
+        cargado    = true;
+        errorCarga = err.code === 'permission-denied'
+          ? 'Permiso denegado. Revisa las reglas de Firestore.'
+          : 'No se pudieron cargar las órdenes.';
+      }
+      pintarListado();
+
+      // Si viene ?ver=<id> en la URL, mostrar detalle directo
+      const verId = new URLSearchParams(location.search).get('ver');
+      if (verId) mostrarDetalle(verId);
+    }
+
+    // ── Arranque ──────────────────────────────────────────────────────────────
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion) return;
+      iniciado = true;
+      cargarOrdenes();
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', e => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

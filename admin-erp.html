@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+  <style>
+    /* ── Gráfica de barras ERP ── */
+    .erp-chart-wrap {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 10px;
+      height: 180px;
+      padding: 0 4px 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .erp-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      cursor: default;
+    }
+    .erp-bar-val {
+      font-size: .65rem;
+      font-weight: 700;
+      color: var(--gray);
+      white-space: nowrap;
+      line-height: 1;
+    }
+    .erp-bar {
+      width: 32px;           /* Ancho fijo para que no colapse a 0 */
+      min-width: 24px;
+      max-width: 48px;
+      background: var(--gray);
+      border-radius: 5px 5px 0 0;
+      opacity: .82;
+      transition: opacity .15s, transform .15s;
+      min-height: 4px;
+    }
+    .erp-bar-col:hover .erp-bar { opacity: 1; transform: scaleY(1.03); transform-origin: bottom; }
+    .erp-chart-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: .72rem;
+      color: var(--gray);
+      padding: 0 4px;
+    }
+    .erp-chart-labels span { flex: 1; text-align: center; text-transform: capitalize; }
+
+    /* ── Top productos ── */
+    .erp-top-item { margin-bottom: 14px; }
+    .erp-top-item:last-child { margin-bottom: 0; }
+    .erp-top-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+    .erp-top-qty { color: var(--primary); }
+    .erp-top-track {
+      width: 100%;
+      background: var(--border);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .erp-top-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 4px;
+      transition: width .4s ease;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      .erp-grid-2col { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<!-- data-seccion="erp": acceso para administrador y vendedor -->
+<body data-seccion="crm">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Dashboard ERP</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Vista integrada del negocio</p>
+        </div>
+        <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn primary"
+                  onclick="window.location.href='admin-erp-ordenes.html?nueva=1'">
+            <span data-bp-icon="plus"></span><span>Nueva orden</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Métricas rápidas ── -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px;">
+
+        <div class="admin-panel">
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon" data-bp-icon="users"></div>
+            <div>
+              <p class="stat-num" id="m-clientes">—</p>
+              <p class="stat-label">Clientes activos</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon blue" data-bp-icon="clipboard"></div>
+            <div>
+              <p class="stat-num" id="m-ordenes">—</p>
+              <p class="stat-label">Órdenes de clientes</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon green" data-bp-icon="trending_up"></div>
+            <div>
+              <p class="stat-num" id="m-total">—</p>
+              <p class="stat-label">Ventas totales</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-stat-card">
+            <div class="admin-stat-icon yellow" data-bp-icon="clock"></div>
+            <div>
+              <p class="stat-num" id="m-pendientes">—</p>
+              <p class="stat-label">Órdenes en proceso</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Gráfica + Top productos ── -->
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:18px;margin-bottom:20px;" class="erp-grid-2col">
+
+        <!-- Gráfica de ventas por mes -->
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <h2>Ventas (últimos 6 meses)</h2>
+            <span class="admin-count-pill">MXN ($)</span>
+          </div>
+
+          <div id="grafica-wrap" class="erp-chart-wrap">
+            <p style="color:var(--gray);font-size:.85rem;align-self:center;width:100%;text-align:center;">Cargando…</p>
+          </div>
+          <div id="grafica-labels" class="erp-chart-labels"></div>
+
+          <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:10px;gap:6px;font-size:.78rem;">
+            <span data-bp-icon="trending_up" id="tendencia-icon" style="color:var(--success,#16a34a);"></span>
+            <span id="grafica-tendencia" style="color:var(--success,#16a34a);font-weight:600;"></span>
+          </div>
+        </div>
+
+        <!-- Productos más vendidos -->
+        <div class="admin-panel" style="display:flex;flex-direction:column;">
+          <div class="admin-panel-head">
+            <h2>Más vendidos</h2>
+          </div>
+
+          <div id="top-productos" style="flex:1;padding-top:4px;">
+            <p style="color:var(--gray);font-size:.85rem;">Cargando…</p>
+          </div>
+
+          <div style="padding-top:14px;border-top:1px solid var(--border);margin-top:14px;">
+            <a href="admin-erp-ordenes.html" style="font-size:.82rem;color:var(--primary);font-weight:600;text-decoration:none;">
+              Ver todas las órdenes →
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Listo</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      collection, getDocs, query, orderBy,
+    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { db } from './firebase-config.js';
+
+    const $ = id => document.getElementById(id);
+
+    const fmt    = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+    const fmtDec = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+
+    let tempToast;
+    function toast(msg, ms = 3000) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      clearTimeout(tempToast);
+      tempToast = setTimeout(() => $('toast').classList.remove('show'), ms);
+    }
+
+    const esc = v => String(v ?? '').replace(/[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const ESTADO_COLOR = {
+      'Confirmada': 'ok',
+      'En proceso': 'info',
+      'Enviada':    'info',
+      'Entregada':  'ok',
+      'Cancelada':  'danger',
+    };
+
+    // ── Cargar todo ───────────────────────────────────────────────────────────
+    async function cargar() {
+      try {
+        const ventasSnap = await getDocs(
+          query(collection(db, 'ventas'), orderBy('creadoEn', 'desc'))
+        );
+        const ventas = ventasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const clientesSnap = await getDocs(collection(db, 'clientes'));
+        const activos = clientesSnap.docs
+          .map(d => d.data())
+          .filter(c => c.estado === 'Activo').length;
+
+        const totalVentas = ventas.reduce((s, v) => s + (Number(v.total) || 0), 0);
+        const enProceso   = ventas.filter(v => !['Entregada', 'Cancelada'].includes(v.estado)).length;
+
+        $('m-clientes').textContent   = activos;
+        $('m-ordenes').textContent    = ventas.length;
+        $('m-total').textContent      = fmt.format(totalVentas);
+        $('m-pendientes').textContent = enProceso;
+
+        pintarGrafica(ventas);
+        pintarTopProductos(ventas);
+
+        if (typeof pintarIconosBP === 'function') pintarIconosBP();
+
+      } catch (err) {
+        console.error(err);
+        toast(err.code === 'permission-denied'
+          ? 'Permiso denegado en Firebase. Revisa las reglas de Firestore.'
+          : 'No se pudieron cargar los datos. Revisa tu conexión.', 6000);
+      }
+    }
+
+    // ── Gráfica de barras ─────────────────────────────────────────────────────
+    function pintarGrafica(ventas) {
+      const ahora = new Date();
+      const meses = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+        meses.push({
+          key:   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+          lbl:   d.toLocaleDateString('es-MX', { month: 'short' }),
+          total: 0,
+        });
+      }
+
+      ventas.forEach(v => {
+        if (!v.creadoEn) return;
+        const ts  = v.creadoEn.toDate ? v.creadoEn.toDate() : new Date(v.creadoEn);
+        const key = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}`;
+        const mes = meses.find(m => m.key === key);
+        if (mes) mes.total += Number(v.total) || 0;
+      });
+
+      const maxTotal = Math.max(...meses.map(m => m.total), 1);
+      const wrap     = $('grafica-wrap');
+
+      const BAR_MAX_PX = 150; // px máximos de barra (deja ~30px para la etiqueta)
+      wrap.innerHTML = meses.map(m => {
+        const px = Math.max(4, Math.round((m.total / maxTotal) * BAR_MAX_PX));
+        return `
+          <div class="erp-bar-col" title="${m.lbl}: ${fmtDec.format(m.total)}">
+            <span class="erp-bar-val">${m.total > 0 ? fmt.format(m.total) : ''}</span>
+            <div class="erp-bar" style="height:${px}px;"></div>
+          </div>`;
+      }).join('');
+
+      $('grafica-labels').innerHTML = meses.map(m =>
+        `<span>${m.lbl}</span>`
+      ).join('');
+
+      // Tendencia: último mes vs penúltimo
+      const ult  = meses[5].total;
+      const penu = meses[4].total;
+      const tendEl   = $('grafica-tendencia');
+      const iconEl   = $('tendencia-icon');
+      if (penu > 0) {
+        const diff   = ((ult - penu) / penu * 100).toFixed(1);
+        const signo  = diff >= 0 ? '+' : '';
+        const color  = diff >= 0 ? 'var(--success,#16a34a)' : 'var(--danger,#dc2626)';
+        tendEl.textContent  = `${signo}${diff}% vs mes anterior`;
+        tendEl.style.color  = color;
+        iconEl.style.color  = color;
+        iconEl.setAttribute('data-bp-icon', diff >= 0 ? 'trending_up' : 'trending_down');
+      } else if (ult > 0) {
+        tendEl.textContent = 'Primer mes con ventas';
+      } else {
+        tendEl.textContent = 'Sin ventas registradas aún';
+        tendEl.style.color = 'var(--#16a34a)';
+        iconEl.style.color = 'var(--#16a34a)';
+      }
+    }
+
+    // ── Top productos ──────────────────────────────────────────────────────────
+    function pintarTopProductos(ventas) {
+      const conteo = {};
+      ventas.forEach(v => {
+        (v.items || []).forEach(item => {
+          conteo[item.nombre] = (conteo[item.nombre] || 0) + (Number(item.cantidad) || 0);
+        });
+      });
+
+      const top  = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const wrap = $('top-productos');
+
+      if (top.length === 0) {
+        wrap.innerHTML = `<p style="color:var(--gray);font-size:.85rem;">Sin ventas registradas aún.</p>`;
+        return;
+      }
+
+      const maximo = top[0][1];
+      wrap.innerHTML = top.map(([nombre, cant]) => {
+        const pct = Math.round((cant / maximo) * 100);
+        return `
+          <div class="erp-top-item">
+            <div class="erp-top-row">
+              <span>${esc(nombre)}</span>
+              <span class="erp-top-qty">${cant} uds</span>
+            </div>
+            <div class="erp-top-track">
+              <div class="erp-top-fill" style="width:${pct}%;"></div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Arranque ───────────────────────────────────────────────────────────────
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion) return;
+      iniciado = true;
+      cargar();
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', e => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>
