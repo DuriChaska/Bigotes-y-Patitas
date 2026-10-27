@@ -226,6 +226,17 @@ ventas/{idAutogenerado}   (compras REALES hechas por clientes desde la tienda)
   # Al crearse (función crearVenta en firebase-db.js) TAMBIÉN, en la misma
   # operación atómica: descuenta el stock del producto en scm_productos y
   # registra un movimiento de "Salida" en scm_movimientos.
+
+  # Las órdenes del ERP (Etapa 3) son documentos de esta misma colección, creadas
+  # con crearOrdenErp(): además llevan origen: "ERP", usuarioId / usuarioNombre
+  # (quién las registró), folio "OR-001"... e historial: [{ estado, usuario, fecha }].
+  # estado puede ser Confirmada, En proceso, Enviada, Entregada o Cancelada
+  # (cancelar devuelve el stock al inventario).
+
+erp_operaciones/{idAutogenerado}   (historial de operaciones empresariales del ERP)
+  tipo, descripcion, ordenId, folio, clienteId, clienteNombre, total,
+  usuarioId, usuarioNombre, creadoEn
+  (solo se agregan; leen administrador, vendedor y logística)
 ```
 
 ## Archivos involucrados
@@ -282,3 +293,17 @@ aquí). Si su maestra pide explícitamente que existan esas rutas REST
 literales, el siguiente paso sería envolver estas mismas funciones de
 `firebase-db.js` en **Cloud Functions** (HTTPS functions), que sí exponen una
 URL por cada endpoint y por dentro usan Firestore igual que ahora.
+
+## Al actualizar a la Etapa 3 (ERP): vuelve a publicar las reglas
+
+El ERP usa una colección nueva (`erp_operaciones`) y permite que el vendedor
+registre órdenes y que logística/administrador cambien su estado. Esos permisos
+están en `firestore.rules`, así que **después de actualizar la carpeta** copia el
+contenido de `firestore.rules` en Firebase → Firestore Database → Reglas →
+**Publicar**. Sin eso, el ERP mostrará "Permiso denegado".
+
+Para probar los tres roles, entra con una cuenta de cada uno (administrador,
+vendedor y logística; se crean en `admin-usuarios.html`) y revisa que el menú
+lateral muestre solo lo que le toca (ver la tabla de la sección 10.5 de
+`DOCUMENTACION-TECNICA.md`).
+

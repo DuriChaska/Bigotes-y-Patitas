@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reportes ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+  <style>
+    .erp-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:20px; }
+    .erp-rep-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; margin-bottom:20px; }
+
+    /* Barras verticales: ventas por mes */
+    .erp-chart-wrap { display:flex; align-items:flex-end; justify-content:space-between; gap:10px; height:180px; padding:0 4px; border-bottom:2px solid var(--border); margin-bottom:8px; }
+    .erp-bar-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; }
+    .erp-bar-val { font-size:.65rem; font-weight:700; color:var(--gray); white-space:nowrap; line-height:1; }
+    .erp-bar { width:32px; min-width:24px; max-width:48px; background:var(--primary); border-radius:5px 5px 0 0; opacity:.85; min-height:4px; }
+    .erp-chart-labels { display:flex; justify-content:space-between; font-size:.72rem; color:var(--gray); padding:0 4px; }
+    .erp-chart-labels span { flex:1; text-align:center; text-transform:capitalize; }
+
+    /* Más vendidos */
+    .erp-top-item { margin-bottom:14px; }
+    .erp-top-item:last-child { margin-bottom:0; }
+    .erp-top-row { display:flex; justify-content:space-between; font-size:.8rem; font-weight:600; margin-bottom:5px; }
+    .erp-top-qty { color:var(--primary); }
+    .erp-top-track { width:100%; background:var(--border); height:8px; border-radius:4px; overflow:hidden; }
+    .erp-top-fill { height:100%; background:var(--primary); border-radius:4px; }
+
+    /* Dona de rotación */
+    .erp-dona-wrap { display:flex; align-items:center; gap:22px; flex-wrap:wrap; justify-content:center; padding:6px 0; }
+    .erp-dona { width:150px; height:150px; border-radius:50%; position:relative; background:var(--border); flex:0 0 auto; }
+    .erp-dona::after { content:""; position:absolute; inset:24px; border-radius:50%; background:var(--white, #fff); }
+    .erp-dona-centro { position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; }
+    .erp-dona-centro strong { font-size:1.5rem; }
+    .erp-dona-centro small { font-size:.68rem; color:var(--gray); }
+    .erp-leyenda { list-style:none; margin:0; padding:0; font-size:.84rem; }
+    .erp-leyenda li { display:flex; align-items:center; gap:8px; padding:4px 0; }
+    .erp-leyenda i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+
+    /* Diagrama de integración CRM <-> ERP <-> SCM */
+    .erp-integra { display:flex; align-items:stretch; justify-content:center; gap:10px; flex-wrap:wrap; }
+    .erp-modulo { flex:1; min-width:96px; max-width:200px; border:1.5px solid var(--border); border-radius:12px; padding:14px 12px; text-align:center; }
+    .erp-modulo strong { display:block; font-size:1rem; margin-bottom:4px; }
+    .erp-modulo span { font-size:.76rem; color:var(--gray); }
+    .erp-modulo.centro { border-color:var(--primary); background:rgba(0,0,0,.02); }
+    .erp-flecha { align-self:center; font-size:1.3rem; color:var(--gray); }
+
+    .erp-act-item { padding:9px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+    .erp-act-item:last-child { border-bottom:0; }
+    .erp-act-item small { display:block; color:var(--gray); margin-top:2px; }
+  </style>
+</head>
+<!-- data-roles: los 3 roles consultan los reportes (según la pantalla 10 de la etapa 3) -->
+<body data-roles="administrador,vendedor,logistica">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Reportes ERP</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Indicadores del negocio</p>
+        </div>
+        <div class="admin-topbar-right">
+          <a class="admin-quick-btn" href="admin-erp.html"><span>← Dashboard ERP</span></a>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="erp-kpis">
+        <div class="admin-panel"><div class="admin-stat-card">
+          <div class="admin-stat-icon green" data-bp-icon="trending_up"></div>
+          <div><p class="stat-num" id="k-ventas">—</p><p class="stat-label">Ventas totales</p></div>
+        </div></div>
+        <div class="admin-panel"><div class="admin-stat-card">
+          <div class="admin-stat-icon blue" data-bp-icon="clipboard"></div>
+          <div><p class="stat-num" id="k-ordenes">—</p><p class="stat-label">Órdenes de clientes</p></div>
+        </div></div>
+        <div class="admin-panel"><div class="admin-stat-card">
+          <div class="admin-stat-icon yellow" data-bp-icon="package"></div>
+          <div><p class="stat-num" id="k-productos">—</p><p class="stat-label">Productos vendidos</p></div>
+        </div></div>
+        <div class="admin-panel"><div class="admin-stat-card">
+          <div class="admin-stat-icon" data-bp-icon="users"></div>
+          <div><p class="stat-num" id="k-clientes">—</p><p class="stat-label">Clientes activos</p></div>
+        </div></div>
+      </div>
+
+      <div class="erp-rep-grid">
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Ventas por mes</h2><span class="admin-count-pill">MXN ($)</span></div>
+          <div id="rep-barras"></div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Productos más vendidos</h2></div>
+          <div id="rep-top"><p style="color:var(--gray);font-size:.85rem;">Cargando…</p></div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Inventario disponible</h2><span class="admin-count-pill" id="rep-inv-total">—</span></div>
+          <div id="rep-dona-graf"></div>
+          <p style="font-size:.76rem;color:var(--gray);margin-top:10px;">Rotación = qué parte de lo que hubo de cada producto (vendido + en bodega) ya se vendió.</p>
+        </div>
+      </div>
+
+      <div class="erp-rep-grid">
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Integración entre módulos</h2></div>
+          <div class="erp-integra">
+            <div class="erp-modulo"><strong>CRM</strong><span>Clientes e historial de compras</span></div>
+            <div class="erp-flecha">⇄</div>
+            <div class="erp-modulo centro"><strong>ERP</strong><span>Órdenes, usuarios y reportes</span></div>
+            <div class="erp-flecha">⇄</div>
+            <div class="erp-modulo"><strong>SCM</strong><span>Productos, inventario y pedidos</span></div>
+          </div>
+          <p style="font-size:.8rem;color:var(--gray);margin-top:14px;">
+            Al crear una orden, el ERP toma al cliente del CRM, descuenta el stock en el SCM, registra el movimiento
+            de inventario y guarda el historial, sin capturar nada dos veces.
+          </p>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Operaciones empresariales recientes</h2></div>
+          <div id="rep-actividad"><p style="color:var(--gray);font-size:.85rem;">Cargando…</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Listo</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
+  <script type="module">
+    import { calcularMetricasErp, escucharOperacionesErp } from './firebase-db.js';
+
+    const $ = id => document.getElementById(id);
+    const fmt    = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
+    const fmtDec = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const esc = v => String(v ?? '').replace(/[&<>"']/g,
+      c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    let tempToast;
+    function toast(msg, ms = 4000) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      clearTimeout(tempToast);
+      tempToast = setTimeout(() => $('toast').classList.remove('show'), ms);
+    }
+
+    function pintarBarras(meses) {
+      BPCharts.montar($('rep-barras'), {
+        id: 'erpr-ventas-mes',
+        titulo: 'Ventas por mes',
+        tipo: 'barras',
+        datos: meses.map(m => ({ etiqueta: m.etiqueta, valor: m.total })),
+        formato: v => fmt.format(v),
+        vacio: 'Sin ventas registradas aún.',
+      });
+    }
+
+    function pintarTop(top) {
+      BPCharts.montar($('rep-top'), {
+        id: 'erpr-mas-vendidos',
+        titulo: 'Productos más vendidos',
+        tipo: 'horizontal',
+        datos: top.map(p => ({ etiqueta: p.nombre, valor: p.cantidad })),
+        formato: v => v + ' uds',
+        vacio: 'Sin ventas registradas aún.',
+      });
+    }
+
+    function pintarDona(inv) {
+      const { alta, media, baja } = inv.rotacion;
+      $('rep-inv-total').textContent = `${inv.unidades} piezas · ${inv.productos} productos`;
+      BPCharts.montar($('rep-dona-graf'), {
+        id: 'erpr-rotacion',
+        titulo: 'Inventario disponible por rotación',
+        tipo: 'dona',
+        datos: [
+          { etiqueta: 'Alta rotación',  valor: alta,  color: '#16a34a' },
+          { etiqueta: 'Media rotación', valor: media, color: '#f59e0b' },
+          { etiqueta: 'Baja rotación',  valor: baja,  color: '#9ca3af' },
+        ],
+        centro: { texto: (alta + media + baja) ? inv.conMovimiento + '%' : '—', sub: 'con rotación' },
+        vacio: 'Todavía no hay productos en el catálogo.',
+      });
+    }
+
+    function pintarActividad(lista) {
+      $('rep-actividad').innerHTML = lista.length
+        ? lista.slice(0, 8).map(o => {
+            const f = o.creadoEn && o.creadoEn.toDate ? o.creadoEn.toDate().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            return `<div class="erp-act-item">${esc(o.descripcion)}<small>${esc(o.usuarioNombre || '')}${f ? ' · ' + f : ''}</small></div>`;
+          }).join('')
+        : '<p style="color:var(--gray);font-size:.85rem;">Todavía no hay operaciones registradas.</p>';
+    }
+
+    async function cargar() {
+      try {
+        const m = await calcularMetricasErp();
+        $('k-ventas').textContent    = fmt.format(m.ventasTotales);
+        $('k-ordenes').textContent   = m.ordenesProcesadas;
+        $('k-productos').textContent = m.productosVendidos;
+        $('k-clientes').textContent  = m.clientesActivos === null ? '—' : m.clientesActivos;
+        pintarBarras(m.ventasPorMes);
+        pintarTop(m.topProductos);
+        pintarDona(m.inventario);
+        if (typeof pintarIconosBP === 'function') pintarIconosBP();
+      } catch (err) {
+        console.error(err);
+        toast(err.code === 'permission-denied'
+          ? 'Permiso denegado en Firebase. Revisa las reglas de Firestore.'
+          : 'No se pudieron cargar los reportes. Revisa tu conexión.', 6000);
+      }
+    }
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion) return;
+      iniciado = true;
+      cargar();
+      escucharOperacionesErp(pintarActividad, err => {
+        console.error(err);
+        $('rep-actividad').innerHTML = '<p style="color:var(--gray);font-size:.85rem;">No se pudo cargar la actividad.</p>';
+      }, 8);
+    }
+
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', e => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

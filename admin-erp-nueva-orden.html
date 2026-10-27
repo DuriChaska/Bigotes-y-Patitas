@@ -201,8 +201,8 @@
     .erp-exito-acciones { display: flex; flex-direction: column; gap: 10px; max-width: 340px; margin: 0 auto; }
   </style>
 </head>
-<!-- data-seccion="erp": acceso para administrador y vendedor -->
-<body data-seccion="crm">
+<!-- data-roles: crean órdenes administrador y vendedor (logística no) -->
+<body data-roles="administrador,vendedor">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -254,7 +254,9 @@
             </div>
             <div id="dropdown-clientes" class="erp-dropdown hidden"></div>
           </div>
-
+          <p style="font-size:.8rem;color:var(--gray);margin-top:8px;">
+            ¿El cliente no aparece? Debe estar registrado en el CRM antes de levantar su orden.
+          </p>
           <div id="cliente-seleccionado-wrap" class="hidden" style="margin-top:14px;">
             <p style="font-size:.78rem;font-weight:600;text-transform:uppercase;color:var(--gray);margin-bottom:6px;">Cliente seleccionado</p>
             <div class="erp-cliente-card" id="cliente-card"></div>
@@ -395,7 +397,7 @@
     import {
       escucharClientes,
       escucharProductosScm,
-      crearVenta,
+      crearOrdenErp,
     } from './firebase-db.js';
 
     const $ = id => document.getElementById(id);
@@ -611,8 +613,8 @@
     const PROC_PASOS = [
       'Creando orden',
       'Validando stock',
-      'Actualizando inventario y registrando movimientos',
-      'Guardando historial',
+      'Reduciendo stock y registrando movimientos de inventario',
+      'Guardando historial y actualizando al cliente en el CRM',
       'Finalizando operación',
     ];
     const pausa = ms => new Promise(r => setTimeout(r, ms));
@@ -644,33 +646,21 @@
       let pasoActual = 0;
       pintarProceso(pasoActual);
       try {
-        const subtotal   = wizLineas.reduce((s, l) => s + l.subtotal, 0);
-        const datosVenta = {
-          clienteId:     wizCliente.id,
-          clienteNombre: wizCliente.nombre,
-          clienteCorreo: wizCliente.correo || '',
-          items: wizLineas.map(l => ({
-            productoId: l.productoId,
-            nombre:     l.nombre,
-            precio:     l.precio,
-            cantidad:   l.cantidad,
-          })),
-          subtotal,
-          descuento:      0,
-          cupon:          '',
-          total:          subtotal,
-          direccionEnvio: $('conf-direccion').value.trim(),
-          metodoPago:     $('conf-metodo').value,
-          estado:         'Confirmada',
-        };
+        const subtotal = wizLineas.reduce((s, l) => s + l.subtotal, 0);
 
         await pausa(450); pasoActual = 1; pintarProceso(pasoActual);   // orden creada
         await pausa(450); pasoActual = 2; pintarProceso(pasoActual);   // stock validado
 
-        // crearVenta valida el stock de verdad, descuenta el inventario y
-        // registra los movimientos de salida en una sola operación.
-        const resultado = await crearVenta(datosVenta, productos);
-
+        // crearOrdenErp hace todo en UNA operación: valida el stock actual, crea la
+        // orden, descuenta el inventario, registra los movimientos, guarda el
+        // historial y actualiza al cliente en el CRM. Si algo falla, no se guarda nada.
+        const resultado = await crearOrdenErp({
+          cliente: { id: wizCliente.id, nombre: wizCliente.nombre, correo: wizCliente.correo || '' },
+          items: wizLineas.map(l => ({ productoId: l.productoId, cantidad: l.cantidad })),
+          metodoPago: $('conf-metodo').value,
+          direccionEnvio: $('conf-direccion').value.trim(),
+          usuario: window.BP_SESION,
+        });
         pasoActual = 3; pintarProceso(pasoActual);
         await pausa(450); pasoActual = 4; pintarProceso(pasoActual);
         await pausa(450); pintarProceso(PROC_PASOS.length);
@@ -682,7 +672,8 @@
         const dos = n => String(n).padStart(2, '0');
         $('ok-folio').textContent   = resultado?.folio || '—';
         $('ok-cliente').textContent = wizCliente.nombre;
-        $('ok-total').textContent   = fmtDec.format(subtotal);
+        $('ok-total').textContent   = fmtDec.format(resultado?.total ?? subtotal);
+        $('btnVerOrden').href       = 'admin-erp-ordenes.html?ver=' + encodeURIComponent(resultado?.id || '');
         $('ok-fecha').textContent   = `${dos(ahora.getDate())}/${dos(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${dos(ahora.getHours())}:${dos(ahora.getMinutes())}`;
         irPaso(5);
 

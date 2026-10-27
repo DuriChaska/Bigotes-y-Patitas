@@ -19,44 +19,89 @@
 
 const adminPaginaActual = window.location.pathname.split('/').pop();
 
+// Roles del panel (el menú se arma según el rol de quien inició sesión):
+//   administrador -> todo
+//   vendedor      -> "Ventas": CRM + órdenes ERP + consulta de productos e inventario
+//   logistica     -> SCM completo + órdenes ERP
+const R_TODOS   = ['administrador', 'vendedor', 'logistica'];
+const R_ADMIN   = ['administrador'];
+const R_CRM     = ['administrador', 'vendedor'];
+const R_SCM     = ['administrador', 'logistica'];
+const R_CONSULTA = ['administrador', 'logistica', 'vendedor']; // Productos e Inventario (el vendedor solo consulta)
+
+// ─── Interruptor "Modo ERP" ────────────────────────────────────────────────
+// El ERP no es un apartado aparte: es un INTERRUPTOR del mismo panel.
+//   - Apagado: el menú de siempre, según el rol (CRM, SCM, Usuarios, Configuración).
+//   - Encendido: vista integrada del negocio. El ERP CONSULTA el CRM y el SCM
+//     (clientes, productos, inventario) sin salirse a esos módulos.
+// El modo se recuerda en el navegador y las páginas admin-erp-* lo encienden solas.
+const adminEsPaginaErp = /^admin-erp/.test(adminPaginaActual);
+const adminEsPaginaCompartida = ['admin-usuarios.html', 'admin-configuracion.html'].includes(adminPaginaActual);
+
+function leerModoErp() {
+  try { return localStorage.getItem('bpModoErp') === '1'; } catch { return false; }
+}
+function guardarModoErp(encendido) {
+  try { localStorage.setItem('bpModoErp', encendido ? '1' : '0'); } catch { /* sin almacenamiento */ }
+}
+// Páginas de ERP: encendido. Páginas de CRM/SCM: apagado. Usuarios y Configuración: el modo que ya traías.
+const adminModoErp = adminEsPaginaErp ? true : (adminEsPaginaCompartida ? leerModoErp() : false);
+if (!adminEsPaginaCompartida) guardarModoErp(adminModoErp);
+
+// Página de inicio al apagar el interruptor: cada rol vuelve a la suya.
+function adminInicioNormal(rol) { return rol === 'logistica' ? 'admin-scm.html' : 'admin.html'; }
+
+// "Inicio" cambia según el modo (en modo normal hay uno por rol; aplicarMenuPorRol oculta el que no toca).
+const adminInicioItems = adminModoErp
+  ? [{ href: 'admin-erp.html', label: 'Inicio', icon: 'home', roles: R_TODOS }]
+  : [
+      { href: 'admin.html',     label: 'Inicio', icon: 'home', roles: R_CRM },
+      { href: 'admin-scm.html', label: 'Inicio', icon: 'home', roles: ['logistica'] },
+    ];
+
+// Menú del modo ERP (lista plana): consulta directa, sin salirse al CRM ni al SCM.
+const adminErpItems = [
+  { href: 'admin-erp-clientes.html',   label: 'Clientes',                icon: 'users',       roles: R_CRM },
+  { href: 'admin-erp-productos.html',  label: 'Productos',               icon: 'package',     roles: R_TODOS },
+  { href: 'admin-erp-inventario.html', label: 'Inventario',              icon: 'boxes',       roles: R_TODOS },
+  { href: 'admin-erp-ordenes.html',    label: 'Órdenes de clientes',     icon: 'clipboard',   roles: R_TODOS },
+  { href: 'admin-erp-reportes.html',   label: 'Reportes ERP',            icon: 'chart',       roles: R_TODOS },
+  { href: 'admin-erp-madurez.html',    label: 'Nivel de implementación', icon: 'trending_up', roles: R_ADMIN },
+  { href: 'admin-usuarios.html',       label: 'Usuarios',                icon: 'shield',      roles: R_ADMIN },
+  { href: 'admin-configuracion.html',  label: 'Configuración',           icon: 'settings',    roles: R_TODOS },
+];
+
 const adminNavGroups = [
   {
-    key: 'crm', label: 'CRM', icon: 'home', seccion: 'crm',
+    key: 'crm', label: 'CRM', icon: 'users',
     items: [
-      { href: 'admin.html',                     label: 'Dashboard',      icon: 'home' },
-      { href: 'admin-clientes.html',             label: 'Clientes',       icon: 'users' },
-      { href: 'admin-interacciones-todas.html',  label: 'Interacciones',  icon: 'chat' },
-      { href: 'admin-reportes.html',             label: 'Reportes',       icon: 'chart' },
-      { href: 'admin-actividad.html',            label: 'Mi actividad',   icon: 'clock' },
+      { href: 'admin.html',                     label: 'Dashboard CRM',  icon: 'chart',  roles: R_CRM },
+      { href: 'admin-clientes.html',             label: 'Clientes',       icon: 'users',  roles: R_CRM },
+      { href: 'admin-interacciones-todas.html',  label: 'Interacciones',  icon: 'chat',   roles: R_CRM },
+      { href: 'admin-reportes.html',             label: 'Reportes CRM',   icon: 'chart',  roles: R_CRM },
+      { href: 'admin-actividad.html',            label: 'Mi actividad',   icon: 'clock',  roles: R_CRM },
     ],
   },
   {
-    key: 'scm', label: 'SCM', icon: 'layers', seccion: 'scm',
+    key: 'scm', label: 'SCM', icon: 'layers',
     items: [
-      { href: 'admin-scm.html',             label: 'Resumen',          icon: 'layers' },
-      { href: 'admin-scm-productos.html',   label: 'Productos',        icon: 'package' },
-      { href: 'admin-scm-proveedores.html', label: 'Proveedores',      icon: 'users' },
-      { href: 'admin-scm-inventario.html',  label: 'Inventario',       icon: 'boxes' },
-      { href: 'admin-scm-pedidos.html',     label: 'Pedidos',          icon: 'clipboard' },
-      { href: 'admin-scm-logistica.html',   label: 'Logística',        icon: 'refresh' },
-      { href: 'admin-scm-reportes.html',    label: 'Reportes SCM',     icon: 'chart' },
-      { href: 'admin-scm-madurez.html',     label: 'Nivel de madurez', icon: 'trending_up' },
-    ],
-  },
-  {
-    key: 'erp', label: 'ERP', icon: 'trending_up', seccion: 'erp',
-    items: [
-      { href: 'admin-erp.html',         label: 'Dashboard ERP',    icon: 'home' },
-      { href: 'admin-erp-ordenes.html', label: 'Órdenes de clientes', icon: 'clipboard' },
-      { href: 'admin-erp-madurez.html', label: 'Nivel de implementación', icon: 'trending_up' },
+      { href: 'admin-scm.html',             label: 'Resumen SCM',      icon: 'layers',      roles: R_SCM },
+      { href: 'admin-scm-productos.html',   label: 'Productos',        icon: 'package',     roles: R_CONSULTA },
+      { href: 'admin-scm-proveedores.html', label: 'Proveedores',      icon: 'users',       roles: R_SCM },
+      { href: 'admin-scm-inventario.html',  label: 'Inventario',       icon: 'boxes',       roles: R_CONSULTA },
+      { href: 'admin-scm-pedidos.html',     label: 'Pedidos',          icon: 'clipboard',   roles: R_SCM },
+      { href: 'admin-scm-logistica.html',   label: 'Logística',        icon: 'refresh',     roles: R_SCM },
+      { href: 'admin-scm-reportes.html',    label: 'Reportes SCM',     icon: 'chart',       roles: R_SCM },
+      { href: 'admin-scm-madurez.html',     label: 'Nivel de madurez', icon: 'trending_up', roles: R_SCM },
     ],
   },
 ];
 
-// Usuarios y Configuración quedan fuera de los acordeones, siempre visibles.
+// Usuarios y Configuración quedan fuera de los acordeones en el modo normal
+// (Usuarios solo para administradores).
 const adminStandaloneLinks = [
-  { href: 'admin-usuarios.html',      label: 'Usuarios',      icon: 'shield', seccion: 'admin' },
-  { href: 'admin-configuracion.html', label: 'Configuración', icon: 'settings' },
+  { href: 'admin-usuarios.html',      label: 'Usuarios',      icon: 'shield',   roles: R_ADMIN },
+  { href: 'admin-configuracion.html', label: 'Configuración', icon: 'settings', roles: R_TODOS },
 ];
 
 // Páginas de detalle que "activan" el mismo ítem del menú que su listado padre
@@ -64,7 +109,6 @@ const adminAliasActivo = {
   'admin-cliente-detalle.html': 'admin-clientes.html',
   'admin-cliente-etapa.html':   'admin-clientes.html',
   'admin-interacciones.html':   'admin-interacciones-todas.html',
-  'admin-erp-ordenes.html':      'admin-erp-ordenes.html',
   'admin-erp-nueva-orden.html':  'admin-erp-ordenes.html',
 };
 const adminPaginaActiva = adminAliasActivo[adminPaginaActual] || adminPaginaActual;
@@ -83,7 +127,7 @@ function guardarMenuAbierto(estado) {
 
 function itemNavHTML(link) {
   return `
-    <li${link.seccion ? ` class="sec-${link.seccion}"` : ''}>
+    <li data-roles="${(link.roles || R_TODOS).join(',')}">
       <a href="${link.href}" class="${adminPaginaActiva === link.href ? 'active' : ''}">
         <span class="nav-icon">${bpIcon(link.icon)}</span>
         <span class="nav-label">${link.label}</span>
@@ -95,7 +139,7 @@ function itemNavHTML(link) {
 function grupoNavHTML(grupo, estadoGuardado) {
   const abierto = grupoTieneActiva(grupo) || estadoGuardado[grupo.key] === true;
   return `
-    <li class="admin-nav-group${grupo.seccion ? ' sec-' + grupo.seccion : ''}${abierto ? ' open' : ''}" data-grupo="${grupo.key}">
+    <li class="admin-nav-group${abierto ? ' open' : ''}" data-grupo="${grupo.key}">
       <button type="button" class="admin-nav-group-btn" aria-expanded="${abierto}">
         <span class="nav-icon">${bpIcon(grupo.icon)}</span>
         <span class="nav-label">${grupo.label}</span>
@@ -125,9 +169,11 @@ function renderAdminSidebar() {
   if (!mount) return;
 
   const estadoGuardado = leerMenuAbierto();
-  const navHTML =
-    adminNavGroups.map(g => grupoNavHTML(g, estadoGuardado)).join('') +
-    adminStandaloneLinks.map(itemNavHTML).join('');
+  const navHTML = adminModoErp
+    ? adminInicioItems.map(itemNavHTML).join('') + adminErpItems.map(itemNavHTML).join('')
+    : adminInicioItems.map(itemNavHTML).join('') +
+      adminNavGroups.map(g => grupoNavHTML(g, estadoGuardado)).join('') +
+      adminStandaloneLinks.map(itemNavHTML).join('');
 
   mount.outerHTML = `
     <aside class="admin-sidebar">
@@ -136,6 +182,15 @@ function renderAdminSidebar() {
           <img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="Bigotes y Patitas" />
         </div>
         <span>Bigotes y Patitas<small>Panel de administración</small></span>
+      </div>
+
+      <div class="admin-modo-erp">
+        <span class="admin-modo-erp-txt">
+          <strong>Modo ERP</strong>
+          <small>${adminModoErp ? 'Vista integrada: consulta CRM y SCM' : 'Actívalo para ver todo integrado'}</small>
+        </span>
+        <button type="button" id="switchErp" class="admin-switch" role="switch"
+                aria-checked="${adminModoErp}" aria-label="Modo ERP"><span></span></button>
       </div>
 
       <ul class="admin-nav">${navHTML}</ul>
@@ -149,6 +204,32 @@ function renderAdminSidebar() {
   `;
 
   activarAcordeonSidebar();
+
+  // Interruptor ERP: al encender va al dashboard ERP; al apagar vuelve al inicio de su rol.
+  const interruptor = document.getElementById('switchErp');
+  if (interruptor) {
+    interruptor.addEventListener('click', () => {
+      const encender = !adminModoErp;
+      guardarModoErp(encender);
+      const rol = window.BP_SESION && window.BP_SESION.rol;
+      window.location.href = encender ? 'admin-erp.html' : adminInicioNormal(rol);
+    });
+  }
+
+  // El rol llega un instante después (admin-auth-guard.js lo busca en Firestore):
+  // hasta entonces el panel está oculto, y en cuanto se sabe se filtra el menú.
+  if (window.BP_SESION) aplicarMenuPorRol(window.BP_SESION.rol);
+  else document.addEventListener('bp-sesion-lista', (e) => aplicarMenuPorRol(e.detail.rol), { once: true });
+}
+
+/** Menú dinámico: deja solo lo que el rol puede usar y oculta los grupos que quedan vacíos. */
+function aplicarMenuPorRol(rol) {
+  document.querySelectorAll('.admin-nav li[data-roles]').forEach((li) => {
+    li.hidden = !li.dataset.roles.split(',').includes(rol);
+  });
+  document.querySelectorAll('.admin-nav-group').forEach((grupo) => {
+    grupo.hidden = !grupo.querySelector('.admin-nav-sub li:not([hidden])');
+  });
 }
 
 function cerrarSesionAdmin(e) {

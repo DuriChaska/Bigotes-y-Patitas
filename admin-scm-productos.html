@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
-<body data-seccion="scm">
+<!-- data-roles: admin y logística gestionan; el vendedor solo consulta (los controles de escritura llevan .solo-escritura-scm) -->
+<body data-roles="administrador,logistica,vendedor">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -20,13 +20,13 @@
           <p class="admin-breadcrumb">Panel de administración · SCM · Visualiza, busca y administra productos</p>
         </div>
         <div class="admin-topbar-right">
-          <button type="button" class="admin-quick-btn primary" id="btnNuevo">
+          <button type="button" class="admin-quick-btn primary solo-escritura-scm" id="btnNuevo">
             <span data-bp-icon="plus"></span><span>Nuevo producto</span>
           </button>
         </div>
       </div>
 
-      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+      <a href="admin-scm.html" class="admin-volver solo-escritura-scm">← Volver a SCM</a>
 
       <!-- Búsqueda y filtro -->
       <div class="admin-panel" id="panelFiltros" style="margin-bottom:18px;">
@@ -58,7 +58,7 @@
                 <th>Stock</th>
                 <th>Stock mín.</th>
                 <th>Estrategia</th>
-                <th style="text-align:right;">Acciones</th>
+                <th class="solo-escritura-scm" style="text-align:right;">Acciones</th>
               </tr>
             </thead>
             <tbody id="cuerpo"></tbody>
@@ -307,7 +307,7 @@
             <td class="scm-num">${Number(p.stock) || 0}</td>
             <td class="scm-num" style="color:var(--gray);">${Number(p.stockMin) || 0}</td>
             <td><span class="admin-tag ${esPush ? 'ok' : 'info'}">${esc(p.estrategia)}</span></td>
-            <td>
+            <td class="solo-escritura-scm">
               <div class="admin-table-actions">
                 <button type="button" title="Editar" aria-label="Editar" data-accion="editar">${bpIcon('pencil')}</button>
                 <button type="button" title="Eliminar" aria-label="Eliminar" class="danger" data-accion="eliminar">${bpIcon('trash')}</button>
@@ -326,7 +326,7 @@
         if (productos.length === 0) {
           vacio.innerHTML = `<span class="icon" data-bp-icon="package"></span><br>
             Todavía no hay productos en el catálogo.
-            <div class="scm-empty-actions">
+            <div class="scm-empty-actions solo-escritura-scm">
               <button type="button" class="admin-btn-secondary" id="btnEjemplos">Cargar productos de ejemplo</button>
             </div>`;
           $('btnEjemplos').addEventListener('click', cargarEjemplos);
@@ -499,10 +499,10 @@
     // ─────────────────────────────────────────────
     let iniciado = false;
     function iniciar(sesion) {
-      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
+      if (iniciado || !sesion || !['administrador', 'logistica', 'vendedor'].includes(sesion.rol)) return;
       iniciado = true;
       pintar();
-      escucharProveedoresScm(
+      if (sesion.rol !== 'vendedor') escucharProveedoresScm(
         (lista) => {
           proveedores = lista;
           // Si el modal está abierto, refresca el select sin perder la selección actual

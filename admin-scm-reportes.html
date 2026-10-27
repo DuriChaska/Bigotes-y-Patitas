@@ -52,19 +52,13 @@
           <div class="admin-panel">
             <h2>Productos con más salidas</h2>
             <p class="panel-sub">Según los movimientos de salida registrados</p>
-            <div class="admin-bars" id="barrasVendidos"></div>
+            <div id="barrasVendidos"></div>
           </div>
 
           <div class="admin-panel">
             <h2>Rotación de inventario</h2>
             <p class="panel-sub">Productos con al menos un movimiento registrado</p>
-            <div class="admin-donut-wrap">
-              <div class="admin-donut" id="donutRotacion"><span id="donutRotacionTexto">0%</span></div>
-              <ul class="admin-legend">
-                <li><span class="dot green"></span>Con movimientos</li>
-                <li><span class="dot orange"></span>Sin movimientos</li>
-              </ul>
-            </div>
+            <div id="graf-rotacion"></div>
           </div>
         </div>
 
@@ -81,14 +75,7 @@
         <div class="admin-panel">
           <div class="admin-panel-head"><h2>Comparativa PUSH vs PULL</h2></div>
           <p class="panel-sub">Pedidos de reposición por mes, según la estrategia del producto</p>
-          <div id="pushpullVacio" class="admin-empty-state hidden" style="padding:24px 20px;">
-            Aún no hay suficientes pedidos con fecha para esta comparativa.
-          </div>
-          <div class="pushpull-chart" id="pushpullChart"></div>
-          <div class="pushpull-legend">
-            <span><span class="dot" style="background:var(--pink-medio);"></span>PUSH</span>
-            <span><span class="dot" style="background:#3b6ea5;"></span>PULL</span>
-          </div>
+          <div id="pushpullChart"></div>
         </div>
       </div>
     </main>
@@ -96,6 +83,7 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
   <script type="module">
     import { calcularMetricasScm } from './firebase-db.js';
 
@@ -109,26 +97,28 @@
       $('statPedidos').textContent = m.pedidosEnProceso;
       $('statStockBajo').textContent = m.stockBajo.length;
 
-      // Barras: productos con más salidas
-      const barras = $('barrasVendidos');
-      if (m.productosMasVendidos.length === 0) {
-        barras.innerHTML = `<p class="panel-sub" style="margin:0;">Aún no hay movimientos de salida registrados.</p>`;
-      } else {
-        const max = Math.max(1, ...m.productosMasVendidos.map(p => p.cantidad));
-        barras.innerHTML = m.productosMasVendidos.map(p => `
-          <div class="admin-bar-col">
-            <span class="bar-num">${p.cantidad}</span>
-            <div class="admin-bar" style="height:${Math.max(4, Math.round((p.cantidad / max) * 100))}%; background:var(--admin-green);"></div>
-            <span class="bar-label">${esc(p.producto)}</span>
-          </div>
-        `).join('');
-      }
+      // Productos con más salidas
+      BPCharts.montar($('barrasVendidos'), {
+        id: 'scm-mas-salidas',
+        titulo: 'Productos con más salidas',
+        tipo: 'barras',
+        datos: m.productosMasVendidos.map(p => ({ etiqueta: p.producto, valor: p.cantidad })),
+        vacio: 'Aún no hay movimientos de salida registrados.',
+      });
 
-      // Dona de rotación
-      $('donutRotacion').style.background = m.totalProductos
-        ? `conic-gradient(var(--admin-green) 0% ${m.rotacion}%, var(--pink-medio) ${m.rotacion}% 100%)`
-        : '#e6ddd0';
-      $('donutRotacionTexto').textContent = m.rotacion + '%';
+      // Rotación de inventario
+      const conMov = Math.round((m.totalProductos * m.rotacion) / 100);
+      BPCharts.montar($('graf-rotacion'), {
+        id: 'scm-rotacion',
+        titulo: 'Rotación de inventario',
+        tipo: 'dona',
+        datos: [
+          { etiqueta: 'Con movimientos', valor: conMov, color: 'var(--admin-green)' },
+          { etiqueta: 'Sin movimientos', valor: Math.max(0, m.totalProductos - conMov), color: 'var(--pink-medio)' },
+        ],
+        centro: { texto: m.rotacion + '%', sub: 'con movimientos' },
+        vacio: 'Todavía no hay productos en el catálogo.',
+      });
 
       // Inventario crítico
       $('cuerpoInventarioCritico').innerHTML = m.stockBajo.length
@@ -142,24 +132,14 @@
         : `<tr><td colspan="3">No hay productos con stock por debajo del mínimo. 🎉</td></tr>`;
 
       // Comparativa PUSH vs PULL
-      const chart = $('pushpullChart');
-      const vacio = $('pushpullVacio');
-      if (m.comparativaPushPull.length === 0) {
-        chart.innerHTML = '';
-        vacio.classList.remove('hidden');
-      } else {
-        vacio.classList.add('hidden');
-        const max = Math.max(1, ...m.comparativaPushPull.map(c => Math.max(c.PUSH, c.PULL)));
-        chart.innerHTML = m.comparativaPushPull.map(c => `
-          <div class="pushpull-col">
-            <div class="pushpull-bars">
-              <div class="pushpull-bar push" style="height:${Math.max(4, Math.round((c.PUSH / max) * 100))}%;" title="PUSH: ${c.PUSH}"></div>
-              <div class="pushpull-bar pull" style="height:${Math.max(4, Math.round((c.PULL / max) * 100))}%;" title="PULL: ${c.PULL}"></div>
-            </div>
-            <span class="col-label">${esc(c.mes)}</span>
-          </div>
-        `).join('');
-      }
+      BPCharts.montar($('pushpullChart'), {
+        id: 'scm-push-pull',
+        titulo: 'Comparativa PUSH vs PULL',
+        tipo: 'barras',
+        series: [{ nombre: 'PUSH', color: '#d97b4f' }, { nombre: 'PULL', color: '#3b6ea5' }],
+        datos: m.comparativaPushPull.map(c => ({ etiqueta: c.mes, valores: [c.PUSH, c.PULL] })),
+        vacio: 'Aún no hay suficientes pedidos con fecha para esta comparativa.',
+      });
     }
 
     async function cargar() {

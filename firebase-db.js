@@ -48,7 +48,8 @@ import {
 import {
   collection, doc,
   addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
-  onSnapshot, query, where, orderBy, serverTimestamp, writeBatch, runTransaction,
+  onSnapshot, query, where, orderBy, limit, serverTimestamp, writeBatch, runTransaction,
+  arrayUnion, increment,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const clientesRef = collection(db, "clientes");
@@ -707,6 +708,337 @@ export async function crearVenta(datosVenta, productosActuales) {
 
   await lote.commit();
   return { id: ventaRef.id, folio };
+}
+
+// ---------- ERP: órdenes empresariales (Etapa 3) ----------
+// Una "orden" del ERP es un documento de la colección "ventas" (la misma donde
+// quedan las compras que los clientes hacen en la tienda), así que el ERP
+// INTEGRA CRM (cliente) + SCM (producto y stock) sin duplicar información.
+//
+// Flujo automático al crear una orden (todo en UNA transacción: o pasa todo o nada):
+//   validar stock -> crear orden -> reducir stock -> registrar movimiento de
+//   inventario -> guardar historial (erp_operaciones) -> actualizar al cliente en el CRM
+//
+//    erp_operaciones/{id} { tipo, descripcion, ordenId, folio, clienteId, clienteNombre,
+//                           total, usuarioId, usuarioNombre, creadoEn }
+//                         (historial de operaciones empresariales: solo se agregan)
+//    ventas/{id} (orden ERP) además lleva: origen "ERP", usuarioId/usuarioNombre
+//                         (quién la registró) e historial [{ estado, usuario, fecha }]
+
+export const ESTADOS_ORDEN_ERP = ["Confirmada", "En proceso", "Enviada", "Entregada", "Cancelada"];
+
+/** A qué estados puede pasar una orden desde su estado actual (PUT /ordenes/{id}/estado). */
+export const TRANSICIONES_ORDEN_ERP = {
+  "Confirmada": ["En proceso", "Enviada", "Cancelada"],
+  "En proceso": ["Enviada", "Cancelada"],
+  "Enviada":    ["Entregada", "Cancelada"],
+  "Entregada":  [],
+  "Cancelada":  [],
+};
+
+const erpOperacionesRef = collection(db, "erp_operaciones");
+
+/** Escucha en tiempo real TODAS las órdenes (ERP + compras de la tienda), más recientes primero. */
+export function escucharOrdenesErp(callback, onError) {
+  const q = query(ventasRef, orderBy("creadoEn", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/** Escucha el historial de operaciones empresariales (las más recientes primero). */
+export function escucharOperacionesErp(callback, onError, maximo = 15) {
+  const q = query(erpOperacionesRef, orderBy("creadoEn", "desc"), limit(maximo));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/** Primera compra: Prospecto/Inactivo pasa a Activo; con 3 compras o más pasa a Frecuente. */
+function etapaTrasCompra(etapa, numCompras) {
+  if (numCompras >= 3) return "Frecuente";
+  return (!etapa || etapa === "Prospecto" || etapa === "Inactivo") ? "Activo" : etapa;
+}
+
+/**
+ * POST /ordenes + POST /ordenes/procesar: registra una orden empresarial y
+ * dispara toda la automatización. Lee el stock MÁS RECIENTE dentro de la
+ * transacción (no el de la pantalla), así que si otra persona vendió lo mismo
+ * hace un segundo, la orden se rechaza con un mensaje claro en vez de dejar
+ * el inventario en negativo.
+ *   cliente: { id, nombre, correo }  items: [{ productoId, cantidad }]
+ *   usuario: { uid, nombre, correo } (quién registra la orden = usuario_id)
+ * Devuelve { id, folio, total }.
+ */
+export async function crearOrdenErp({ cliente, items, metodoPago, direccionEnvio, usuario }) {
+  if (!cliente || !cliente.id) throw new Error("Selecciona un cliente.");
+  if (!usuario || !usuario.uid) throw new Error("No se pudo identificar quién registra la orden.");
+
+  // Une líneas repetidas del mismo producto en una sola.
+  const porProducto = new Map();
+  (items || []).forEach((i) => {
+    const cantidad = Math.floor(Number(i.cantidad)) || 0;
+    if (!i.productoId || cantidad < 1) return;
+    porProducto.set(i.productoId, (porProducto.get(i.productoId) || 0) + cantidad);
+  });
+  if (porProducto.size === 0) throw new Error("La orden no tiene productos.");
+
+  // Folio consecutivo "OR-001": el personal sí puede leer todas las órdenes.
+  const todas = await getDocs(ventasRef);
+  let ultimo = 0;
+  todas.forEach((d) => {
+    const m = /^OR-(\d+)$/.exec(String(d.data().folio || ""));
+    if (m) ultimo = Math.max(ultimo, Number(m[1]));
+  });
+  const folio = "OR-" + String(ultimo + 1).padStart(3, "0");
+
+  const ahora = new Date();
+  const hoy = ahora.toISOString().slice(0, 10);
+  const quien = usuario.nombre || usuario.correo || "";
+  const ordenRef = doc(ventasRef);
+  const clienteRef = doc(db, "clientes", cliente.id);
+
+  return runTransaction(db, async (tx) => {
+    // 1) Todas las lecturas primero (Firestore exige leer antes de escribir).
+    const lecturas = [];
+    for (const [productoId, cantidad] of porProducto) {
+      const ref = doc(db, "scm_productos", productoId);
+      lecturas.push({ ref, cantidad, snap: await tx.get(ref) });
+    }
+    const clienteSnap = await tx.get(clienteRef);
+
+    // 2) Validar con el stock y el precio actuales.
+    const lineas = lecturas.map(({ ref, cantidad, snap }) => {
+      if (!snap.exists()) throw new Error("Uno de los productos ya no existe en el catálogo.");
+      const p = snap.data();
+      const stock = Number(p.stock) || 0;
+      if (stock < cantidad) {
+        throw new Error(`Ya no hay suficiente stock de "${p.nombre}" (disponible: ${stock}).`);
+      }
+      const precio = Number(p.precio) || 0;
+      return { ref, productoId: ref.id, nombre: p.nombre, precio, cantidad, stock, subtotal: precio * cantidad };
+    });
+    const total = lineas.reduce((s, l) => s + l.subtotal, 0);
+
+    // 3) Crear la orden.
+    tx.set(ordenRef, {
+      folio,
+      origen: "ERP",
+      clienteId: cliente.id,
+      clienteNombre: cliente.nombre || "",
+      clienteCorreo: cliente.correo || "",
+      items: lineas.map(l => ({ productoId: l.productoId, nombre: l.nombre, precio: l.precio, cantidad: l.cantidad })),
+      subtotal: total,
+      descuento: 0,
+      cupon: "",
+      total,
+      direccionEnvio: direccionEnvio || "",
+      metodoPago: metodoPago || "Efectivo",
+      estado: "Confirmada",
+      usuarioId: usuario.uid,
+      usuarioNombre: quien,
+      historial: [{ estado: "Confirmada", usuario: quien, fecha: ahora.toISOString() }],
+      creadoEn: serverTimestamp(),
+    });
+
+    // 4) Reducir stock + registrar el movimiento de inventario de cada producto.
+    lineas.forEach((l) => {
+      tx.update(l.ref, { stock: l.stock - l.cantidad, actualizadoEn: serverTimestamp() });
+      tx.set(doc(collection(db, "scm_movimientos")), {
+        productoId: l.productoId,
+        producto: l.nombre,
+        tipo: "Salida",
+        cantidad: l.cantidad,
+        motivo: `Orden ${folio}`,
+        fecha: hoy,
+        usuario: quien,
+        creadoEn: serverTimestamp(),
+      });
+    });
+
+    // 5) Guardar historial (operación empresarial).
+    const piezas = lineas.reduce((s, l) => s + l.cantidad, 0);
+    tx.set(doc(erpOperacionesRef), {
+      tipo: "Orden de cliente",
+      descripcion: `Orden ${folio} de ${cliente.nombre || "cliente"}: ${piezas} pieza${piezas === 1 ? "" : "s"}, total $${total.toFixed(2)}`,
+      ordenId: ordenRef.id,
+      folio,
+      clienteId: cliente.id,
+      clienteNombre: cliente.nombre || "",
+      total,
+      usuarioId: usuario.uid,
+      usuarioNombre: quien,
+      creadoEn: serverTimestamp(),
+    });
+
+    // 6) Registrar la compra en el CRM (si el cliente existe en la colección de clientes).
+    if (clienteSnap.exists()) {
+      const c = clienteSnap.data();
+      const numCompras = (Number(c.numCompras) || 0) + 1;
+      tx.update(clienteRef, {
+        numCompras,
+        totalComprado: (Number(c.totalComprado) || 0) + total,
+        ultimaCompra: hoy,
+        etapa: etapaTrasCompra(c.etapa, numCompras),
+        actualizadoEn: serverTimestamp(),
+      });
+    }
+
+    return { id: ordenRef.id, folio, total };
+  });
+}
+
+/**
+ * PUT /ordenes/{id}/estado: cambia el estado de una orden siguiendo
+ * TRANSICIONES_ORDEN_ERP y guarda el cambio en su historial. Si se CANCELA,
+ * el stock de sus productos se devuelve al inventario y se registra una
+ * "Entrada" por cada uno (en la misma operación atómica).
+ * orden: la orden completa (con id, folio, estado, items).
+ */
+export async function cambiarEstadoOrdenErp(orden, estadoNuevo, usuario) {
+  const actual = orden.estado || "Confirmada";
+  if (!(TRANSICIONES_ORDEN_ERP[actual] || []).includes(estadoNuevo)) {
+    throw new Error(`Una orden "${actual}" no puede pasar a "${estadoNuevo}".`);
+  }
+  const quien = usuario?.nombre || usuario?.correo || "";
+  const hoy = new Date().toISOString().slice(0, 10);
+  const lote = writeBatch(db);
+
+  lote.update(doc(db, "ventas", orden.id), {
+    estado: estadoNuevo,
+    historial: arrayUnion({ estado: estadoNuevo, usuario: quien, fecha: new Date().toISOString() }),
+    actualizadoEn: serverTimestamp(),
+  });
+
+  if (estadoNuevo === "Cancelada") {
+    for (const item of (orden.items || [])) {
+      const cantidad = Math.floor(Number(item.cantidad)) || 0;
+      if (!item.productoId || cantidad < 1) continue;
+      const refProducto = doc(db, "scm_productos", item.productoId);
+      // Si el producto se borró del catálogo después de la orden, no hay stock que devolver.
+      if (!(await getDoc(refProducto)).exists()) continue;
+      lote.update(refProducto, { stock: increment(cantidad), actualizadoEn: serverTimestamp() });
+      lote.set(doc(collection(db, "scm_movimientos")), {
+        productoId: item.productoId,
+        producto: item.nombre || "",
+        tipo: "Entrada",
+        cantidad,
+        motivo: `Orden ${orden.folio || orden.id} cancelada: se devuelve el stock`,
+        fecha: hoy,
+        usuario: quien,
+        creadoEn: serverTimestamp(),
+      });
+    }
+  }
+
+  lote.set(doc(erpOperacionesRef), {
+    tipo: estadoNuevo === "Cancelada" ? "Orden cancelada" : "Cambio de estado",
+    descripcion: `Orden ${orden.folio || orden.id}: ${actual} → ${estadoNuevo}`,
+    ordenId: orden.id,
+    folio: orden.folio || "",
+    clienteId: orden.clienteId || "",
+    clienteNombre: orden.clienteNombre || "",
+    total: Number(orden.total) || 0,
+    usuarioId: usuario?.uid || "",
+    usuarioNombre: quien,
+    creadoEn: serverTimestamp(),
+  });
+
+  await lote.commit();
+}
+
+/**
+ * GET /erp/metricas: los indicadores del dashboard empresarial. Las órdenes
+ * canceladas no cuentan como venta. Si la cuenta no tiene acceso al CRM
+ * (p. ej. logística), clientesActivos viene en null en vez de fallar todo.
+ */
+export async function calcularMetricasErp() {
+  const [ventasSnap, productosSnap] = await Promise.all([
+    getDocs(query(ventasRef, orderBy("creadoEn", "desc"))),
+    getDocs(scmProductosRef),
+  ]);
+  const ordenes = ventasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const productos = productosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  let clientesActivos = null;
+  try {
+    const clientesSnap = await getDocs(clientesRef);
+    clientesActivos = clientesSnap.docs.filter(d => String(d.data().estado || "").toLowerCase() === "activo").length;
+  } catch (e) {
+    clientesActivos = null;
+  }
+
+  const validas = ordenes.filter(o => o.estado !== "Cancelada");
+  const ventasTotales = validas.reduce((s, o) => s + (Number(o.total) || 0), 0);
+  const ordenesEnProceso = validas.filter(o => o.estado !== "Entregada").length;
+
+  const vendidasPorProducto = {};
+  let productosVendidos = 0;
+  validas.forEach((o) => (o.items || []).forEach((it) => {
+    const cant = Number(it.cantidad) || 0;
+    productosVendidos += cant;
+    const llave = it.productoId || it.nombre;
+    vendidasPorProducto[llave] = (vendidasPorProducto[llave] || 0) + cant;
+  }));
+
+  const porNombre = {};
+  validas.forEach((o) => (o.items || []).forEach((it) => {
+    porNombre[it.nombre] = (porNombre[it.nombre] || 0) + (Number(it.cantidad) || 0);
+  }));
+  const topProductos = Object.entries(porNombre).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    .map(([nombre, cantidad]) => ({ nombre, cantidad }));
+
+  const ahora = new Date();
+  const ventasPorMes = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    ventasPorMes.push({
+      llave: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      etiqueta: d.toLocaleDateString("es-MX", { month: "short" }),
+      total: 0,
+    });
+  }
+  validas.forEach((o) => {
+    if (!o.creadoEn) return;
+    const f = o.creadoEn.toDate ? o.creadoEn.toDate() : new Date(o.creadoEn);
+    const llave = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}`;
+    const mes = ventasPorMes.find(m => m.llave === llave);
+    if (mes) mes.total += Number(o.total) || 0;
+  });
+
+  // Rotación: de lo que hubo (vendido + en bodega), qué proporción ya se vendió.
+  const rotacion = { alta: 0, media: 0, baja: 0 };
+  let unidades = 0;
+  let valor = 0;
+  productos.forEach((p) => {
+    const stock = Number(p.stock) || 0;
+    unidades += stock;
+    valor += stock * (Number(p.costo) || 0);
+    const vendidas = vendidasPorProducto[p.id] || vendidasPorProducto[p.nombre] || 0;
+    const ratio = (vendidas + stock) > 0 ? vendidas / (vendidas + stock) : 0;
+    rotacion[ratio >= 0.5 ? "alta" : ratio >= 0.2 ? "media" : "baja"]++;
+  });
+  const conMovimiento = productos.length ? Math.round(((rotacion.alta + rotacion.media) / productos.length) * 100) : 0;
+
+  return {
+    ventasTotales,
+    ordenesTotal: ordenes.length,
+    ordenesProcesadas: validas.length,
+    ordenesEnProceso,
+    ordenesCanceladas: ordenes.length - validas.length,
+    productosVendidos,
+    clientesActivos,
+    ventasPorMes,
+    topProductos,
+    inventario: {
+      productos: productos.length,
+      unidades,
+      valor,
+      stockBajo: productos.filter(p => Number(p.stock) <= Number(p.stockMin)).length,
+      rotacion,
+      conMovimiento,
+    },
+  };
 }
 
 // ---------- SCM: nivel de madurez (checklist manual, solo administradores) ----------
