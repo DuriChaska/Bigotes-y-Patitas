@@ -29,8 +29,8 @@
     .madurez-checklist li.auto:hover { background: transparent; }
   </style>
 </head>
-<!-- data-seccion="admin": solo administradores (el checklist manual se guarda en Firestore y las reglas lo permiten al administrador) -->
-<body data-seccion="admin">
+<!-- data-roles: solo administrador (el checklist manual se guarda en Firestore y las reglas lo permiten al administrador) -->
+<body data-roles="administrador">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -51,8 +51,8 @@
       <div class="admin-panel">
         <h2>Evalúa el avance en la integración de procesos</h2>
         <p class="panel-sub">
-          Los tres primeros puntos se marcan solos según los datos reales del sistema (clientes,
-          productos y órdenes). Los demás los marcas tú con un clic cuando ya estén implementados.
+          Los cuatro primeros puntos se marcan solos según los datos reales del sistema (clientes,
+          productos, órdenes y movimientos de inventario generados por las órdenes). Los demás los marcas tú con un clic cuando ya estén implementados.
         </p>
 
         <div class="erp-niveles" id="erpNiveles">
@@ -109,7 +109,7 @@
       { id: 'clientes',    auto: true,  texto: 'Clientes integrados (CRM)' },
       { id: 'productos',   auto: true,  texto: 'Productos e inventario (SCM)' },
       { id: 'ordenes',     auto: true,  texto: 'Órdenes de clientes funcionando (ERP)' },
-      { id: 'movimientos', auto: false, texto: 'Movimientos de inventario automáticos' },
+      { id: 'movimientos', auto: true,  texto: 'Movimientos de inventario automáticos' },
       { id: 'reportes',    auto: false, texto: 'Reportes empresariales completos' },
       { id: 'procesos',    auto: false, texto: 'Procesos optimizados' },
     ];
@@ -121,7 +121,7 @@
       { nombre: 'Optimizado',   desc: 'Todos los procesos están integrados, automatizados y con reportes completos para la toma de decisiones.' },
     ];
 
-    let datosAuto = { clientes: false, productos: false, ordenes: false };
+    let datosAuto = { clientes: false, productos: false, ordenes: false, movimientos: false };
     let manual = {};
     let pendientes = new Set();
 
@@ -207,6 +207,10 @@
         .then(snap => { datosAuto.ordenes = !snap.empty; pintar(); })
         .catch(err => console.error(err));
 
+      // Si ya hay operaciones en el historial ERP, las órdenes sí están moviendo el inventario solas.
+      getDocs(query(collection(db, 'erp_operaciones'), limit(1)))
+        .then(snap => { datosAuto.movimientos = !snap.empty; pintar(); })
+        .catch(err => console.error(err));
       onSnapshot(refManual, snap => {
         manual = snap.exists() ? (snap.data().items || {}) : {};
         pintar();

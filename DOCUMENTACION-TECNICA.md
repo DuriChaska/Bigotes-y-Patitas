@@ -376,3 +376,112 @@ Firestore" — para no duplicarlo aquí. Un resumen de lo más importante:
 - **Alertas de bajo stock**: cuando un producto cae por debajo de su
   `stockMin`, aparece un banner en las páginas del SCM (`admin-stock-alertas.js`,
   reutilizado en Inventario, Productos, Pedidos, Logística y el hub de SCM).
+
+---
+
+## 10. Etapa 3: ERP (integra CRM + SCM + usuarios)
+
+El ERP **no duplica datos**: una orden del ERP es un documento de la colección
+`ventas` (la misma de las compras de la tienda) que apunta al cliente del CRM
+(`clientes`) y a los productos del SCM (`scm_productos`).
+
+### 10.1 Páginas
+
+| Archivo | Qué hace |
+|---|---|
+| `admin-erp.html` | Dashboard empresarial: 4 KPIs, ventas de los últimos 6 meses, más vendidos, indicadores operativos y actividad reciente. |
+| `admin-erp-ordenes.html` | Listado de órdenes en tiempo real, detalle, historial y cambio de estado (solo administrador y logística). |
+| `admin-erp-nueva-orden.html` | Asistente de 5 pasos: cliente → productos → confirmación → procesamiento → orden exitosa. |
+| `admin-erp-reportes.html` | Reportes ERP: ventas por mes, más vendidos, inventario con rotación, diagrama CRM ↔ ERP ↔ SCM. |
+| `admin-erp-madurez.html` | Nivel de implementación ERP (Básico / Integrado / Automatizado / Optimizado). Solo administrador. |
+
+### 10.2 Flujo automático de una orden (`crearOrdenErp`, en `firebase-db.js`)
+
+Todo ocurre en **una sola transacción** de Firestore (o pasa todo, o no pasa nada):
+validar el stock actual → crear la orden (`ventas`, `origen: "ERP"`, con el
+`usuarioId` de quien la registró) → reducir el stock → registrar un movimiento de
+"Salida" por producto (`scm_movimientos`) → guardar el historial
+(`erp_operaciones`) → actualizar al cliente en el CRM (compras, total comprado,
+última compra y etapa: Prospecto/Inactivo pasa a Activo; 3 compras o más, Frecuente).
+Si otra persona vendió el último producto un segundo antes, la orden se rechaza
+con un mensaje claro en vez de dejar el inventario en negativo.
+
+### 10.3 Estados de la orden (`cambiarEstadoOrdenErp`)
+
+`Confirmada` → `En proceso` / `Enviada` / `Cancelada`; `En proceso` → `Enviada` /
+`Cancelada`; `Enviada` → `Entregada` / `Cancelada`. **Cancelar devuelve el stock**
+al inventario y registra una "Entrada" por cada producto. Cada cambio se guarda
+en el `historial` de la orden y en `erp_operaciones`. Las canceladas no cuentan
+en las ventas ni en los productos vendidos.
+
+### 10.4 Equivalencia con los endpoints del PDF
+
+| Endpoint del PDF | En este proyecto |
+|---|---|
+| `POST /ordenes`, `POST /ordenes/procesar` | `crearOrdenErp()` |
+| `GET /ordenes`, `GET /ordenes/{id}` | `escucharOrdenesErp()` y el panel de detalle |
+| `PUT /ordenes/{id}/estado` | `cambiarEstadoOrdenErp()` |
+| `GET /erp/metricas` | `calcularMetricasErp()` |
+| `GET/PUT /erp/estado` | `admin-erp-madurez.html` (documento `scm_estado/madurez-erp`) |
+
+(No hay servidor REST: Firestore se consulta directo desde el navegador, igual
+que en el resto del proyecto.)
+
+### 10.5 Roles y menú por rol (pantalla 10)
+
+| Sección | Administrador | Ventas (vendedor) | Logística |
+|---|:-:|:-:|:-:|
+| Inicio (Dashboard ERP) | sí | sí | sí |
+| Clientes CRM (y resto del CRM) | sí | sí | no |
+| Productos SCM / Inventario SCM | sí (edita) | solo consulta | sí (edita) |
+| Resto del SCM (proveedores, pedidos, logística…) | sí | no | sí |
+| Órdenes ERP: ver | sí | sí | sí |
+| Órdenes ERP: crear | sí | sí | no |
+| Órdenes ERP: cambiar estado / cancelar | sí | no | sí |
+| Reportes ERP | sí | sí | sí |
+| Nivel ERP, Usuarios | sí | no | no |
+| Configuración | sí | sí | sí |
+
+**El ERP no es un apartado aparte: es un interruptor ("Modo ERP") en la barra
+lateral del mismo panel.** Apagado, se ve el menú de siempre según el rol (CRM,
+SCM, Usuarios, Configuración). Encendido, el menú pasa a la vista integrada del
+ERP: Inicio, Clientes, Productos, Inventario, Órdenes, Reportes, Nivel de
+implementación, Usuarios y Configuración (cada rol ve solo lo suyo). El modo se
+recuerda en el navegador (`bpModoErp`), las páginas `admin-erp-*` lo encienden
+solas y al apagarlo cada rol vuelve a su inicio (`admin.html` o `admin-scm.html`).
+Con el interruptor encendido, el ERP **consulta** el CRM y el SCM sin salirse a
+esos módulos: Clientes (`admin-erp-clientes.html`), Productos
+(`admin-erp-productos.html`) e Inventario (`admin-erp-inventario.html`) son
+páginas de **solo consulta** que leen los mismos datos del CRM y del SCM, sin
+duplicarlos y sin enlaces que lleven a esos módulos. Clientes la ven
+administrador y ventas (logística no tiene acceso al CRM).
+
+El menú lateral (`admin-components.js`) oculta lo que el rol no puede usar, y
+cada página declara quién puede entrar con `<body data-roles="...">`
+(`admin-auth-guard.js` redirige al resto). **La barrera real son las reglas de
+`firestore.rules`**; el menú y la redirección son solo comodidad de la interfaz.
+Los controles de escritura de Productos e Inventario llevan la clase
+`solo-escritura-scm` y se ocultan al vendedor.
+
+### 10.6 Colección nueva: `erp_operaciones`
+
+Historial de operaciones empresariales: `tipo`, `descripcion`, `ordenId`, `folio`,
+`clienteId`, `clienteNombre`, `total`, `usuarioId`, `usuarioNombre`, `creadoEn`.
+Solo se agregan documentos (no se editan ni se borran); leen los tres roles.
+**Después de actualizar el proyecto hay que volver a publicar `firestore.rules`**
+en la consola de Firebase (Firestore → Reglas → Publicar).
+
+### 10.7 Gráficas con selector de tipo (`admin-charts.js`)
+
+Todas las gráficas del panel (CRM, SCM y ERP) usan el mismo archivo,
+`admin-charts.js`, que dibuja SVG sin librerías externas. Cada gráfica trae
+botones para verla como **barras, barras horizontales, línea, área, pastel o
+dona**; el tipo elegido se recuerda en el navegador (por gráfica). Para agregar
+una gráfica nueva: cargar `admin-charts.js` después de `admin-components.js`,
+poner un `<div id="miGrafica"></div>` y llamar
+`BPCharts.montar(el, { id, titulo, tipo, datos: [{ etiqueta, valor, color }], formato })`.
+Para comparar varias series (p. ej. PUSH y PULL) se usa `series` y
+`datos: [{ etiqueta, valores: [..] }]`. Las páginas con gráficas son
+`admin.html`, `admin-reportes.html`, `admin-scm-reportes.html`, `admin-erp.html`
+y `admin-erp-reportes.html`.
+

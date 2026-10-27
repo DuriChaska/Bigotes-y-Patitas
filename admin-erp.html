@@ -80,14 +80,22 @@
       transition: width .4s ease;
     }
 
+    /* ── Indicadores operativos y actividad ── */
+    .erp-ind > div { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--border); font-size:.86rem; }
+    .erp-ind > div:last-child { border-bottom:0; }
+    .erp-ind span { color:var(--gray); }
+    .erp-act-item { padding:9px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+    .erp-act-item:last-child { border-bottom:0; }
+    .erp-act-item small { display:block; color:var(--gray); margin-top:2px; }
+
     /* ── Responsive ── */
     @media (max-width: 680px) {
       .erp-grid-2col { grid-template-columns: 1fr !important; }
     }
   </style>
 </head>
-<!-- data-seccion="erp": acceso para administrador y vendedor -->
-<body data-seccion="crm">
+<!-- data-roles: los 3 roles entran al panel ERP (cada uno ve lo que su rol permite) -->
+<body data-roles="administrador,vendedor,logistica">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -99,10 +107,9 @@
           <p class="admin-breadcrumb">Panel de administración · ERP · Vista integrada del negocio</p>
         </div>
         <div class="admin-topbar-right">
-          <button type="button" class="admin-quick-btn primary"
-                  onclick="window.location.href='admin-erp-ordenes.html?nueva=1'">
+          <a class="admin-quick-btn primary oculto-logistica" href="admin-erp-nueva-orden.html">
             <span data-bp-icon="plus"></span><span>Nueva orden</span>
-          </button>
+          </a>
         </div>
       </div>
 
@@ -161,10 +168,7 @@
             <span class="admin-count-pill">MXN ($)</span>
           </div>
 
-          <div id="grafica-wrap" class="erp-chart-wrap">
-            <p style="color:var(--gray);font-size:.85rem;align-self:center;width:100%;text-align:center;">Cargando…</p>
-          </div>
-          <div id="grafica-labels" class="erp-chart-labels"></div>
+          <div id="grafica-wrap"></div>
 
           <div style="display:flex;align-items:center;justify-content:flex-end;margin-top:10px;gap:6px;font-size:.78rem;">
             <span data-bp-icon="trending_up" id="tendencia-icon" style="color:var(--success,#16a34a);"></span>
@@ -191,6 +195,30 @@
 
       </div>
 
+      <!-- ── Indicadores operativos + actividad reciente ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;" class="erp-grid-2col">
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Indicadores operativos</h2></div>
+          <div class="erp-ind">
+            <div><span>Órdenes entregadas / procesadas</span><strong id="i-entregadas">—</strong></div>
+            <div><span>Órdenes canceladas</span><strong id="i-canceladas">—</strong></div>
+            <div><span>Productos en stock bajo</span><strong id="i-stock-bajo">—</strong></div>
+            <div><span>Valor del inventario (a costo)</span><strong id="i-valor">—</strong></div>
+            <div><span>Piezas vendidas</span><strong id="i-vendidas">—</strong></div>
+          </div>
+          <div style="padding-top:14px;border-top:1px solid var(--border);margin-top:14px;">
+            <a href="admin-erp-reportes.html" style="font-size:.82rem;color:var(--primary);font-weight:600;text-decoration:none;">Ver reportes ERP →</a>
+          </div>
+        </div>
+
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Actividad empresarial reciente</h2></div>
+          <div id="actividad-reciente"><p style="color:var(--gray);font-size:.85rem;">Cargando…</p></div>
+        </div>
+
+      </div>
+
     </main>
   </div>
 
@@ -200,11 +228,9 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
   <script type="module">
-    import {
-      collection, getDocs, query, orderBy,
-    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-    import { db } from './firebase-config.js';
+    import { calcularMetricasErp, escucharOperacionesErp } from './firebase-db.js';
 
     const $ = id => document.getElementById(id);
 
@@ -222,37 +248,25 @@
     const esc = v => String(v ?? '').replace(/[&<>"']/g,
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-    const ESTADO_COLOR = {
-      'Confirmada': 'ok',
-      'En proceso': 'info',
-      'Enviada':    'info',
-      'Entregada':  'ok',
-      'Cancelada':  'danger',
-    };
-
-    // ── Cargar todo ───────────────────────────────────────────────────────────
+    // ── Cargar todo (GET /erp/metricas) ───────────────────────────────────────
     async function cargar() {
       try {
-        const ventasSnap = await getDocs(
-          query(collection(db, 'ventas'), orderBy('creadoEn', 'desc'))
-        );
-        const ventas = ventasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const m = await calcularMetricasErp();
 
-        const clientesSnap = await getDocs(collection(db, 'clientes'));
-        const activos = clientesSnap.docs
-          .map(d => d.data())
-          .filter(c => c.estado === 'Activo').length;
+        // Logística no tiene acceso al CRM: clientesActivos llega en null y se muestra "—".
+        $('m-clientes').textContent   = m.clientesActivos === null ? '—' : m.clientesActivos;
+        $('m-ordenes').textContent    = m.ordenesTotal;
+        $('m-total').textContent      = fmt.format(m.ventasTotales);
+        $('m-pendientes').textContent = m.ordenesEnProceso;
 
-        const totalVentas = ventas.reduce((s, v) => s + (Number(v.total) || 0), 0);
-        const enProceso   = ventas.filter(v => !['Entregada', 'Cancelada'].includes(v.estado)).length;
+        $('i-entregadas').textContent = (m.ordenesProcesadas - m.ordenesEnProceso) + ' / ' + m.ordenesProcesadas;
+        $('i-canceladas').textContent = m.ordenesCanceladas;
+        $('i-stock-bajo').textContent = m.inventario.stockBajo;
+        $('i-valor').textContent      = fmt.format(m.inventario.valor);
+        $('i-vendidas').textContent   = m.productosVendidos;
 
-        $('m-clientes').textContent   = activos;
-        $('m-ordenes').textContent    = ventas.length;
-        $('m-total').textContent      = fmt.format(totalVentas);
-        $('m-pendientes').textContent = enProceso;
-
-        pintarGrafica(ventas);
-        pintarTopProductos(ventas);
+        pintarGrafica(m.ventasPorMes);
+        pintarTopProductos(m.topProductos);
 
         if (typeof pintarIconosBP === 'function') pintarIconosBP();
 
@@ -264,43 +278,29 @@
       }
     }
 
-    // ── Gráfica de barras ─────────────────────────────────────────────────────
-    function pintarGrafica(ventas) {
-      const ahora = new Date();
-      const meses = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
-        meses.push({
-          key:   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-          lbl:   d.toLocaleDateString('es-MX', { month: 'short' }),
-          total: 0,
-        });
+    // ── Actividad reciente (historial de operaciones empresariales) ───────────
+    function pintarActividad(lista) {
+      const wrap = $('actividad-reciente');
+      if (!lista.length) {
+        wrap.innerHTML = '<p style="color:var(--gray);font-size:.85rem;">Todavía no hay operaciones registradas.</p>';
+        return;
       }
-
-      ventas.forEach(v => {
-        if (!v.creadoEn) return;
-        const ts  = v.creadoEn.toDate ? v.creadoEn.toDate() : new Date(v.creadoEn);
-        const key = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}`;
-        const mes = meses.find(m => m.key === key);
-        if (mes) mes.total += Number(v.total) || 0;
-      });
-
-      const maxTotal = Math.max(...meses.map(m => m.total), 1);
-      const wrap     = $('grafica-wrap');
-
-      const BAR_MAX_PX = 150; // px máximos de barra (deja ~30px para la etiqueta)
-      wrap.innerHTML = meses.map(m => {
-        const px = Math.max(4, Math.round((m.total / maxTotal) * BAR_MAX_PX));
-        return `
-          <div class="erp-bar-col" title="${m.lbl}: ${fmtDec.format(m.total)}">
-            <span class="erp-bar-val">${m.total > 0 ? fmt.format(m.total) : ''}</span>
-            <div class="erp-bar" style="height:${px}px;"></div>
-          </div>`;
+      wrap.innerHTML = lista.slice(0, 6).map(o => {
+        const f = o.creadoEn && o.creadoEn.toDate ? o.creadoEn.toDate().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '';
+        return `<div class="erp-act-item">${esc(o.descripcion)}<small>${esc(o.usuarioNombre || '')}${f ? ' · ' + f : ''}</small></div>`;
       }).join('');
+    }
 
-      $('grafica-labels').innerHTML = meses.map(m =>
-        `<span>${m.lbl}</span>`
-      ).join('');
+    // ── Gráfica de barras ─────────────────────────────────────────────────────
+    function pintarGrafica(meses) {
+      BPCharts.montar($('grafica-wrap'), {
+        id: 'erp-ventas-mes',
+        titulo: 'Ventas de los últimos 6 meses',
+        tipo: 'barras',
+        datos: meses.map(m => ({ etiqueta: m.etiqueta, valor: m.total })),
+        formato: v => fmt.format(v),
+        vacio: 'Sin ventas registradas aún.',
+      });
 
       // Tendencia: último mes vs penúltimo
       const ult  = meses[5].total;
@@ -319,42 +319,21 @@
         tendEl.textContent = 'Primer mes con ventas';
       } else {
         tendEl.textContent = 'Sin ventas registradas aún';
-        tendEl.style.color = 'var(--#16a34a)';
-        iconEl.style.color = 'var(--#16a34a)';
+        tendEl.style.color = 'var(--success,#16a34a)';
+        iconEl.style.color = 'var(--success,#16a34a)';
       }
     }
 
     // ── Top productos ──────────────────────────────────────────────────────────
-    function pintarTopProductos(ventas) {
-      const conteo = {};
-      ventas.forEach(v => {
-        (v.items || []).forEach(item => {
-          conteo[item.nombre] = (conteo[item.nombre] || 0) + (Number(item.cantidad) || 0);
-        });
+    function pintarTopProductos(top0) {
+      BPCharts.montar($('top-productos'), {
+        id: 'erp-mas-vendidos',
+        titulo: 'Productos más vendidos',
+        tipo: 'horizontal',
+        datos: top0.map(p => ({ etiqueta: p.nombre, valor: p.cantidad })),
+        formato: v => v + ' uds',
+        vacio: 'Sin ventas registradas aún.',
       });
-
-      const top  = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 5);
-      const wrap = $('top-productos');
-
-      if (top.length === 0) {
-        wrap.innerHTML = `<p style="color:var(--gray);font-size:.85rem;">Sin ventas registradas aún.</p>`;
-        return;
-      }
-
-      const maximo = top[0][1];
-      wrap.innerHTML = top.map(([nombre, cant]) => {
-        const pct = Math.round((cant / maximo) * 100);
-        return `
-          <div class="erp-top-item">
-            <div class="erp-top-row">
-              <span>${esc(nombre)}</span>
-              <span class="erp-top-qty">${cant} uds</span>
-            </div>
-            <div class="erp-top-track">
-              <div class="erp-top-fill" style="width:${pct}%;"></div>
-            </div>
-          </div>`;
-      }).join('');
     }
 
     // ── Arranque ───────────────────────────────────────────────────────────────
@@ -363,6 +342,10 @@
       if (iniciado || !sesion) return;
       iniciado = true;
       cargar();
+      escucharOperacionesErp(pintarActividad, (err) => {
+        console.error(err);
+        $('actividad-reciente').innerHTML = '<p style="color:var(--gray);font-size:.85rem;">No se pudo cargar la actividad.</p>';
+      });
     }
 
     if (window.BP_SESION) iniciar(window.BP_SESION);

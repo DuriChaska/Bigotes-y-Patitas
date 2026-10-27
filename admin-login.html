@@ -73,7 +73,11 @@
 
       try {
         await loginAdmin(email, pass);
-        window.location.href = 'admin.html';
+        // Vuelve al modo en que dejó el panel (ERP o normal); si su rol no puede entrar a admin.html,
+        // admin-auth-guard.js lo manda a su página de inicio.
+        let modoErp = false;
+        try { modoErp = localStorage.getItem('bpModoErp') === '1'; } catch (e) { /* sin almacenamiento */ }
+        window.location.href = modoErp ? 'admin-erp.html' : 'admin.html';
       } catch (err) {
         errorBox.textContent = mensajeError(err.code);
         errorBox.classList.add('show');

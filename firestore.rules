@@ -6,10 +6,12 @@ rules_version = '2';
 //
 // Hay dos familias de cuenta de Firebase Authentication en este proyecto:
 //  - Personal del panel: tiene perfil en "usuarios" con un rol:
-//      administrador -> todo (CRM + SCM + gestión de usuarios)
-//      vendedor      -> solo CRM (clientes e interacciones)
-//      logistica     -> solo SCM (productos, proveedores, inventario,
-//                       pedidos, movimientos y nivel de madurez)
+//      administrador -> todo (CRM + SCM + ERP + gestión de usuarios)
+//      vendedor      -> CRM (clientes e interacciones), consulta de productos e
+//                       inventario, y órdenes del ERP (puede crearlas)
+//      logistica     -> SCM completo (productos, proveedores, inventario, pedidos,
+//                       movimientos, madurez) y órdenes del ERP (las despacha:
+//                       cambia su estado y devuelve el stock si se cancelan)
 //  - Cliente: tiene perfil en "clientes/{uid}" (mismo id que su cuenta de
 //    Authentication). Se registra desde el sitio público.
 // Por eso NO se puede usar "request.auth != null" a secas para dar acceso
@@ -39,7 +41,7 @@ service cloud.firestore {
     function esScm() {
       return rolActual() in ['administrador', 'logistica'];
     }
-    // Cualquier persona del panel, sea cual sea su rol (solo para leer perfiles).
+    // Cualquier persona del panel, sea cual sea su rol (perfiles y operaciones del ERP).
     function esPersonal() {
       return rolActual() in ['administrador', 'vendedor', 'logistica'];
     }
@@ -175,11 +177,37 @@ service cloud.firestore {
         && d.folio is string;
     }
 
+    // ERP: el personal de ventas (administrador/vendedor) registra órdenes a nombre
+    // de un cliente del CRM (dejando constancia de quién la hizo: usuarioId), y
+    // logística/administrador despachan: SOLO pueden cambiar el estado de la orden
+    // (y su historial), nunca sus productos ni su total.
+    function cambioDeEstadoDeOrdenValido() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn', 'historial'])
+        && request.resource.data.estado in ['Confirmada', 'En proceso', 'Enviada', 'Entregada', 'Cancelada'];
+    }
+
     match /ventas/{ventaId} {
-      allow read: if esStaff() || (request.auth != null && resource.data.clienteId == request.auth.uid);
-      allow create: if request.auth != null
-        && request.resource.data.clienteId == request.auth.uid
-        && ventaValida(request.resource.data);
+      allow read: if esStaff() || esScm() || (request.auth != null && resource.data.clienteId == request.auth.uid);
+      allow create: if (request.auth != null
+          && request.resource.data.clienteId == request.auth.uid
+          && ventaValida(request.resource.data))
+        || (esStaff()
+          && ventaValida(request.resource.data)
+          && request.resource.data.usuarioId == request.auth.uid);
+      allow update: if esScm() && cambioDeEstadoDeOrdenValido();
+    }
+
+    // Historial de operaciones empresariales del ERP (órdenes creadas, cambios de
+    // estado, cancelaciones). Es un registro: solo se agregan, no se editan ni borran.
+    function operacionErpValida(d) {
+      return d.tipo is string && d.tipo.size() > 0
+        && d.descripcion is string && d.descripcion.size() <= 500
+        && d.usuarioId == request.auth.uid;
+    }
+
+    match /erp_operaciones/{operacionId} {
+      allow read: if esPersonal();
+      allow create: if esPersonal() && operacionErpValida(request.resource.data);
     }
 
     // Cualquier otra colección queda bloqueada por defecto.

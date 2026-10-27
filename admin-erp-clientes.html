@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clientes ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-roles: administrador y vendedor consultan los clientes del CRM desde el ERP (logística no tiene acceso al CRM) -->
+<body data-roles="administrador,vendedor">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Clientes</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Consulta de clientes (datos del CRM)</p>
+        </div>
+        <div class="admin-topbar-right">
+          <span class="admin-count-pill">Solo consulta</span>
+        </div>
+      </div>
+      <a href="admin-erp.html" class="admin-volver">← Volver al Dashboard ERP</a>
+
+      <div class="admin-stats" style="grid-template-columns:repeat(4,1fr); margin:18px 0;">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon green"><span data-bp-icon="users"></span></div></div>
+          <span class="stat-num" id="k-total">—</span>
+          <span class="stat-label">Clientes registrados</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon blue"><span data-bp-icon="trending_up"></span></div></div>
+          <span class="stat-num" id="k-activos">—</span>
+          <span class="stat-label">Clientes activos</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon yellow"><span data-bp-icon="clock"></span></div></div>
+          <span class="stat-num" id="k-frecuentes">—</span>
+          <span class="stat-label">Clientes frecuentes</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon orange"><span data-bp-icon="chart"></span></div></div>
+          <span class="stat-num" id="k-comprado">—</span>
+          <span class="stat-label">Total comprado</span>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscar" placeholder="Buscar por nombre, correo o mascota…" aria-label="Buscar cliente" />
+          </div>
+          <select id="filtroEtapa" class="admin-select">
+            <option value="">Todas las etapas</option>
+            <option>Prospecto</option><option>Activo</option><option>Frecuente</option><option>Inactivo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Clientes del CRM</h2>
+          <span class="admin-count-pill" id="contador">0 clientes</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr>
+              <th>Cliente</th><th>Mascota</th><th>Teléfono</th><th>Etapa</th><th>Compras</th><th>Total comprado</th><th>Última compra</th>
+            </tr></thead>
+            <tbody id="cuerpo"></tbody>
+          </table>
+          <p id="vacio" class="admin-empty-state hidden" style="padding:34px 20px;"></p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
+  <script type="module">
+    import { escucharClientes } from './firebase-db.js';
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const ETAPA = { Prospecto: 'warn', Activo: 'ok', Frecuente: 'info', Inactivo: 'muted' };
+    let clientes = [];
+    let cargado = false;
+
+    function pintar() {
+      const texto = norm($('buscar').value.trim());
+      const etapa = $('filtroEtapa').value;
+      const lista = clientes.filter(c =>
+        (!etapa || c.etapa === etapa) &&
+        (!texto || [c.nombre, c.correo, c.mascota].some(v => norm(v).includes(texto))));
+
+      $('k-total').textContent = clientes.length;
+      $('k-activos').textContent = clientes.filter(c => c.etapa === 'Activo').length;
+      $('k-frecuentes').textContent = clientes.filter(c => c.etapa === 'Frecuente').length;
+      $('k-comprado').textContent = fmt.format(clientes.reduce((s, c) => s + (Number(c.totalComprado) || 0), 0));
+      $('contador').textContent = `${lista.length} cliente${lista.length === 1 ? '' : 's'}`;
+
+      const vacio = $('vacio');
+      if (!cargado || !lista.length) {
+        $('cuerpo').innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.textContent = !cargado ? 'Cargando clientes…' : (clientes.length ? 'No hay resultados con ese criterio.' : 'Todavía no hay clientes registrados.');
+        return;
+      }
+      vacio.classList.add('hidden');
+      $('cuerpo').innerHTML = lista.map(c => `
+        <tr>
+          <td><strong>${esc(c.nombre)}</strong><div style="color:var(--gray);font-size:.78rem;">${esc(c.correo || '')}</div></td>
+          <td>${esc(c.mascota || '—')}</td>
+          <td>${esc(c.telefono || '—')}</td>
+          <td><span class="admin-tag ${ETAPA[c.etapa] || 'muted'}">${esc(c.etapa || '—')}</span></td>
+          <td>${Number(c.numCompras) || 0}</td>
+          <td>${fmt.format(Number(c.totalComprado) || 0)}</td>
+          <td>${esc(c.ultimaCompra || '—')}</td>
+        </tr>`).join('');
+      if (typeof pintarIconosBP === 'function') pintarIconosBP();
+    }
+
+    $('buscar').addEventListener('input', pintar);
+    $('filtroEtapa').addEventListener('change', pintar);
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion) return;
+      iniciado = true;
+      pintar();
+      escucharClientes((lista) => { clientes = lista; cargado = true; pintar(); });
+    }
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-seccion="scm": admin-auth-guard.js solo deja pasar a administrador y logística -->
-<body data-seccion="scm">
+<!-- data-roles: admin y logística gestionan; el vendedor solo consulta (los controles de escritura llevan .solo-escritura-scm) -->
+<body data-roles="administrador,logistica,vendedor">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -20,13 +20,13 @@
           <p class="admin-breadcrumb">Panel de administración · SCM · Consulta de existencias y estado de stock</p>
         </div>
         <div class="admin-topbar-right">
-          <a class="admin-quick-btn primary" href="admin-scm-movimientos.html">
+          <a class="admin-quick-btn primary solo-escritura-scm" href="admin-scm-movimientos.html">
             <span data-bp-icon="swap"></span><span>Registrar movimiento</span>
           </a>
         </div>
       </div>
 
-      <a href="admin-scm.html" class="admin-volver">← Volver a SCM</a>
+      <a href="admin-scm.html" class="admin-volver solo-escritura-scm">← Volver a SCM</a>
 
       <!-- Resumen rápido -->
       <div class="admin-stats" id="statsInventario" style="grid-template-columns:repeat(4,1fr); margin:18px 0;">
@@ -87,10 +87,10 @@
                 <th>Categoría</th>
                 <th>Stock actual</th>
                 <th>Stock mínimo</th>
-                <th>En pedido</th>
+                <th class="solo-escritura-scm">En pedido</th>
                 <th>Estado</th>
                 <th>Estrategia</th>
-                <th style="text-align:right;">Acciones</th>
+                <th class="solo-escritura-scm" style="text-align:right;">Acciones</th>
               </tr>
             </thead>
             <tbody id="cuerpoInventario"></tbody>
@@ -176,10 +176,10 @@
           <td>${esc(p.categoria)}</td>
           <td>${Number(p.stock) || 0}</td>
           <td>${Number(p.stockMin) || 0}</td>
-          <td>${celdaPedido}</td>
+          <td class="solo-escritura-scm">${celdaPedido}</td>
           <td><span class="admin-tag ${claseEstado(p)}">${estadoStock(p)}</span></td>
           <td><span class="admin-tag ${claseEstrategia[p.estrategia] || 'muted'}">${esc(p.estrategia)}</span></td>
-          <td class="admin-table-actions">
+          <td class="admin-table-actions solo-escritura-scm">
             <button title="Ver movimientos" onclick="verMovimientos('${esc(p.nombre)}')">${bpIcon('eye')}</button>
           </td>
         </tr>
@@ -223,7 +223,7 @@
     let pedidosCargados = false;
     let revisandoReposicion = false;
     async function revisarReposicionAutomatica() {
-      if (revisandoReposicion || !cargado || !pedidosCargados || !productos.length) return;
+      if (window.BP_SESION?.rol === 'vendedor' || revisandoReposicion || !cargado || !pedidosCargados || !productos.length) return;
       revisandoReposicion = true;
       try {
         const generados = await generarReposicionesAutomaticas(productos, pedidos);
@@ -245,7 +245,7 @@
 
     let iniciado = false;
     function iniciar(sesion) {
-      if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
+      if (iniciado || !sesion || !['administrador', 'logistica', 'vendedor'].includes(sesion.rol)) return;
       iniciado = true;
       pintarInventario();
       escucharProductosScm(
@@ -259,7 +259,7 @@
           pintarInventario();
         }
       );
-      escucharPedidosScm(
+      if (sesion.rol !== 'vendedor') escucharPedidosScm(
         (lista) => { pedidos = lista; pedidosCargados = true; pintarInventario(); revisarReposicionAutomatica(); },
         (err) => console.error(err)
       );

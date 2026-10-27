@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventario ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-roles: los 3 roles consultan las existencias del SCM desde el ERP -->
+<body data-roles="administrador,vendedor,logistica">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Inventario</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Consulta de existencias (datos del SCM)</p>
+        </div>
+        <div class="admin-topbar-right">
+          <span class="admin-count-pill">Solo consulta</span>
+        </div>
+      </div>
+      <a href="admin-erp.html" class="admin-volver">← Volver al Dashboard ERP</a>
+
+      <div class="admin-stats" style="grid-template-columns:repeat(4,1fr); margin:18px 0;">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon green"><span data-bp-icon="boxes"></span></div></div>
+          <span class="stat-num" id="k-piezas">—</span>
+          <span class="stat-label">Piezas en existencia</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon blue"><span data-bp-icon="package"></span></div></div>
+          <span class="stat-num" id="k-productos">—</span>
+          <span class="stat-label">Productos</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon orange"><span data-bp-icon="warning"></span></div></div>
+          <span class="stat-num" id="k-bajo">—</span>
+          <span class="stat-label">Con stock bajo o agotado</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon yellow"><span data-bp-icon="chart"></span></div></div>
+          <span class="stat-num" id="k-valor">—</span>
+          <span class="stat-label">Valor del inventario (a costo)</span>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-panel-head"><h2>Existencias por categoría</h2></div>
+        <div id="graf-categorias"></div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscar" placeholder="Buscar producto…" aria-label="Buscar producto" />
+          </div>
+          <select id="filtroEstado" class="admin-select">
+            <option value="">Todos los estados</option>
+            <option>Normal</option><option>Stock bajo</option><option>Agotado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Existencias por producto</h2>
+          <span class="admin-count-pill" id="contador">0 productos</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr>
+              <th>Producto</th><th>Categoría</th><th>Stock actual</th><th>Stock mínimo</th><th>Nivel</th><th>Estado</th>
+            </tr></thead>
+            <tbody id="cuerpo"></tbody>
+          </table>
+          <p id="vacio" class="admin-empty-state hidden" style="padding:34px 20px;"></p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
+  <script type="module">
+    import { escucharProductosScm } from './firebase-db.js';
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    let productos = [];
+    let cargado = false;
+
+    const estado = (p) => (Number(p.stock) || 0) <= 0 ? 'Agotado' : (Number(p.stock) <= Number(p.stockMin) ? 'Stock bajo' : 'Normal');
+    const CLASE = { 'Normal': 'ok', 'Stock bajo': 'warn', 'Agotado': 'danger' };
+
+    function pintar() {
+      const texto = norm($('buscar').value.trim());
+      const est = $('filtroEstado').value;
+      const lista = productos.filter(p => (!est || estado(p) === est) && (!texto || norm(p.nombre).includes(texto)));
+
+      $('k-piezas').textContent = productos.reduce((s, p) => s + (Number(p.stock) || 0), 0);
+      $('k-productos').textContent = productos.length;
+      $('k-bajo').textContent = productos.filter(p => estado(p) !== 'Normal').length;
+      $('k-valor').textContent = fmt.format(productos.reduce((s, p) => s + (Number(p.stock) || 0) * (Number(p.costo) || 0), 0));
+      $('contador').textContent = `${lista.length} producto${lista.length === 1 ? '' : 's'}`;
+
+      // Gráfica: piezas en existencia por categoría (con selector de tipo)
+      const porCat = {};
+      productos.forEach(p => { const c = p.categoria || 'Sin categoría'; porCat[c] = (porCat[c] || 0) + (Number(p.stock) || 0); });
+      BPCharts.montar($('graf-categorias'), {
+        id: 'erp-inv-categorias',
+        titulo: 'Existencias por categoría',
+        tipo: 'dona',
+        datos: Object.entries(porCat).map(([c, v]) => ({ etiqueta: c, valor: v })),
+        formato: v => v + ' pzas',
+        centro: { texto: String(productos.reduce((s, p) => s + (Number(p.stock) || 0), 0)), sub: 'piezas' },
+        vacio: 'Todavía no hay productos en el catálogo.',
+      });
+
+      const vacio = $('vacio');
+      if (!cargado || !lista.length) {
+        $('cuerpo').innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.textContent = !cargado ? 'Cargando inventario…' : (productos.length ? 'No hay resultados con ese criterio.' : 'Todavía no hay productos en el catálogo.');
+        return;
+      }
+      vacio.classList.add('hidden');
+      $('cuerpo').innerHTML = lista.map(p => {
+        const stock = Number(p.stock) || 0, min = Number(p.stockMin) || 0;
+        const tope = Math.max(min * 2, stock, 1);
+        const pct = Math.min(100, Math.round((stock / tope) * 100));
+        const e = estado(p);
+        const color = e === 'Normal' ? 'var(--admin-green)' : (e === 'Stock bajo' ? 'var(--yellow)' : 'var(--admin-danger)');
+        return `
+        <tr>
+          <td><strong>${esc(p.nombre)}</strong></td>
+          <td>${esc(p.categoria || '—')}</td>
+          <td>${stock}</td>
+          <td>${min}</td>
+          <td style="min-width:120px;"><div style="background:var(--border);height:8px;border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${color};"></div></div></td>
+          <td><span class="admin-tag ${CLASE[e]}">${e}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    $('buscar').addEventListener('input', pintar);
+    $('filtroEstado').addEventListener('change', pintar);
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion) return;
+      iniciado = true;
+      pintar();
+      escucharProductosScm((lista) => { productos = lista; cargado = true; pintar(); }, (err) => console.error(err));
+    }
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

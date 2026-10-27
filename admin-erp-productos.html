@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Productos ERP - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-roles: los 3 roles consultan el catálogo del SCM desde el ERP -->
+<body data-roles="administrador,vendedor,logistica">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Productos</h1>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Consulta del catálogo (datos del SCM)</p>
+        </div>
+        <div class="admin-topbar-right">
+          <span class="admin-count-pill">Solo consulta</span>
+        </div>
+      </div>
+      <a href="admin-erp.html" class="admin-volver">← Volver al Dashboard ERP</a>
+
+      <div class="admin-stats" style="grid-template-columns:repeat(4,1fr); margin:18px 0;">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon green"><span data-bp-icon="package"></span></div></div>
+          <span class="stat-num" id="k-total">—</span>
+          <span class="stat-label">Productos en catálogo</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon blue"><span data-bp-icon="layers"></span></div></div>
+          <span class="stat-num" id="k-categorias">—</span>
+          <span class="stat-label">Categorías</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon yellow"><span data-bp-icon="chart"></span></div></div>
+          <span class="stat-num" id="k-promedio">—</span>
+          <span class="stat-label">Precio promedio</span>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon orange"><span data-bp-icon="warning"></span></div></div>
+          <span class="stat-num" id="k-bajo">—</span>
+          <span class="stat-label">Con stock bajo</span>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-bottom:18px;">
+        <div class="admin-filters-row">
+          <div class="admin-search" style="flex:1; min-width:220px;">
+            <span data-bp-icon="search"></span>
+            <input type="text" id="buscar" placeholder="Buscar producto o proveedor…" aria-label="Buscar producto" />
+          </div>
+          <select id="filtroCategoria" class="admin-select"><option value="">Todas las categorías</option></select>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-panel-head">
+          <h2>Catálogo de productos</h2>
+          <span class="admin-count-pill" id="contador">0 productos</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr>
+              <th>Producto</th><th>Categoría</th><th>Proveedor</th><th>Precio</th><th>Stock</th><th>Estrategia</th>
+            </tr></thead>
+            <tbody id="cuerpo"></tbody>
+          </table>
+          <p id="vacio" class="admin-empty-state hidden" style="padding:34px 20px;"></p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
+  <script type="module">
+    import { escucharProductosScm } from './firebase-db.js';
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+    const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const ESTRATEGIA = { PUSH: 'info', PULL: 'warn' };
+    let productos = [];
+    let cargado = false;
+
+    function pintar() {
+      const texto = norm($('buscar').value.trim());
+      const cat = $('filtroCategoria').value;
+      const cats = [...new Set(productos.map(p => p.categoria).filter(Boolean))].sort();
+      $('filtroCategoria').innerHTML = '<option value="">Todas las categorías</option>' + cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+      $('filtroCategoria').value = cats.includes(cat) ? cat : '';
+
+      const lista = productos.filter(p =>
+        (!$('filtroCategoria').value || p.categoria === $('filtroCategoria').value) &&
+        (!texto || [p.nombre, p.proveedor].some(v => norm(v).includes(texto))));
+
+      $('k-total').textContent = productos.length;
+      $('k-categorias').textContent = cats.length;
+      $('k-promedio').textContent = productos.length ? fmt.format(productos.reduce((s, p) => s + (Number(p.precio) || 0), 0) / productos.length) : '—';
+      $('k-bajo').textContent = productos.filter(p => Number(p.stock) <= Number(p.stockMin)).length;
+      $('contador').textContent = `${lista.length} producto${lista.length === 1 ? '' : 's'}`;
+
+      const vacio = $('vacio');
+      if (!cargado || !lista.length) {
+        $('cuerpo').innerHTML = '';
+        vacio.classList.remove('hidden');
+        vacio.textContent = !cargado ? 'Cargando productos…' : (productos.length ? 'No hay resultados con ese criterio.' : 'Todavía no hay productos en el catálogo.');
+        return;
+      }
+      vacio.classList.add('hidden');
+      $('cuerpo').innerHTML = lista.map(p => {
+        const bajo = Number(p.stock) <= Number(p.stockMin);
+        return `
+        <tr>
+          <td><strong>${esc(p.nombre)}</strong></td>
+          <td>${esc(p.categoria || '—')}</td>
+          <td>${esc(p.proveedor || '—')}</td>
+          <td>${fmt.format(Number(p.precio) || 0)}</td>
+          <td><span class="admin-tag ${bajo ? 'warn' : 'ok'}">${Number(p.stock) || 0}</span></td>
+          <td><span class="admin-tag ${ESTRATEGIA[p.estrategia] || 'muted'}">${esc(p.estrategia || '—')}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    $('buscar').addEventListener('input', pintar);
+    $('filtroCategoria').addEventListener('change', pintar);
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion) return;
+      iniciado = true;
+      pintar();
+      escucharProductosScm((lista) => { productos = lista; cargado = true; pintar(); }, (err) => console.error(err));
+    }
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

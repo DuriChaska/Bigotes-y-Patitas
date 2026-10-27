@@ -78,15 +78,7 @@
         <div class="admin-panel">
           <h2>Clientes activos vs inactivos</h2>
           <p class="panel-sub">Proporción de clientes con y sin compras recientes</p>
-          <div class="admin-donut-wrap">
-            <div class="admin-donut" id="donut-activos">
-              <span id="donut-pct">0%<small>activos</small></span>
-            </div>
-            <ul class="admin-legend" id="leyenda-activos">
-              <li><span class="dot green"></span> Activos — 0 (0%)</li>
-              <li><span class="dot orange"></span> Inactivos — 0 (0%)</li>
-            </ul>
-          </div>
+          <div id="graf-activos"></div>
         </div>
 
         <div class="admin-panel">
@@ -117,6 +109,7 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
   <script type="module">
     import { calcularMetricas } from './firebase-db.js';
 
@@ -131,13 +124,17 @@
       document.getElementById('stat-interacciones').textContent = m.interacciones.length;
       document.getElementById('stat-sin-interaccion').textContent = m.sinInteraccionReciente;
 
-      document.getElementById('donut-pct').innerHTML = `${pctActivos}%<small>activos</small>`;
-      document.getElementById('donut-activos').style.background =
-        `conic-gradient(var(--admin-green) 0% ${pctActivos}%, var(--pink-medio) ${pctActivos}% 100%)`;
-      document.getElementById('leyenda-activos').innerHTML = `
-        <li><span class="dot green"></span> Activos — ${m.activos} (${pctActivos}%)</li>
-        <li><span class="dot orange"></span> Inactivos — ${m.inactivos} (${pctInactivos}%)</li>
-      `;
+      BPCharts.montar(document.getElementById('graf-activos'), {
+        id: 'crm-activos',
+        titulo: 'Clientes activos vs inactivos',
+        tipo: 'dona',
+        datos: [
+          { etiqueta: 'Activos',   valor: m.activos,   color: 'var(--admin-green)' },
+          { etiqueta: 'Inactivos', valor: m.inactivos, color: 'var(--pink-medio)' },
+        ],
+        centro: { texto: pctActivos + '%', sub: 'activos' },
+        vacio: 'Todavía no hay clientes registrados.',
+      });
 
       const interaccionesPorCliente = {};
       m.interacciones.forEach(i => { interaccionesPorCliente[i.clienteId] = true; });

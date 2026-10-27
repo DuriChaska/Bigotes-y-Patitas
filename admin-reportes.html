@@ -61,34 +61,14 @@
         <div class="admin-panel">
           <h2>Interacciones por tipo</h2>
           <p class="panel-sub">Distribución de contactos con clientes</p>
-          <div class="admin-bars" id="barras-tipo">
-            <div class="admin-bar-col">
-              <span class="bar-num">0</span>
-              <div class="admin-bar" style="height: 4%; background: var(--admin-green);"></div>
-              <span class="bar-label">Llamada</span>
-            </div>
-            <div class="admin-bar-col">
-              <span class="bar-num">0</span>
-              <div class="admin-bar" style="height: 4%; background: var(--pink-medio);"></div>
-              <span class="bar-label">Correo</span>
-            </div>
-            <div class="admin-bar-col">
-              <span class="bar-num">0</span>
-              <div class="admin-bar" style="height: 4%; background: var(--yellow);"></div>
-              <span class="bar-label">Reunión</span>
-            </div>
+          <div id="barras-tipo"></div>
           </div>
         </div>
 
         <div class="admin-panel">
           <h2>Clientes por etapa CRM</h2>
           <p class="panel-sub">Estado actual de la cartera de clientes</p>
-          <div class="admin-donut-wrap">
-            <div class="admin-donut" id="donut-etapas">
-              <span id="donut-etapas-total">0<small>clientes</small></span>
-            </div>
-            <ul class="admin-legend" id="leyenda-etapas"></ul>
-          </div>
+          <div id="graf-etapas"></div>
         </div>
       </div>
 
@@ -107,6 +87,7 @@
 
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
   <script type="module">
     import { calcularMetricas } from './firebase-db.js';
 
@@ -122,33 +103,31 @@
       document.getElementById('r-interacciones').textContent = m.interacciones.length;
       document.getElementById('r-sin-interaccion').textContent = m.sinInteraccionReciente;
 
-      // Barras por tipo de interacción
-      const maxTipo = Math.max(1, ...Object.values(m.porTipo));
-      const cols = document.querySelectorAll('#barras-tipo .admin-bar-col');
-      const tipos = ['Llamada', 'Correo', 'Reunión'];
-      cols.forEach((col, i) => {
-        const val = m.porTipo[tipos[i]] || 0;
-        col.querySelector('.bar-num').textContent = val;
-        col.querySelector('.admin-bar').style.height = Math.max(4, Math.round((val / maxTipo) * 100)) + '%';
+      // Interacciones por tipo (barras, línea, pastel...)
+      BPCharts.montar(document.getElementById('barras-tipo'), {
+        id: 'crm-interacciones-tipo',
+        titulo: 'Interacciones por tipo',
+        tipo: 'barras',
+        colorPorDato: true,
+        datos: [
+          { etiqueta: 'Llamada', valor: m.porTipo['Llamada'] || 0, color: 'var(--admin-green)' },
+          { etiqueta: 'Correo',  valor: m.porTipo['Correo']  || 0, color: 'var(--pink-medio)' },
+          { etiqueta: 'Reunión', valor: m.porTipo['Reunión'] || 0, color: 'var(--yellow)' },
+        ],
+        vacio: 'Todavía no hay interacciones registradas.',
       });
 
-      // Dona por etapa CRM
-      const etapas = ['Activo', 'Frecuente', 'Prospecto', 'Inactivo'];
-      let acumulado = 0;
-      const segmentos = etapas.map(et => {
-        const cantidad = m.porEtapa[et] || 0;
-        const pct = m.totalClientes ? (cantidad / m.totalClientes) * 100 : 0;
-        const seg = `${coloresEtapa[et]} ${acumulado}% ${acumulado + pct}%`;
-        acumulado += pct;
-        return seg;
+      // Clientes por etapa CRM
+      BPCharts.montar(document.getElementById('graf-etapas'), {
+        id: 'crm-etapas',
+        titulo: 'Clientes por etapa CRM',
+        tipo: 'dona',
+        datos: ['Activo', 'Frecuente', 'Prospecto', 'Inactivo'].map(et => ({
+          etiqueta: et, valor: m.porEtapa[et] || 0, color: coloresEtapa[et],
+        })),
+        centro: { texto: String(m.totalClientes), sub: 'clientes' },
+        vacio: 'Todavía no hay clientes registrados.',
       });
-      document.getElementById('donut-etapas').style.background = m.totalClientes
-        ? `conic-gradient(${segmentos.join(', ')})`
-        : '#e6ddd0';
-      document.getElementById('donut-etapas-total').innerHTML = `${m.totalClientes}<small>clientes</small>`;
-      document.getElementById('leyenda-etapas').innerHTML = etapas.map(et => `
-        <li><span class="dot" style="background:${coloresEtapa[et]};"></span>${et} · ${m.porEtapa[et] || 0}</li>
-      `).join('');
 
       // Clientes en riesgo (sin ninguna interacción registrada)
       const interaccionesPorCliente = {};

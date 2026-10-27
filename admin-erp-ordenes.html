@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-seccion="erp": acceso para administrador y vendedor -->
-<body data-seccion="crm">
+<!-- data-roles: los 3 roles consultan órdenes; administrador/logística cambian su estado -->
+<body data-roles="administrador,vendedor,logistica">
 
   <div class="admin-shell">
     <div id="admin-sidebar"></div>
@@ -19,10 +19,10 @@
       <div class="admin-topbar">
         <div>
           <h1>Órdenes de clientes</h1>
-          <p class="admin-breadcrumb">Panel de administración · ERP · Consulta de órdenes registradas</p>
+          <p class="admin-breadcrumb">Panel de administración · ERP · Órdenes registradas y su seguimiento</p>
         </div>
         <div class="admin-topbar-right">
-          <button type="button" class="admin-quick-btn primary" id="btnNueva">
+          <button type="button" class="admin-quick-btn primary oculto-logistica" id="btnNueva">
             <span data-bp-icon="plus"></span><span>Nueva orden</span>
           </button>
         </div>
@@ -96,11 +96,7 @@
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
   <script type="module">
-    import {
-      collection, getDocs, query, orderBy,
-    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-    import { db } from './firebase-config.js';
-
+    import { escucharOrdenesErp, cambiarEstadoOrdenErp, TRANSICIONES_ORDEN_ERP } from './firebase-db.js';
     const $ = id => document.getElementById(id);
     const esc = v => String(v ?? '').replace(/[&<>"']/g,
       c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -125,7 +121,11 @@
     let ordenes    = [];
     let cargado    = false;
     let errorCarga = null;
+    let detalleId  = null;   // orden abierta en el panel de detalle
+    let cambiando  = false;  // evita doble clic mientras se guarda un cambio de estado
 
+    // Administrador y logística avanzan/cancelan órdenes; el vendedor solo las consulta.
+    const puedeCambiarEstado = () => ['administrador', 'logistica'].includes(window.BP_SESION?.rol);
     // ── Filtrar ───────────────────────────────────────────────────────────────
     function filtradas() {
       const texto  = $('buscar').value.trim().toLowerCase();
@@ -211,7 +211,8 @@
     function mostrarDetalle(id) {
       const o = ordenes.find(x => x.id === id);
       if (!o) return;
-
+      const abriendo = detalleId !== id;
+      detalleId = id;
       $('panel-detalle').classList.remove('hidden');
       $('det-titulo').textContent = `Orden ${o.folio || id.slice(0, 8)}`;
 
@@ -257,18 +258,73 @@
           <div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-weight:700;font-size:1rem;border-top:1px solid var(--border);margin-top:4px;"><span>Total</span><span>${fmtDec.format(Number(o.total) || 0)}</span></div>
         </div>
 
+        <div style="margin-top:14px;">
+          <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:4px;">Registrada por</p>
+          <p style="font-size:.88rem;">${esc(o.usuarioNombre || (o.origen === 'ERP' ? '—' : 'Compra en la tienda en línea'))}</p>
+        </div>
         ${o.direccionEnvio ? `
         <div style="margin-top:14px;">
           <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:4px;">Dirección de envío</p>
           <p style="font-size:.88rem;">${esc(o.direccionEnvio)}</p>
         </div>` : ''}
+        ${bloqueEstado(o)}
+        ${bloqueHistorial(o)}
       `;
-
-      // Scroll suave al detalle
-      $('panel-detalle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Scroll suave al detalle (solo al abrirlo, no cuando se refresca en vivo)
+      if (abriendo) $('panel-detalle').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    // Botones para pasar la orden al siguiente estado (PUT /ordenes/{id}/estado)
+    function bloqueEstado(o) {
+      const siguientes = TRANSICIONES_ORDEN_ERP[o.estado || 'Confirmada'] || [];
+      if (!puedeCambiarEstado() || !siguientes.length) return '';
+      const botones = siguientes.map(est => est === 'Cancelada'
+        ? `<button type="button" class="admin-btn-secondary" data-estado="${est}" style="color:var(--danger,#dc2626);">Cancelar orden</button>`
+        : `<button type="button" class="admin-quick-btn primary" data-estado="${est}">Marcar como ${est}</button>`).join('');
+      return `
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+          <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:8px;">Cambiar estado</p>
+          <div id="acciones-estado" style="display:flex;gap:10px;flex-wrap:wrap;">${botones}</div>
+          <p style="font-size:.76rem;color:var(--gray);margin-top:8px;">Al cancelar, los productos regresan al inventario automáticamente.</p>
+        </div>`;
+    }
+
+    function bloqueHistorial(o) {
+      const h = Array.isArray(o.historial) ? o.historial : [];
+      if (!h.length) return '';
+      return `
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+          <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:8px;">Historial de la orden</p>
+          ${h.map(x => `<p style="font-size:.82rem;padding:3px 0;"><strong>${esc(x.estado)}</strong>
+            <span style="color:var(--gray);"> · ${esc(x.usuario || '')} · ${x.fecha ? new Date(x.fecha).toLocaleString('es-MX') : ''}</span></p>`).join('')}
+        </div>`;
+    }
+
+    $('det-contenido').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-estado]');
+      if (!btn || cambiando) return;
+      const o = ordenes.find(x => x.id === detalleId);
+      if (!o) return;
+      const nuevo = btn.dataset.estado;
+      if (nuevo === 'Cancelada' && !confirm(`¿Cancelar la orden ${o.folio || ''}? Los productos regresarán al inventario.`)) return;
+      cambiando = true;
+      btn.disabled = true;
+      try {
+        await cambiarEstadoOrdenErp(o, nuevo, window.BP_SESION);
+        toast(nuevo === 'Cancelada' ? 'Orden cancelada y stock devuelto al inventario' : `Orden marcada como ${nuevo}`);
+      } catch (err) {
+        console.error(err);
+        toast(err.code === 'permission-denied'
+          ? 'Permiso denegado. Revisa las reglas de Firestore.'
+          : (err.message || 'No se pudo cambiar el estado.'), 6000);
+      } finally {
+        cambiando = false;
+        btn.disabled = false;
+      }
+    });
+
     $('btnCerrarDetalle').addEventListener('click', () => {
+      detalleId = null;
       $('panel-detalle').classList.add('hidden');
     });
 
@@ -277,27 +333,32 @@
       window.location.href = 'admin-erp-nueva-orden.html';
     });
 
-    // ── Cargar órdenes ────────────────────────────────────────────────────────
-    async function cargarOrdenes() {
-      try {
-        const snap = await getDocs(
-          query(collection(db, 'ventas'), orderBy('creadoEn', 'desc'))
-        );
-        ordenes    = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        cargado    = true;
-        errorCarga = null;
-      } catch (err) {
-        console.error(err);
-        cargado    = true;
-        errorCarga = err.code === 'permission-denied'
-          ? 'Permiso denegado. Revisa las reglas de Firestore.'
-          : 'No se pudieron cargar las órdenes.';
-      }
-      pintarListado();
-
-      // Si viene ?ver=<id> en la URL, mostrar detalle directo
-      const verId = new URLSearchParams(location.search).get('ver');
-      if (verId) mostrarDetalle(verId);
+    // ── Cargar órdenes (en tiempo real) ───────────────────────────────────────
+    let primeraCarga = true;
+    function escucharOrdenes() {
+      escucharOrdenesErp(
+        (lista) => {
+          ordenes    = lista;
+          cargado    = true;
+          errorCarga = null;
+          pintarListado();
+          if (detalleId) mostrarDetalle(detalleId);   // refresca el detalle abierto
+          if (primeraCarga) {
+            primeraCarga = false;
+            // ?ver=<id> abre directo el detalle (viene de "Ver orden" al crear una)
+            const verId = new URLSearchParams(location.search).get('ver');
+            if (verId) mostrarDetalle(verId);
+          }
+        },
+        (err) => {
+          console.error(err);
+          cargado    = true;
+          errorCarga = err.code === 'permission-denied'
+            ? 'Permiso denegado. Revisa las reglas de Firestore.'
+            : 'No se pudieron cargar las órdenes.';
+          pintarListado();
+        }
+      );
     }
 
     // ── Arranque ──────────────────────────────────────────────────────────────
@@ -305,7 +366,7 @@
     function iniciar(sesion) {
       if (iniciado || !sesion) return;
       iniciado = true;
-      cargarOrdenes();
+      escucharOrdenes();
     }
 
     if (window.BP_SESION) iniciar(window.BP_SESION);
