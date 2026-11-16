@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
   <script type="module" src="admin-auth-guard.js"></script>
 </head>
-<!-- data-roles: los 3 roles consultan órdenes; administrador/logística cambian su estado -->
+<!-- data-roles: los 3 roles consultan órdenes; administrador, ventas y logística cambian su estado (ventas no cancela: cancelar devuelve stock al SCM) -->
 <body data-roles="administrador,vendedor,logistica">
 
   <div class="admin-shell">
@@ -124,8 +124,10 @@
     let detalleId  = null;   // orden abierta en el panel de detalle
     let cambiando  = false;  // evita doble clic mientras se guarda un cambio de estado
 
-    // Administrador y logística avanzan/cancelan órdenes; el vendedor solo las consulta.
-    const puedeCambiarEstado = () => ['administrador', 'logistica'].includes(window.BP_SESION?.rol);
+    // Administrador, ventas y logística avanzan las órdenes (En proceso / Enviada / Entregada).
+    // Cancelar (que devuelve el stock al inventario) solo lo hacen administrador y logística.
+    const puedeCambiarEstado = () => ['administrador', 'vendedor', 'logistica'].includes(window.BP_SESION?.rol);
+    const puedeCancelar = () => ['administrador', 'logistica'].includes(window.BP_SESION?.rol);
     // ── Filtrar ───────────────────────────────────────────────────────────────
     function filtradas() {
       const texto  = $('buscar').value.trim().toLowerCase();
@@ -276,7 +278,8 @@
 
     // Botones para pasar la orden al siguiente estado (PUT /ordenes/{id}/estado)
     function bloqueEstado(o) {
-      const siguientes = TRANSICIONES_ORDEN_ERP[o.estado || 'Confirmada'] || [];
+      const siguientes = (TRANSICIONES_ORDEN_ERP[o.estado || 'Confirmada'] || [])
+        .filter(est => est !== 'Cancelada' || puedeCancelar());
       if (!puedeCambiarEstado() || !siguientes.length) return '';
       const botones = siguientes.map(est => est === 'Cancelada'
         ? `<button type="button" class="admin-btn-secondary" data-estado="${est}" style="color:var(--danger,#dc2626);">Cancelar orden</button>`
@@ -285,7 +288,7 @@
         <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
           <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:8px;">Cambiar estado</p>
           <div id="acciones-estado" style="display:flex;gap:10px;flex-wrap:wrap;">${botones}</div>
-          <p style="font-size:.76rem;color:var(--gray);margin-top:8px;">Al cancelar, los productos regresan al inventario automáticamente.</p>
+          ${puedeCancelar() ? '<p style="font-size:.76rem;color:var(--gray);margin-top:8px;">Al cancelar, los productos regresan al inventario automáticamente.</p>' : ''}
         </div>`;
     }
 

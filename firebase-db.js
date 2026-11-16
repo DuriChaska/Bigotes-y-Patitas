@@ -13,7 +13,7 @@
 //                          los que el CRM agrega a mano tienen un id al azar.
 //    interacciones/{id} { clienteId, clienteNombre, tipo,
 //                          descripcion, fecha, usuario, creadoEn }
-//    usuarios/{uid}     { nombre, correo, rol: "administrador"|"vendedor"|"logistica" }
+//    usuarios/{uid}     { nombre, correo, rol: "administrador"|"vendedor"|"logistica"|"soporte" }
 //    ventas/{id}        { clienteId (uid), clienteNombre, clienteCorreo,
 //                          items: [{ productoId, nombre, precio, cantidad }],
 //                          subtotal, descuento, cupon, total, folio,
@@ -658,6 +658,15 @@ export async function crearVenta(datosVenta, productosActuales) {
   const items = datosVenta.items || [];
   if (items.length === 0) throw new Error("El carrito está vacío.");
 
+  // Etapa 4: los cupones viven en Firestore con vigencia; se revisa otra vez justo antes de
+  // cobrar por si venció o se desactivó mientras estaba en el carrito.
+  if (datosVenta.cupon) {
+    const promo = await obtenerPromocion(datosVenta.cupon);
+    if (!promocionVigente(promo)) {
+      throw new Error(`El cupón ${datosVenta.cupon} ya no está vigente. Quítalo del carrito para continuar.`);
+    }
+  }
+
   // Verifica que haya stock suficiente ANTES de tocar nada.
   for (const item of items) {
     const prod = productosActuales.find(p => p.id === item.productoId);
@@ -707,6 +716,21 @@ export async function crearVenta(datosVenta, productosActuales) {
   });
 
   await lote.commit();
+
+  // Etapa 4: pagos + CRM + erp_operaciones. La venta ya quedó guardada; si esta sincronización
+  // fallara (p. ej. sin internet justo ahora) NO se le cobra dos veces ni se pierde la compra.
+  try {
+    await registrarIntegracionCompra({
+      ventaId: ventaRef.id,
+      folio,
+      clienteId: datosVenta.clienteId,
+      clienteNombre: datosVenta.clienteNombre,
+      total: datosVenta.total,
+      metodoPago: datosVenta.metodoPago,
+    });
+  } catch (err) {
+    console.error("[Etapa 4] La compra se guardó, pero no se pudo sincronizar con pagos/CRM/ERP:", err);
+  }
   return { id: ventaRef.id, folio };
 }
 
@@ -871,6 +895,22 @@ export async function crearOrdenErp({ cliente, items, metodoPago, direccionEnvio
       creadoEn: serverTimestamp(),
     });
 
+    // 5b) Etapa 4: documento independiente del pago (mismo id que la orden).
+    tx.set(doc(db, "pagos", ordenRef.id), {
+      pedidoId: ordenRef.id,
+      folio,
+      clienteId: cliente.id,
+      clienteNombre: cliente.nombre || "",
+      monto: total,
+      metodoPago: metodoPago || "Efectivo",
+      estado: "Pagado",
+      origen: "ERP",
+      usuarioId: usuario.uid,
+      usuarioNombre: quien,
+      fecha: hoy,
+      creadoEn: serverTimestamp(),
+    });
+
     // 6) Registrar la compra en el CRM (si el cliente existe en la colección de clientes).
     if (clienteSnap.exists()) {
       const c = clienteSnap.data();
@@ -911,6 +951,11 @@ export async function cambiarEstadoOrdenErp(orden, estadoNuevo, usuario) {
   });
 
   if (estadoNuevo === "Cancelada") {
+    // Etapa 4: si la orden tiene su pago en "pagos", se marca como Cancelado.
+    const pagoRef = doc(db, "pagos", orden.id);
+    if ((await getDoc(pagoRef)).exists()) {
+      lote.update(pagoRef, { estado: "Cancelado", actualizadoEn: serverTimestamp() });
+    }
     for (const item of (orden.items || [])) {
       const cantidad = Math.floor(Number(item.cantidad)) || 0;
       if (!item.productoId || cantidad < 1) continue;
@@ -1128,4 +1173,301 @@ export async function calcularMetricasScm() {
     rotacion,
     comparativaPushPull,
   };
+}
+
+// ============================================================================
+//  ETAPA 4 — Soporte e integraciones
+//  Colecciones nuevas (reglas en firestore.rules, explicadas en DOCUMENTACION-TECNICA.md §11):
+//    tickets/{folio}        { folio, clienteId, clienteNombre, clienteCorreo, asunto, mensaje,
+//                             estado: "En proceso"|"Solucionado"|"Cerrado", esperaSoporte,
+//                             respuesta, agente, agenteId, leidoCliente,
+//                             hilo: [{ de: "cliente"|"soporte", nombre, texto, fecha }], creadoEn }
+//    contadores/tickets     { ultimo }   (solo para el folio consecutivo T-101, T-102...)
+//    promociones/{CODIGO}   { codigo, descripcion, tipo: "porcentaje"|"tercera_prenda"|"envio_gratis",
+//                             valor, minimoCompra, vigenciaHasta "AAAA-MM-DD", activa, creadoPor }
+//    pagos/{ventaId}        { pedidoId, folio, clienteId, clienteNombre, monto, metodoPago,
+//                             estado: "Pagado"|"Cancelado"|"Reembolsado", origen, usuarioId,
+//                             usuarioNombre, fecha, creadoEn }
+// ============================================================================
+
+/** Fecha local de hoy como "AAAA-MM-DD" (la vigencia de un cupón se compara con esta). */
+export function hoyISO(fecha = new Date()) {
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
+}
+
+// ---------- Promociones (cupones con vigencia) ----------
+
+const promocionesRef = collection(db, "promociones");
+
+export const TIPOS_PROMOCION = {
+  porcentaje:     "Porcentaje sobre el subtotal",
+  tercera_prenda: "Porcentaje en la tercera prenda",
+  envio_gratis:   "Envío gratis (compra mínima)",
+};
+
+/** Un cupón sirve si está activo y su fecha de vigencia no ha pasado (el último día aún cuenta). */
+export function promocionVigente(promo, hoy = hoyISO()) {
+  return !!promo && promo.activa === true
+    && typeof promo.vigenciaHasta === "string" && promo.vigenciaHasta >= hoy;
+}
+
+/** Busca un cupón por su código (el código es el id del documento). Devuelve null si no existe. */
+export async function obtenerPromocion(codigo) {
+  const id = String(codigo || "").trim().toUpperCase();
+  if (!id || id.includes("/")) return null;
+  const snap = await getDoc(doc(db, "promociones", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/**
+ * Valida un código escrito por el cliente. Devuelve { ok, cupon, motivo }.
+ * "cupon" tiene la misma forma que ya usan Carrito.html y Checkout.html
+ * ({ codigo, tipo, valor }) más "minimo" y "vigenciaHasta".
+ */
+export async function validarCupon(codigo) {
+  const promo = await obtenerPromocion(codigo);
+  if (!promo) return { ok: false, motivo: "Código inválido." };
+  if (promo.activa !== true) return { ok: false, motivo: "Ese cupón está desactivado." };
+  if (!promocionVigente(promo)) return { ok: false, motivo: "Ese cupón ya venció." };
+  return {
+    ok: true,
+    cupon: {
+      codigo: promo.codigo, tipo: promo.tipo, valor: Number(promo.valor) || 0,
+      minimo: Number(promo.minimoCompra) || 0, vigenciaHasta: promo.vigenciaHasta,
+    },
+  };
+}
+
+/** Escucha en tiempo real todas las promociones (solo personal de ventas). */
+export function escucharPromociones(callback, onError) {
+  return onSnapshot(query(promocionesRef, orderBy("vigenciaHasta", "desc")), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * Crea o actualiza un cupón. usuario = window.BP_SESION (queda registrado quién lo creó).
+ * esNuevo = true la primera vez (guarda quién y cuándo lo creó); al editar solo se actualiza lo demás.
+ */
+export function guardarPromocion(datos, usuario, esNuevo = true) {
+  const codigo = String(datos.codigo || "").trim().toUpperCase();
+  const doc_ = {
+    codigo,
+    descripcion: String(datos.descripcion || "").trim(),
+    tipo: datos.tipo,
+    valor: Number(datos.valor) || 0,
+    minimoCompra: Number(datos.minimoCompra) || 0,
+    vigenciaHasta: datos.vigenciaHasta,
+    activa: datos.activa !== false,
+    actualizadoEn: serverTimestamp(),
+  };
+  if (esNuevo) {
+    doc_.creadoPor = usuario?.nombre || usuario?.correo || "";
+    doc_.creadoPorId = usuario?.uid || "";
+    doc_.creadoEn = serverTimestamp();
+  }
+  return setDoc(doc(db, "promociones", codigo), doc_, { merge: true });
+}
+
+export function cambiarActivaPromocion(codigo, activa) {
+  return updateDoc(doc(db, "promociones", codigo), { activa: !!activa, actualizadoEn: serverTimestamp() });
+}
+
+export function eliminarPromocion(codigo) {
+  return deleteDoc(doc(db, "promociones", codigo));
+}
+
+/** Carga los 3 cupones que antes estaban escritos en el código, con vigencia de un año. */
+export async function cargarPromocionesEjemplo(usuario) {
+  const hasta = new Date();
+  hasta.setFullYear(hasta.getFullYear() + 1);
+  const vigenciaHasta = hoyISO(hasta);
+  const ejemplos = [
+    { codigo: "CUTECANDY50", descripcion: "2 x 1 en blusas (50% de descuento)", tipo: "porcentaje", valor: 50, minimoCompra: 0 },
+    { codigo: "CUTECANDY10", descripcion: "10% en tu tercera prenda", tipo: "tercera_prenda", valor: 10, minimoCompra: 0 },
+    { codigo: "CUTENVIO1", descripcion: "Envío gratis en compras mayores a $2000", tipo: "envio_gratis", valor: 0, minimoCompra: 2000 },
+  ];
+  await Promise.all(ejemplos.map(p => guardarPromocion({ ...p, vigenciaHasta, activa: true }, usuario)));
+  return ejemplos.length;
+}
+
+// ---------- Tickets de atención a clientes ----------
+
+const ticketsRef = collection(db, "tickets");
+
+export const ASUNTOS_TICKET = ["Duda sobre mi pedido", "Cambio de producto", "Facturación", "Problema con monedero"];
+export const ESTADOS_TICKET = ["En proceso", "Solucionado", "Cerrado"];
+
+function milisTicket(t) {
+  const c = t.creadoEn;
+  if (!c) return Date.now();                 // recién creado: el servidor aún no le pone fecha
+  return c.toMillis ? c.toMillis() : new Date(c).getTime();
+}
+
+/**
+ * Crea un ticket a nombre del cliente con sesión iniciada. El folio (T-101, T-102...) sale de un
+ * contador dentro de una TRANSACCIÓN, así que dos clientes que escriben al mismo tiempo nunca
+ * reciben el mismo folio. cliente = { uid, nombre, correo }.
+ */
+export async function crearTicket({ asunto, mensaje, cliente }) {
+  if (!cliente || !cliente.uid) throw new Error("Inicia sesión para enviar un ticket.");
+  if (!ASUNTOS_TICKET.includes(asunto)) throw new Error("Elige un asunto de la lista.");
+  const texto = String(mensaje || "").trim();
+  if (!texto) throw new Error("Describe tu problema para poder ayudarte.");
+  if (texto.length > 2000) throw new Error("El mensaje es muy largo (máximo 2000 caracteres).");
+
+  const contadorRef = doc(db, "contadores", "tickets");
+  const nombre = String(cliente.nombre || cliente.correo || "Cliente").slice(0, 120);
+  const folio = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(contadorRef);
+    const numero = snap.exists() ? (Number(snap.data().ultimo) || 100) + 1 : 101;
+    const nuevoFolio = "T-" + numero;
+    if (snap.exists()) tx.update(contadorRef, { ultimo: numero });
+    else tx.set(contadorRef, { ultimo: numero });
+    tx.set(doc(db, "tickets", nuevoFolio), {
+      folio: nuevoFolio,
+      clienteId: cliente.uid,
+      clienteNombre: nombre,
+      clienteCorreo: cliente.correo || "",
+      asunto,
+      mensaje: texto,
+      estado: "En proceso",
+      esperaSoporte: true,
+      respuesta: "",
+      agente: "",
+      leidoCliente: true,
+      hilo: [{ de: "cliente", nombre, texto, fecha: new Date().toISOString() }],
+      creadoEn: serverTimestamp(),
+    });
+    return nuevoFolio;
+  });
+  return folio;
+}
+
+/** Tickets de UN cliente (los más recientes primero). Se ordena aquí para no exigir un índice. */
+export function escucharTicketsDeCliente(uid, callback, onError) {
+  const q = query(ticketsRef, where("clienteId", "==", uid));
+  return onSnapshot(q, (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisTicket(b) - milisTicket(a));
+    callback(lista);
+  }, onError);
+}
+
+/** TODOS los tickets (soporte y administrador). Los resueltos nunca se borran. */
+export function escucharTodosLosTickets(callback, onError) {
+  const q = query(ticketsRef, orderBy("creadoEn", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/** El cliente abrió el ticket: apaga la alerta de "respuesta sin leer". */
+export function marcarTicketLeido(folio) {
+  return updateDoc(doc(db, "tickets", folio), { leidoCliente: true });
+}
+
+/**
+ * Soporte responde y/o cambia el estado. agente = { uid, nombre, correo } (queda registrado quién
+ * contestó). Si el ticket ya tenía respuesta, se puede cambiar solo el estado dejando el texto vacío.
+ */
+export async function responderTicket(ticket, { texto, estado }, agente) {
+  if (!ESTADOS_TICKET.includes(estado)) throw new Error("Estado no válido.");
+  const mensaje = String(texto || "").trim();
+  const yaRespondido = !!ticket.respuesta;
+  if (!mensaje && !yaRespondido) throw new Error("Escribe la respuesta para el cliente.");
+  if (mensaje.length > 2000) throw new Error("La respuesta es muy larga (máximo 2000 caracteres).");
+  const quien = agente?.nombre || agente?.correo || "Soporte";
+  const cambios = {
+    estado,
+    respuesta: mensaje || ticket.respuesta,
+    agente: quien,
+    agenteId: agente?.uid || "",
+    esperaSoporte: false,
+    actualizadoEn: serverTimestamp(),
+  };
+  if (mensaje) {
+    cambios.hilo = arrayUnion({ de: "soporte", nombre: quien, texto: mensaje, fecha: new Date().toISOString() });
+  }
+  if (mensaje || estado !== ticket.estado) cambios.leidoCliente = false;   // avisa al cliente
+  return updateDoc(doc(db, "tickets", ticket.id), cambios);
+}
+
+/** Ficha en vivo de un cliente del CRM (para la tarjeta de soporte junto al ticket). */
+export function escucharClienteUno(id, callback, onError) {
+  return onSnapshot(doc(db, "clientes", id), (snap) => {
+    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  }, onError);
+}
+
+// ---------- Pagos e integración de una compra de la tienda ----------
+
+const pagosRef = collection(db, "pagos");
+
+/** Escucha los pagos más recientes (personal de ventas/logística/admin). */
+export function escucharPagos(callback, onError, maximo = 30) {
+  return onSnapshot(query(pagosRef, orderBy("creadoEn", "desc"), limit(maximo)), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * Sincroniza una compra recién cerrada en la tienda con el resto del sistema, en UNA operación
+ * atómica (writeBatch):
+ *   1) pagos/{ventaId}  -> documento independiente del pago (pedidoId, monto, método, estado)
+ *   2) clientes/{uid}   -> suma 1 compra, suma el total gastado, última compra y etapa del CRM
+ *   3) erp_operaciones  -> deja el registro empresarial "Compra en tienda"
+ * Los 3 documentos se ligan a la venta por su id. Las reglas comprueban que el monto y el
+ * total gastado coincidan con la venta real. Lo llama crearVenta() justo después de guardar la compra.
+ */
+export async function registrarIntegracionCompra({ ventaId, folio, clienteId, clienteNombre, total, metodoPago }) {
+  const hoy = hoyISO();
+  const monto = Number(total) || 0;
+  const clienteRef = doc(db, "clientes", clienteId);
+  const clienteSnap = await getDoc(clienteRef);
+  const lote = writeBatch(db);
+
+  lote.set(doc(db, "pagos", ventaId), {
+    pedidoId: ventaId,
+    folio,
+    clienteId,
+    clienteNombre: clienteNombre || "",
+    monto,
+    metodoPago: metodoPago || "No especificado",
+    estado: "Pagado",
+    origen: "Tienda web",
+    usuarioId: clienteId,
+    usuarioNombre: clienteNombre || "",
+    fecha: hoy,
+    creadoEn: serverTimestamp(),
+  });
+
+  if (clienteSnap.exists()) {
+    const c = clienteSnap.data();
+    const numCompras = (Number(c.numCompras) || 0) + 1;
+    lote.update(clienteRef, {
+      numCompras,
+      totalComprado: (Number(c.totalComprado) || 0) + monto,
+      ultimaCompra: hoy,
+      ultimaVentaId: ventaId,
+      etapa: etapaTrasCompra(c.etapa, numCompras),
+      actualizadoEn: serverTimestamp(),
+    });
+  }
+
+  lote.set(doc(erpOperacionesRef), {
+    tipo: "Compra en tienda",
+    descripcion: `Compra ${folio} de ${clienteNombre || "cliente"} en la tienda web: total $${monto.toFixed(2)} (${metodoPago || "sin método"})`,
+    ordenId: ventaId,
+    folio,
+    clienteId,
+    clienteNombre: clienteNombre || "",
+    total: monto,
+    origen: "Tienda web",
+    usuarioId: clienteId,
+    usuarioNombre: clienteNombre || "",
+    creadoEn: serverTimestamp(),
+  });
+
+  await lote.commit();
 }

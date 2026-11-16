@@ -23,11 +23,12 @@ const adminPaginaActual = window.location.pathname.split('/').pop();
 //   administrador -> todo
 //   vendedor      -> "Ventas": CRM + órdenes ERP + consulta de productos e inventario
 //   logistica     -> SCM completo + órdenes ERP
-const R_TODOS   = ['administrador', 'vendedor', 'logistica'];
+const R_TODOS   = ['administrador', 'vendedor', 'logistica','soporte'];
 const R_ADMIN   = ['administrador'];
 const R_CRM     = ['administrador', 'vendedor'];
 const R_SCM     = ['administrador', 'logistica'];
 const R_CONSULTA = ['administrador', 'logistica', 'vendedor']; // Productos e Inventario (el vendedor solo consulta)
+const R_SOPORTE = ['administrador', 'soporte'];               // Atención a clientes (tickets)
 
 // ─── Interruptor "Modo ERP" ────────────────────────────────────────────────
 // El ERP no es un apartado aparte: es un INTERRUPTOR del mismo panel.
@@ -49,7 +50,9 @@ const adminModoErp = adminEsPaginaErp ? true : (adminEsPaginaCompartida ? leerMo
 if (!adminEsPaginaCompartida) guardarModoErp(adminModoErp);
 
 // Página de inicio al apagar el interruptor: cada rol vuelve a la suya.
-function adminInicioNormal(rol) { return rol === 'logistica' ? 'admin-scm.html' : 'admin.html'; }
+function adminInicioNormal(rol) {
+  return rol === 'logistica' ? 'admin-scm.html' : (rol === 'soporte' ? 'admin-soporte.html' : 'admin.html');
+}
 
 // "Inicio" cambia según el modo (en modo normal hay uno por rol; aplicarMenuPorRol oculta el que no toca).
 const adminInicioItems = adminModoErp
@@ -66,6 +69,8 @@ const adminErpItems = [
   { href: 'admin-erp-inventario.html', label: 'Inventario',              icon: 'boxes',       roles: R_TODOS },
   { href: 'admin-erp-ordenes.html',    label: 'Órdenes de clientes',     icon: 'clipboard',   roles: R_TODOS },
   { href: 'admin-erp-reportes.html',   label: 'Reportes ERP',            icon: 'chart',       roles: R_TODOS },
+  { href: 'admin-promociones.html',    label: 'Promociones y sincronía', icon: 'tag',         roles: R_CRM },
+  { href: 'admin-soporte.html',        label: 'Atención a clientes',     icon: 'headset',     roles: R_SOPORTE },
   { href: 'admin-erp-madurez.html',    label: 'Nivel de implementación', icon: 'trending_up', roles: R_ADMIN },
   { href: 'admin-usuarios.html',       label: 'Usuarios',                icon: 'shield',      roles: R_ADMIN },
   { href: 'admin-configuracion.html',  label: 'Configuración',           icon: 'settings',    roles: R_TODOS },
@@ -80,6 +85,7 @@ const adminNavGroups = [
       { href: 'admin-interacciones-todas.html',  label: 'Interacciones',  icon: 'chat',   roles: R_CRM },
       { href: 'admin-reportes.html',             label: 'Reportes CRM',   icon: 'chart',  roles: R_CRM },
       { href: 'admin-actividad.html',            label: 'Mi actividad',   icon: 'clock',  roles: R_CRM },
+      { href: 'admin-promociones.html',          label: 'Promociones',    icon: 'tag',    roles: R_CRM },
     ],
   },
   {
@@ -100,6 +106,7 @@ const adminNavGroups = [
 // Usuarios y Configuración quedan fuera de los acordeones en el modo normal
 // (Usuarios solo para administradores).
 const adminStandaloneLinks = [
+  { href: 'admin-soporte.html',       label: 'Atención a clientes', icon: 'headset', roles: R_SOPORTE },
   { href: 'admin-usuarios.html',      label: 'Usuarios',      icon: 'shield',   roles: R_ADMIN },
   { href: 'admin-configuracion.html', label: 'Configuración', icon: 'settings', roles: R_TODOS },
 ];
@@ -230,6 +237,25 @@ function aplicarMenuPorRol(rol) {
   document.querySelectorAll('.admin-nav-group').forEach((grupo) => {
     grupo.hidden = !grupo.querySelector('.admin-nav-sub li:not([hidden])');
   });
+  activarAlertaTicketsMenu(rol);
+}
+
+/** Soporte y administrador ven en el menú cuántos tickets esperan respuesta (se actualiza en vivo). */
+function activarAlertaTicketsMenu(rol) {
+  if (!R_SOPORTE.includes(rol) || window.__bpAlertaTickets) return;
+  window.__bpAlertaTickets = true;
+  import('./firebase-db.js').then(({ escucharTodosLosTickets }) => {
+    escucharTodosLosTickets((lista) => {
+      const pendientes = lista.filter(t => t.esperaSoporte === true).length;
+      document.querySelectorAll('.admin-nav a[href="admin-soporte.html"]').forEach((a) => {
+        let b = a.querySelector('.admin-nav-badge');
+        if (!pendientes) { if (b) b.remove(); return; }
+        if (!b) { b = document.createElement('span'); b.className = 'admin-nav-badge'; a.appendChild(b); }
+        b.textContent = pendientes;
+        b.title = pendientes + ' ticket(s) en espera de respuesta';
+      });
+    }, (err) => console.error('[soporte] No se pudieron leer los tickets:', err));
+  }).catch((err) => console.error(err));
 }
 
 function cerrarSesionAdmin(e) {

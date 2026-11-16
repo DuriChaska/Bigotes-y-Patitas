@@ -74,14 +74,10 @@
 
   <script src="components.js"></script>
   <script type="module">
-  import { obtenerProductosScm, obtenerUsuarioActual } from './firebase-db.js';
+  import { obtenerProductosScm, obtenerUsuarioActual, validarCupon } from './firebase-db.js';
 
-  // 1. Configuración de Cupones
-  const codigosDisponibles = {
-    "CUTECANDY50": { codigo: "CUTECANDY50", tipo: "porcentaje", valor: 50 },
-    "CUTECANDY10": { codigo: "CUTECANDY10", tipo: "tercera_prenda", valor: 10 },
-    "CUTENVIO1":   { codigo: "CUTENVIO1",   tipo: "envio_gratis",   valor: 0 }
-  };
+  // 1. Cupones: ya no están fijos en el código; se validan contra la colección "promociones"
+  //    de Firebase (con fecha de vigencia) mediante validarCupon().
 
   // 2. Funciones de Utilidad (Storage)
   function obtenerCarrito() {
@@ -189,17 +185,36 @@
   }
 
   // 5. Funciones de Interfaz (Render)
-  function aplicarCuponDesdeCarrito() {
+  async function aplicarCuponDesdeCarrito() {
     const input = document.getElementById("coupon-code");
     const codigo = input.value.trim().toUpperCase();
     if (!codigo) { alert("Ingresa un código."); return; }
 
-    const cupon = codigosDisponibles[codigo];
-    if (!cupon) { alert("Código inválido."); return; }
+    try {
+      const r = await validarCupon(codigo);
+      if (!r.ok) { alert(r.motivo); return; }
+      guardarCupon(r.cupon);
+      renderCart();
+      alert("Cupón aplicado correctamente.");
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.");
+    }
+  }
 
-    guardarCupon(cupon);
-    renderCart();
-    alert("Cupón aplicado correctamente.");
+  // Si el cupón guardado venció (o se desactivó) desde la última vez, se quita con un aviso.
+  async function revisarCuponGuardado() {
+    const guardado = obtenerCupon();
+    if (!guardado) return;
+    try {
+      const r = await validarCupon(guardado.codigo);
+      if (!r.ok) {
+        localStorage.removeItem("cuponAplicado");
+        alert(`El cupón ${guardado.codigo} ya no está vigente y se quitó de tu carrito.`);
+      } else {
+        guardarCupon(r.cupon);   // por si cambió su descuento
+      }
+    } catch (err) { console.error(err); }
   }
 
   function renderCart() {
@@ -330,6 +345,7 @@
 
   (async function iniciar() {
     await sincronizarConStockReal();
+    await revisarCuponGuardado();
     renderCart();
   })();
 </script>

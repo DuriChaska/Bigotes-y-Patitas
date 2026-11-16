@@ -6,6 +6,8 @@
 // ============================================
 
 const ADMIN_ICONS = {
+  tag:         '<path d="M3.5 12.5v-8h8l9 9-8 8z"/><circle cx="8" cy="9" r="1.3"/>',
+  headset:     '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3.5" y="14" width="3.5" height="5" rx="1"/><rect x="17" y="14" width="3.5" height="5" rx="1"/><path d="M19 19c0 1.5-1.5 2-4 2"/>',
   home:        '<path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h4v-6h2v6h4a1 1 0 0 0 1-1v-9"/>',
   users:       '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14c2.6.3 4.5 2.4 4.5 6"/>',
   chat:        '<path d="M4 5h16v11H8l-4 4z"/>',

@@ -1519,6 +1519,10 @@ html.rol-vendedor .sec-scm,
 html.rol-vendedor .sec-admin { display: none !important; }
 html.rol-logistica .sec-crm,
 html.rol-logistica .sec-admin { display: none !important; }
+html.rol-soporte .sec-crm,
+html.rol-soporte .sec-scm,
+html.rol-soporte .sec-admin,
+html.rol-soporte .admin-modo-erp { display: none !important; }   /* soporte no ve finanzas ni ERP */
 html.rol-vendedor .solo-admin { display: none !important; }
 /* Menú dinámico por rol (admin-components.js marca con [hidden] lo que el rol no puede ver) */
 .admin-nav li[hidden], .admin-nav-group[hidden] { display: none !important; }
@@ -1530,6 +1534,7 @@ html.rol-logistica .oculto-logistica { display: none !important; }
 .admin-tag.rol-administrador { background: #e6ddfa; color: #5b3fae; }
 .admin-tag.rol-vendedor { background: #dcecf8; color: #2b6690; }
 .admin-tag.rol-logistica { background: #dff3e8; color: #23704a; }
+.admin-tag.rol-soporte { background: #fde8d6; color: #a2531d; }
 
 /* ===========================
    Admin - SCM / Cadena de suministros
@@ -1636,3 +1641,96 @@ html.rol-logistica .oculto-logistica { display: none !important; }
 .admin-switch[aria-checked="true"] { background: var(--admin-sidebar-ac, #f2c14e); }
 .admin-switch[aria-checked="true"] span { transform: translateX(18px); }
 .admin-switch:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* ===========================
+   Etapa 4 - Soporte (tickets), Mi cuenta y promociones
+   (atencion-clientes.html, admin-soporte.html, admin-promociones.html)
+=========================== */
+.admin-nav-badge {
+  margin-left: auto; background: var(--yellow); color: var(--text);
+  font-size: .68rem; font-weight: 700; border-radius: 999px; padding: 1px 7px; line-height: 1.5;
+}
+
+/* Etiquetas de estado de ticket (cliente y soporte) */
+.tk-badge { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: .74rem; font-weight: 700; white-space: nowrap; }
+.tk-badge.proceso    { background: #fcefd0; color: #8a6410; }
+.tk-badge.respondido { background: #e5efe4; color: #2f6b3a; }
+.tk-badge.cerrado    { background: #e8e4dc; color: #6b6357; }
+.tk-badge.espera     { background: #fde8d6; color: #a2531d; }
+.tk-dot { width: 9px; height: 9px; border-radius: 50%; background: #2f9e5a; flex-shrink: 0; animation: tk-pulso 1.6s infinite; }
+@keyframes tk-pulso { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+.tk-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer;
+  padding: 11px 13px; border: 1px solid #eadfcb; border-radius: 12px; background: #fffdf8; margin-bottom: 9px;
+  transition: background .15s, border-color .15s;
+}
+.tk-item:hover { background: #fbf3e3; }
+.tk-item.sel { background: #fdeee2; border-color: var(--pink-medio); }
+.tk-item .tk-item-main { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.tk-item .tk-folio { font-weight: 700; font-size: .78rem; color: var(--pink-fuerte); flex-shrink: 0; }
+.tk-item .tk-asunto { font-weight: 600; font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tk-hilo { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.tk-msg { border-radius: 12px; padding: 11px 13px; border: 1px solid #eadfcb; background: #fffdf8; font-size: .88rem; }
+.tk-msg.soporte { background: #eef5ec; border-color: #d5e5d3; }
+.tk-msg-top { display: flex; justify-content: space-between; gap: 10px; font-size: .74rem; color: var(--gray); margin-bottom: 4px; }
+.tk-msg-top strong { color: var(--text); }
+.tk-msg p { white-space: pre-wrap; word-break: break-word; }
+
+.tk-layout { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: start; }
+.tk-alerta {
+  display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-radius: 12px; margin-bottom: 20px;
+  background: #fcefd0; color: #7a5a10; border: 1px solid #f0d68a; font-weight: 600; font-size: .88rem;
+}
+.tk-alerta.ok { background: #e5efe4; color: #2f6b3a; border-color: #cfe3cd; }
+.tk-crm { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; }
+.tk-crm div { background: #fbf6ec; border-radius: 10px; padding: 10px 6px; }
+.tk-crm small { display: block; font-size: .66rem; color: var(--gray); text-transform: uppercase; font-weight: 700; letter-spacing: .03em; }
+.tk-crm strong { display: block; margin-top: 2px; font-size: .95rem; overflow-wrap: anywhere; }
+
+/* Sincronización tienda -> pagos -> CRM -> ERP */
+.sync-item { border: 1px solid #eadfcb; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: #fffdf8; }
+.sync-linea { display: flex; gap: 10px; align-items: baseline; font-size: .8rem; padding: 3px 0; }
+.sync-linea b { min-width: 74px; font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; }
+.sync-linea.pagos b { color: #2b6690; }
+.sync-linea.crm b   { color: #5b3fae; }
+.sync-linea.erp b   { color: #23704a; }
+
+/* Mi cuenta (cliente) */
+.cta-wrap { max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
+.cta-menu { background: #fff; border-radius: 14px; box-shadow: 0 6px 15px rgba(0,0,0,.08); padding: 10px; }
+.cta-menu h4 { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--gray); padding: 8px 12px 6px; }
+.cta-menu a, .cta-menu .cta-off {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border-radius: 10px; color: var(--text); text-decoration: none; font-weight: 600; font-size: .9rem;
+}
+.cta-menu a:hover { background: var(--bg); }
+.cta-menu a.active { background: var(--pink-medio); color: #fff; }
+.cta-menu .cta-off { color: var(--gray); opacity: .65; cursor: not-allowed; font-weight: 500; }
+.cta-menu .cta-off small { font-size: .62rem; background: #f1ece1; border-radius: 999px; padding: 1px 8px; }
+.cta-menu .cta-salir { color: #b3261e; margin-top: 6px; border-top: 1px solid #f1ece1; border-radius: 0 0 10px 10px; }
+.cta-badge { background: #2f9e5a; color: #fff; font-size: .68rem; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+.cta-head { background: #fff; border-radius: 14px; box-shadow: 0 6px 15px rgba(0,0,0,.08); padding: 18px 20px; margin-bottom: 20px; }
+.cta-head h2 { color: var(--pink-fuerte); font-size: 1.25rem; }
+.cta-head p { color: var(--gray); font-size: .85rem; }
+.cta-main { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: start; }
+.cta-card { background: #fff; border-radius: 14px; box-shadow: 0 6px 15px rgba(0,0,0,.08); padding: 20px; margin-bottom: 20px; }
+.cta-card h3 { font-size: 1rem; color: var(--text); margin-bottom: 12px; }
+.cta-card label { display: block; font-size: .78rem; font-weight: 700; margin: 12px 0 5px; }
+.cta-card select, .cta-card textarea {
+  width: 100%; border: 1px solid #dccfb6; border-radius: 10px; padding: 10px 12px; font: inherit; background: #fffdf8; color: var(--text);
+}
+.cta-card textarea { resize: vertical; min-height: 110px; }
+.cta-btn { width: 100%; margin-top: 14px; background: var(--pink-medio); color: #fff; border: 0; border-radius: 10px; padding: 11px; font: inherit; font-weight: 700; cursor: pointer; }
+.cta-btn:hover { background: var(--pink-fuerte); }
+.cta-btn:disabled { opacity: .55; cursor: not-allowed; }
+.cta-aviso { font-size: .8rem; margin-top: 10px; color: #b3261e; display: none; }
+.cta-toast { position: fixed; bottom: 22px; right: 22px; background: #4a3826; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: .88rem; z-index: 9999; opacity: 0; transform: translateY(8px); transition: all .25s; pointer-events: none; }
+.cta-toast.show { opacity: 1; transform: none; }
+.cta-banner { display: inline-flex; align-items: center; gap: 7px; background: #e5efe4; color: #2f6b3a; border: 1px solid #cfe3cd; border-radius: 999px; font-size: .74rem; font-weight: 700; padding: 3px 11px; }
+
+@media (max-width: 900px) {
+  .cta-wrap, .cta-main, .tk-layout { grid-template-columns: 1fr; }
+  .tk-crm { grid-template-columns: repeat(2, 1fr); }
+}

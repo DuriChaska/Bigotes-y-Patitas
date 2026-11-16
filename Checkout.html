@@ -485,7 +485,7 @@
 
   <script src="components.js"></script>
   <script type="module">
-    import { crearVenta, obtenerProductosScm, obtenerUsuarioActual, obtenerPerfilCliente } from './firebase-db.js';
+    import { crearVenta, obtenerProductosScm, obtenerUsuarioActual, obtenerPerfilCliente, validarCupon } from './firebase-db.js';
 
     const ENVIO = 120;
     let usuarioActual = null;
@@ -560,15 +560,18 @@
           break;
         }
 
-        case "envio_gratis":
-          if (subtotal >= 2000) {
+        case "envio_gratis": {
+          // La compra mínima viene del cupón en Firebase (si no trae, se usa $2000 como antes).
+          const minimo = Number(cupon.minimo) > 0 ? Number(cupon.minimo) : 2000;
+          if (subtotal >= minimo) {
             envio = 0;
             descripcion = `${cupon.codigo} (envío gratis aplicado)`;
           } else {
             envio = ENVIO;
-            descripcion = `${cupon.codigo} requiere compra mínima de $2000.00`;
+            descripcion = `${cupon.codigo} requiere compra mínima de $${minimo.toFixed(2)}`;
           }
           break;
+        }
       }
 
       return { descuento, envio, descripcion };
@@ -928,6 +931,20 @@
       }
 
       await sincronizarConStockReal();
+
+      // Cupón vigente: si venció o se desactivó mientras estaba guardado, se quita antes de cobrar.
+      const guardado = obtenerCupon();
+      if (guardado) {
+        try {
+          const r = await validarCupon(guardado.codigo);
+          if (!r.ok) {
+            localStorage.removeItem("cuponAplicado");
+            alert(`El cupón ${guardado.codigo} ya no está vigente y se quitó de tu pedido.`);
+          } else {
+            localStorage.setItem("cuponAplicado", JSON.stringify(r.cupon));
+          }
+        } catch (err) { console.error(err); }
+      }
       renderSummary();
     })();
   </script>

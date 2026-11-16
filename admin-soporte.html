@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atención a clientes - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-roles: solo soporte y administrador (soporte no ve finanzas, inventario ni órdenes) -->
+<body data-roles="administrador,soporte">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Atención a clientes</h1>
+          <p class="admin-breadcrumb">Panel de atención · Los tickets resueltos nunca se borran, quedan en el historial</p>
+        </div>
+      </div>
+
+      <div class="tk-alerta" id="alerta-espera"><span data-bp-icon="hourglass"></span><span id="alerta-texto">Cargando tickets…</span></div>
+
+      <div class="tk-layout">
+        <!-- Bandeja (historial completo) -->
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <h2>Bandeja de tickets</h2>
+            <span class="admin-count-pill" id="conteo-bandeja">0</span>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+            <div class="admin-search" style="flex:1; min-width:150px;">
+              <span data-bp-icon="search"></span>
+              <input type="text" id="buscar" placeholder="Buscar folio, cliente o asunto…" />
+            </div>
+            <select id="filtro" class="admin-search" style="min-width:140px; cursor:pointer;">
+              <option value="todos">Todos</option>
+              <option value="espera">En espera</option>
+              <option value="En proceso">En proceso</option>
+              <option value="Solucionado">Solucionado</option>
+              <option value="Cerrado">Cerrado</option>
+            </select>
+          </div>
+          <div id="bandeja"></div>
+        </div>
+
+        <!-- Área de trabajo -->
+        <div>
+          <div class="admin-panel" id="panel-crm" style="margin-bottom:20px; display:none;">
+            <div class="admin-panel-head">
+              <h2>Ficha del cliente en el CRM</h2>
+              <span class="admin-tag muted" id="crm-etapa">—</span>
+            </div>
+            <div class="tk-crm" id="crm-datos"></div>
+            <p id="crm-extra" style="font-size:.78rem; color:var(--gray); margin-top:10px;"></p>
+          </div>
+
+          <div class="admin-panel" id="panel-trabajo">
+            <div class="admin-empty-state" id="vacio" style="text-align:center; padding:30px; color:var(--gray);">
+              Elige un ticket de la bandeja para ver el mensaje del cliente y responder.
+            </div>
+
+            <div id="trabajo" style="display:none;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div>
+                  <small id="t-folio" style="font-weight:700; color:var(--pink-fuerte);"></small>
+                  <h2 id="t-asunto" style="margin:2px 0 0;"></h2>
+                </div>
+                <span class="tk-badge" id="t-estado"></span>
+              </div>
+
+              <div class="tk-hilo" id="t-hilo"></div>
+
+              <form id="form-respuesta" style="margin-top:16px;" novalidate>
+                <div class="admin-form-group">
+                  <label for="r-texto">Respuesta para el cliente</label>
+                  <textarea id="r-texto" rows="4" maxlength="2000" style="width:100%;"
+                    placeholder="Escribe la solución o el seguimiento…"></textarea>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label for="r-estado" style="font-size:.8rem; font-weight:700;">Cambiar estado:</label>
+                    <select id="r-estado" class="admin-select">
+                      <option value="En proceso">En proceso</option>
+                      <option value="Solucionado">Solucionado</option>
+                      <option value="Cerrado">Cerrado</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="admin-btn-primary" id="btn-responder">Guardar respuesta y actualizar</button>
+                </div>
+                <p id="r-error" style="color:var(--admin-danger,#dc2626); font-size:.82rem; margin-top:8px; display:none;"></p>
+                <p style="font-size:.74rem; color:var(--gray); margin-top:8px;">
+                  Si el ticket ya tiene respuesta puedes cambiar solo el estado dejando el texto vacío.
+                  Cada respuesta queda registrada con tu nombre.
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { escucharTodosLosTickets, escucharClienteUno, responderTicket } from './firebase-db.js';
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const $ = (id) => document.getElementById(id);
+
+    let tickets = [];
+    let seleccionado = null;
+    let cancelarCliente = null;
+    let clienteActual = undefined;      // undefined = cargando, null = sin ficha en el CRM
+
+    const claseEstado = (t) => t.estado === 'Cerrado' ? 'cerrado' : (t.estado === 'Solucionado' ? 'respondido' : (t.esperaSoporte ? 'espera' : 'proceso'));
+    const etiqueta = (t) => t.esperaSoporte ? 'En espera' : (t.estado || 'En proceso');
+    const dinero = (n) => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function fecha(valor) {
+      if (!valor) return '';
+      const f = typeof valor.toDate === 'function' ? valor.toDate() : new Date(valor);
+      return isNaN(f.getTime()) ? '' : f.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2800);
+    }
+
+    function pintarAlerta() {
+      const n = tickets.filter(t => t.esperaSoporte === true).length;
+      const caja = $('alerta-espera');
+      caja.classList.toggle('ok', n === 0);
+      $('alerta-texto').textContent = n === 0
+        ? 'Todos los tickets están atendidos.'
+        : `${n} ticket${n === 1 ? '' : 's'} en espera de respuesta`;
+    }
+
+    function filtrados() {
+      const texto = $('buscar').value.trim().toLowerCase();
+      const f = $('filtro').value;
+      return tickets.filter((t) => {
+        const coincideTexto = !texto || [t.folio, t.clienteNombre, t.asunto, t.mensaje]
+          .some(v => String(v || '').toLowerCase().includes(texto));
+        const coincideEstado = f === 'todos' || (f === 'espera' ? t.esperaSoporte === true : t.estado === f);
+        return coincideTexto && coincideEstado;
+      }).sort((a, b) => (b.esperaSoporte === true) - (a.esperaSoporte === true));  // los que esperan, primero
+    }
+
+    function pintarBandeja() {
+      const lista = filtrados();
+      $('conteo-bandeja').textContent = lista.length === tickets.length ? tickets.length : `${lista.length} de ${tickets.length}`;
+      $('bandeja').innerHTML = lista.length === 0
+        ? '<p style="color:var(--gray); font-size:.86rem; padding:10px 0;">No hay tickets con ese filtro.</p>'
+        : lista.map(t => `
+          <div class="tk-item ${t.id === seleccionado ? 'sel' : ''}" data-id="${esc(t.id)}" style="flex-direction:column; align-items:stretch; gap:4px;">
+            <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
+              <span class="tk-folio">${esc(t.folio || t.id)} · ${esc(t.clienteNombre)}</span>
+              <span class="tk-badge ${claseEstado(t)}">${esc(etiqueta(t))}</span>
+            </div>
+            <span class="tk-asunto">${esc(t.asunto)}</span>
+            <small style="color:var(--gray); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(t.mensaje)}</small>
+            <small style="color:var(--gray);">${esc(fecha(t.creadoEn))}</small>
+          </div>`).join('');
+      $('bandeja').querySelectorAll('.tk-item').forEach(el => el.addEventListener('click', () => elegir(el.dataset.id)));
+    }
+
+    function pintarCrm() {
+      const t = tickets.find(x => x.id === seleccionado);
+      $('panel-crm').style.display = t ? '' : 'none';
+      if (!t) return;
+      if (clienteActual === undefined) {
+        $('crm-datos').innerHTML = '<p style="grid-column:1/-1; color:var(--gray); font-size:.84rem;">Cargando ficha…</p>';
+        $('crm-etapa').textContent = '—';
+        $('crm-extra').textContent = '';
+        return;
+      }
+      if (clienteActual === null) {
+        $('crm-datos').innerHTML = `<p style="grid-column:1/-1; color:var(--gray); font-size:.84rem;">Este cliente no tiene ficha en el CRM.</p>`;
+        $('crm-etapa').textContent = '—';
+        $('crm-extra').textContent = '';
+        return;
+      }
+      const c = clienteActual;
+      $('crm-etapa').textContent = 'Etapa: ' + (c.etapa || '—');
+      $('crm-datos').innerHTML = `
+        <div><small>Cliente</small><strong>${esc(c.nombre || t.clienteNombre)}</strong></div>
+        <div><small>Compras</small><strong>${Number(c.numCompras) || 0}</strong></div>
+        <div><small>Total gastado</small><strong>${dinero(c.totalComprado)}</strong></div>
+        <div><small>ID CRM</small><strong style="font-size:.72rem; font-family:monospace;">${esc(String(c.id).slice(0, 8))}</strong></div>`;
+      $('crm-extra').textContent = [
+        c.correo, c.telefono && ('Tel. ' + c.telefono), c.mascota && ('Mascota: ' + c.mascota),
+        c.ultimaCompra && ('Última compra: ' + c.ultimaCompra),
+      ].filter(Boolean).join(' · ');
+    }
+
+    function pintarTrabajo() {
+      const t = tickets.find(x => x.id === seleccionado);
+      $('vacio').style.display = t ? 'none' : '';
+      $('trabajo').style.display = t ? '' : 'none';
+      if (!t) return;
+
+      $('t-folio').textContent = `${t.folio || t.id} · Registrado por ${t.clienteNombre || 'cliente'} · ${fecha(t.creadoEn)}`;
+      $('t-asunto').textContent = t.asunto || '';
+      const badge = $('t-estado');
+      badge.className = 'tk-badge ' + claseEstado(t);
+      badge.textContent = etiqueta(t);
+
+      const hilo = Array.isArray(t.hilo) && t.hilo.length ? t.hilo
+        : [{ de: 'cliente', nombre: t.clienteNombre, texto: t.mensaje, fecha: '' }].concat(
+            t.respuesta ? [{ de: 'soporte', nombre: t.agente, texto: t.respuesta, fecha: '' }] : []);
+      $('t-hilo').innerHTML = hilo.map(m => `
+        <div class="tk-msg ${m.de === 'soporte' ? 'soporte' : ''}">
+          <div class="tk-msg-top">
+            <strong>${m.de === 'soporte' ? '🎧 ' + esc(m.nombre || 'Soporte') : esc(m.nombre || 'Cliente')}</strong>
+            <span>${esc(m.fecha ? fecha(m.fecha) : '')}</span>
+          </div>
+          <p>${esc(m.texto)}</p>
+        </div>`).join('');
+    }
+
+    function elegir(id) {
+      if (id !== seleccionado) {
+        seleccionado = id;
+        const t = tickets.find(x => x.id === id);
+        if (cancelarCliente) { cancelarCliente(); cancelarCliente = null; }
+        clienteActual = undefined;
+        $('r-texto').value = '';
+        $('r-error').style.display = 'none';
+        if (t) {
+          // Por defecto: si está en espera propone "Solucionado"; si no, deja su estado actual.
+          $('r-estado').value = t.esperaSoporte ? 'Solucionado' : (t.estado || 'En proceso');
+          cancelarCliente = escucharClienteUno(t.clienteId, (c) => { clienteActual = c; pintarCrm(); },
+            (err) => { console.error(err); clienteActual = null; pintarCrm(); });
+        }
+      }
+      pintarBandeja(); pintarCrm(); pintarTrabajo();
+    }
+
+    $('form-respuesta').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const t = tickets.find(x => x.id === seleccionado);
+      if (!t) return;
+      const error = $('r-error');
+      const boton = $('btn-responder');
+      error.style.display = 'none';
+      boton.disabled = true;
+      try {
+        await responderTicket(t, { texto: $('r-texto').value, estado: $('r-estado').value }, window.BP_SESION);
+        $('r-texto').value = '';
+        mostrarToast(`Respuesta guardada en ${t.folio || t.id}. El ticket se conserva en el historial.`);
+      } catch (err) {
+        console.error(err);
+        error.textContent = err.message || 'No se pudo guardar la respuesta.';
+        error.style.display = 'block';
+      }
+      boton.disabled = false;
+    });
+
+    $('buscar').addEventListener('input', pintarBandeja);
+    $('filtro').addEventListener('change', pintarBandeja);
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || !['administrador', 'soporte'].includes(sesion.rol)) return;
+      iniciado = true;
+      escucharTodosLosTickets((lista) => {
+        tickets = lista;
+        pintarAlerta();
+        pintarBandeja();
+        if (seleccionado && !tickets.some(t => t.id === seleccionado)) seleccionado = null;
+        pintarCrm();
+        pintarTrabajo();
+      }, (err) => {
+        console.error(err);
+        $('alerta-espera').classList.remove('ok');
+        $('alerta-texto').textContent = err && err.code === 'permission-denied'
+          ? 'Firebase negó el permiso: publica firestore.rules (Firestore → Reglas → Publicar).'
+          : 'No se pudieron cargar los tickets. Revisa tu conexión.';
+      });
+    }
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

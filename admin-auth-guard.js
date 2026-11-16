@@ -12,7 +12,8 @@
 //       data-solo-admin                      -> solo administradores (p. ej. Usuarios)
 //       (sin atributo)                       -> cualquier persona del panel (Configuración)
 //     Roles: administrador (todo), vendedor ("Ventas": CRM + órdenes ERP + consulta
-//     de productos/inventario) y logistica (SCM + órdenes ERP).
+//     de productos/inventario), logistica (SCM + órdenes ERP) y soporte (solo
+//     Atención a clientes: tickets + ficha del cliente; no ve finanzas ni inventario).
 //     Quien entra a una página que no le toca es mandado a su página de inicio.
 // ============================================
 
@@ -20,9 +21,10 @@ import { observarSesion, obtenerPerfilUsuario, logoutAdmin } from "./firebase-db
 
 // Secciones a las que puede entrar cada rol ("general" = páginas sin sección).
 const SECCIONES_POR_ROL = {
-  administrador: ["crm", "scm", "admin", "general"],
+  administrador: ["crm", "scm", "admin", "general","soporte"],
   vendedor:      ["crm", "general"],
   logistica:     ["scm", "general"],
+  soporte:       ["general","soporte"],        // solo Atención a clientes (data-roles) y Configuración
 };
 
 // Página de inicio de cada rol (modo normal). Si quien entró estaba en una página del
@@ -31,9 +33,11 @@ const INICIO_POR_ROL = {
   administrador: "admin.html",
   vendedor:      "admin.html",
   logistica:     "admin-scm.html",
+  soporte:       "admin-soporte.html",
 };
+// Soporte no tiene acceso al ERP (finanzas): siempre regresa a su panel de atención.
 const inicioPara = (rol) =>
-  /^admin-erp/.test(window.location.pathname.split("/").pop()) ? "admin-erp.html" : INICIO_POR_ROL[rol];
+  rol !== "soporte" && /^admin-erp/.test(window.location.pathname.split("/").pop()) ? "admin-erp.html" : INICIO_POR_ROL[rol];
 
 window.BP_SESION = null;
 

@@ -152,6 +152,11 @@
           🛍️ Ver mis compras
         </button>
 
+        <button class="btn-outline"
+          onclick="window.location.href='atencion-clientes.html'">
+          🎧 Atención a clientes
+        </button>
+
       </div>
 
       <!-- RESUMEN C2C -->
@@ -358,9 +363,15 @@
       }
       pintarPerfil(perfil, usuario);
 
+      let abiertoPorEnlace = false;
       escucharVentasDeCliente(usuario.uid, (ventas) => {
         ventasCliente = ventas;
         pintarNumCompras();
+        // Enlace "Mis pedidos" del menú de Mi cuenta (Interfaz Cliente - Perfil.html#pedidos).
+        if (window.location.hash === "#pedidos" && !abiertoPorEnlace) {
+          abiertoPorEnlace = true;
+          abrirCompras();
+        }
       }, (err) => console.error(err));
 
       inicializarDatosPublicaciones();
