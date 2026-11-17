@@ -33,6 +33,11 @@
               <option>Problema con monedero</option>
             </select>
 
+            <label for="ticket-producto">Producto de tu compra (opcional)</label>
+            <select id="ticket-producto">
+              <option value="">— Sin producto en particular —</option>
+            </select>
+
             <label for="ticket-mensaje">Mensaje</label>
             <textarea id="ticket-mensaje" maxlength="2000"
               placeholder="Describe tu problema con el mayor detalle posible (por ejemplo, el folio de tu pedido)…"></textarea>
@@ -66,7 +71,8 @@
   <script type="module">
     import {
       obtenerUsuarioActual, obtenerPerfilCliente,
-      crearTicket, escucharTicketsDeCliente, marcarTicketLeido,
+      crearTicket, escucharTicketsDeCliente, marcarTicketLeido, responderTicketCliente,
+      escucharVentasDeCliente,
     } from './firebase-db.js';
 
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
@@ -75,6 +81,9 @@
     let usuario = null;
     let perfil = null;
     let tickets = [];
+    let ventasCliente = [];
+    let compras = [];                 // productos comprados: { clave, ventaId, folio, productoId, producto, cantidad, fecha }
+    const borradores = {};            // texto a medio escribir de cada respuesta (no se pierde al llegar una actualización)
     let seleccionado = new URLSearchParams(window.location.search).get('ticket');
 
     // Colores: En proceso = amarillo, Solucionado (se muestra "Respondido") = verde, Cerrado = gris.
@@ -93,6 +102,29 @@
       t.classList.add('show');
       clearTimeout(toast._t);
       toast._t = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+
+    function fechaCorta(valor) {
+      if (!valor) return '';
+      const f = typeof valor.toDate === 'function' ? valor.toDate() : new Date(valor);
+      return isNaN(f.getTime()) ? '' : f.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // Llena el selector con cada producto de las compras del cliente (las canceladas no cuentan).
+    function pintarProductos() {
+      const sel = document.getElementById('ticket-producto');
+      const actual = sel.value;
+      compras = [];
+      ventasCliente.filter(v => v.estado !== 'Cancelada').forEach(v => {
+        (v.items || []).forEach((it, i) => compras.push({
+          clave: v.id + '#' + i, ventaId: v.id, folio: v.folio || v.id,
+          productoId: it.productoId || '', producto: it.nombre || 'Producto',
+          cantidad: Number(it.cantidad) || 1, fecha: fechaCorta(v.creadoEn),
+        }));
+      });
+      sel.innerHTML = '<option value="">— Sin producto en particular —</option>' + compras.map(c =>
+        `<option value="${esc(c.clave)}">${esc(c.producto)}${c.cantidad > 1 ? ' ×' + c.cantidad : ''} — pedido ${esc(c.folio)}${c.fecha ? ' (' + esc(c.fecha) + ')' : ''}</option>`).join('');
+      if (compras.some(c => c.clave === actual)) sel.value = actual;
     }
 
     function sinLeer() { return tickets.filter(t => t.leidoCliente === false).length; }
@@ -134,6 +166,7 @@
       const caja = document.getElementById('detalle-ticket');
       const t = tickets.find(x => x.id === seleccionado);
       if (!t) { caja.style.display = 'none'; return; }
+      const teniaFoco = document.activeElement && document.activeElement.id === 'resp-texto';
       caja.style.display = '';
       caja.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; border-bottom:1px solid #f1ece1; padding-bottom:10px;">
@@ -143,6 +176,7 @@
           </div>
           <span class="tk-badge ${claseEstado(t.estado)}">${esc(etiquetaEstado(t.estado))}</span>
         </div>
+        ${t.pedido && t.pedido.producto ? `<div class="tk-pedido">📦 Producto: <strong>${esc(t.pedido.producto)}</strong>${t.pedido.cantidad > 1 ? ' ×' + Number(t.pedido.cantidad) : ''} · Pedido <strong>${esc(t.pedido.folio || t.pedido.ventaId)}</strong></div>` : ''}
         <div class="tk-hilo">
           ${hiloDe(t).map(m => `
             <div class="tk-msg ${m.de === 'soporte' ? 'soporte' : ''}">
@@ -154,9 +188,58 @@
             </div>`).join('')}
           ${t.esperaSoporte ? `<div class="tk-msg" style="text-align:center; background:#fcefd0; border-color:#f0d68a; color:#7a5a10;">
              ⏳ Tu solicitud está en espera de atención de nuestro equipo.</div>` : ''}
-          ${t.estado === 'Cerrado' ? `<div class="tk-msg" style="text-align:center; color:var(--gray);">
-             Este ticket está cerrado. Si necesitas algo más, crea uno nuevo.</div>` : ''}
-        </div>`;
+          ${t.estado === 'Cerrado' || t.estado === 'Solucionado' ? `<div class="tk-msg" style="text-align:center; color:var(--gray);">
+             Este ticket está ${t.estado === 'Cerrado' ? 'cerrado' : 'marcado como solucionado'} y ya no admite respuestas. Si necesitas algo más, crea uno nuevo.</div>` : ''}
+        </div>
+        ${puedeResponder(t) ? `
+        <form class="cta-reply" id="form-respuesta" novalidate>
+          <label for="resp-texto">Tu respuesta</label>
+          <textarea id="resp-texto" maxlength="2000"
+            placeholder="Contesta a soporte o agrega la evidencia que te pidan. Puedes pegar el enlace de tus fotos o video (Google Drive, Dropbox, etc.)."></textarea>
+          <p class="cta-hint">Soporte puede seguir contestándote aquí mientras el ticket esté "En proceso".</p>
+          <p class="cta-aviso" id="resp-error"></p>
+          <button type="submit" class="cta-btn" id="btn-responder">Enviar respuesta</button>
+        </form>` : ''}`;
+
+      const ta = document.getElementById('resp-texto');
+      if (ta) {
+        ta.value = borradores[t.id] || '';
+        ta.addEventListener('input', () => { borradores[t.id] = ta.value; });
+        if (teniaFoco) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+      }
+      const fr = document.getElementById('form-respuesta');
+      if (fr) fr.addEventListener('submit', (e) => enviarRespuesta(e, t));
+    }
+
+    // Se puede contestar solo mientras soporte no lo haya marcado Solucionado ni Cerrado.
+    function puedeResponder(t) { return (t.estado || 'En proceso') === 'En proceso'; }
+
+    async function enviarRespuesta(e, t) {
+      e.preventDefault();
+      const error = document.getElementById('resp-error');
+      const boton = document.getElementById('btn-responder');
+      const texto = document.getElementById('resp-texto').value;
+      error.style.display = 'none';
+      if (!texto.trim()) {
+        error.textContent = 'Escribe tu respuesta antes de enviarla.';
+        error.style.display = 'block';
+        return;
+      }
+      boton.disabled = true;
+      boton.textContent = 'Enviando…';
+      try {
+        await responderTicketCliente(t, texto, { uid: usuario.uid, nombre: perfil?.nombre || usuario.displayName || usuario.email });
+        delete borradores[t.id];
+        toast('Respuesta enviada a soporte.');
+      } catch (err) {
+        console.error(err);
+        error.textContent = err && err.code === 'permission-denied'
+          ? 'Este ticket ya no admite respuestas (soporte lo marcó como solucionado o cerrado). Crea uno nuevo si lo necesitas.'
+          : (err.message || 'No se pudo enviar la respuesta. Revisa tu conexión.');
+        error.style.display = 'block';
+        boton.disabled = false;
+        boton.textContent = 'Enviar respuesta';
+      }
     }
 
     function abrirTicket(id) {
@@ -179,6 +262,7 @@
 
       const asunto = document.getElementById('ticket-asunto').value;
       const mensaje = document.getElementById('ticket-mensaje').value;
+      const elegido = compras.find(c => c.clave === document.getElementById('ticket-producto').value);
       if (!mensaje.trim()) {
         error.textContent = 'Escribe el mensaje para que podamos ayudarte.';
         error.style.display = 'block';
@@ -190,9 +274,11 @@
       try {
         const folio = await crearTicket({
           asunto, mensaje,
+          pedido: elegido || null,
           cliente: { uid: usuario.uid, nombre: perfil?.nombre || usuario.displayName || usuario.email, correo: usuario.email },
         });
         document.getElementById('ticket-mensaje').value = '';
+        document.getElementById('ticket-producto').value = '';
         seleccionado = folio;
         toast(`Ticket ${folio} enviado. Te avisaremos aquí cuando respondamos.`);
       } catch (err) {
@@ -215,6 +301,12 @@
       }
       try { perfil = await obtenerPerfilCliente(usuario.uid); } catch (err) { console.error(err); }
       document.getElementById('sesion-nombre').textContent = (perfil?.nombre || usuario.displayName || usuario.email);
+
+      escucharVentasDeCliente(usuario.uid, (lista) => { ventasCliente = lista; pintarProductos(); },
+        (err) => {
+          console.error('No se pudieron cargar las compras:', err);
+          document.getElementById('ticket-producto').innerHTML = '<option value="">— No se pudieron cargar tus compras —</option>';
+        });
 
       escucharTicketsDeCliente(usuario.uid, (lista) => {
         tickets = lista;

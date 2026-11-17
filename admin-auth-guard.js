@@ -21,10 +21,10 @@ import { observarSesion, obtenerPerfilUsuario, logoutAdmin } from "./firebase-db
 
 // Secciones a las que puede entrar cada rol ("general" = páginas sin sección).
 const SECCIONES_POR_ROL = {
-  administrador: ["crm", "scm", "admin", "general","soporte"],
+  administrador: ["crm", "scm", "admin", "general"],
   vendedor:      ["crm", "general"],
   logistica:     ["scm", "general"],
-  soporte:       ["general","soporte"],        // solo Atención a clientes (data-roles) y Configuración
+  soporte:       ["general"],        // solo Atención a clientes (data-roles) y Configuración
 };
 
 // Página de inicio de cada rol (modo normal). Si quien entró estaba en una página del

@@ -1734,3 +1734,9 @@ html.rol-logistica .oculto-logistica { display: none !important; }
   .cta-wrap, .cta-main, .tk-layout { grid-template-columns: 1fr; }
   .tk-crm { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---- Tickets: producto reclamado y respuesta del cliente ---- */
+.tk-pedido { background: #fcefd0; border: 1px solid #f0d68a; color: #7a5a10; border-radius: 10px; padding: 8px 12px; font-size: .82rem; margin-top: 10px; }
+.cta-reply { border-top: 1px solid #f1ece1; margin-top: 14px; padding-top: 4px; }
+.cta-reply textarea { min-height: 80px; }
+.cta-hint { font-size: .75rem; color: var(--gray); margin-top: 6px; }

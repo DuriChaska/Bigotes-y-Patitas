@@ -1309,12 +1309,25 @@ function milisTicket(t) {
  * contador dentro de una TRANSACCIÓN, así que dos clientes que escriben al mismo tiempo nunca
  * reciben el mismo folio. cliente = { uid, nombre, correo }.
  */
-export async function crearTicket({ asunto, mensaje, cliente }) {
+export async function crearTicket({ asunto, mensaje, cliente, pedido }) {
   if (!cliente || !cliente.uid) throw new Error("Inicia sesión para enviar un ticket.");
   if (!ASUNTOS_TICKET.includes(asunto)) throw new Error("Elige un asunto de la lista.");
   const texto = String(mensaje || "").trim();
   if (!texto) throw new Error("Describe tu problema para poder ayudarte.");
   if (texto.length > 2000) throw new Error("El mensaje es muy largo (máximo 2000 caracteres).");
+
+  // Producto comprado sobre el que trata la queja (opcional): { ventaId, folio, productoId, producto, cantidad }.
+  // Las reglas comprueban que esa venta sea del mismo cliente.
+  let pedidoDoc = null;
+  if (pedido && pedido.ventaId) {
+    pedidoDoc = {
+      ventaId: String(pedido.ventaId).slice(0, 60),
+      folio: String(pedido.folio || "").slice(0, 40),
+      productoId: String(pedido.productoId || "").slice(0, 60),
+      producto: String(pedido.producto || "").slice(0, 200),
+      cantidad: Number(pedido.cantidad) || 1,
+    };
+  }
 
   const contadorRef = doc(db, "contadores", "tickets");
   const nombre = String(cliente.nombre || cliente.correo || "Cliente").slice(0, 120);
@@ -1338,6 +1351,7 @@ export async function crearTicket({ asunto, mensaje, cliente }) {
       leidoCliente: true,
       hilo: [{ de: "cliente", nombre, texto, fecha: new Date().toISOString() }],
       creadoEn: serverTimestamp(),
+      ...(pedidoDoc ? { pedido: pedidoDoc } : {}),
     });
     return nuevoFolio;
   });
@@ -1360,6 +1374,28 @@ export function escucharTodosLosTickets(callback, onError) {
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, onError);
+}
+
+/**
+ * El cliente contesta dentro de su ticket (por ejemplo, cuando soporte le pide evidencia o más datos).
+ * Solo se puede mientras el ticket siga "En proceso": si soporte lo marcó Solucionado o Cerrado ya
+ * no admite mensajes (las reglas también lo impiden). El ticket vuelve a quedar "en espera" de soporte.
+ * cliente = { uid, nombre }.
+ */
+export async function responderTicketCliente(ticket, texto, cliente) {
+  const mensaje = String(texto || "").trim();
+  if (!mensaje) throw new Error("Escribe tu respuesta.");
+  if (mensaje.length > 2000) throw new Error("La respuesta es muy larga (máximo 2000 caracteres).");
+  if ((ticket.estado || "En proceso") !== "En proceso") {
+    throw new Error("Este ticket ya está " + String(ticket.estado).toLowerCase() + ". Crea uno nuevo si necesitas algo más.");
+  }
+  const nombre = String(cliente?.nombre || ticket.clienteNombre || "Cliente").slice(0, 120);
+  return updateDoc(doc(db, "tickets", ticket.id), {
+    hilo: arrayUnion({ de: "cliente", nombre, texto: mensaje, fecha: new Date().toISOString() }),
+    esperaSoporte: true,
+    leidoCliente: true,
+    actualizadoEn: serverTimestamp(),
+  });
 }
 
 /** El cliente abrió el ticket: apaga la alerta de "respuesta sin leer". */

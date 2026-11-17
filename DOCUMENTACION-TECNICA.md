@@ -633,3 +633,9 @@ en el carrito, la compra se rechaza con un mensaje claro.
   cuenta aparecen como "Pronto" hasta que existan (se activan poniéndoles su `href` en `cuenta-menu.js`).
 - Los tickets de clientes que el CRM dio de alta a mano (sin cuenta) no existen: para abrir un ticket
   hace falta tener cuenta real en la tienda.
+
+#### Réplicas del cliente y producto de la queja (ampliación)
+
+- **Producto de la queja:** al crear el ticket el cliente puede elegir uno de los productos de sus compras (las canceladas no aparecen). Se guarda en `tickets.pedido = { ventaId, folio, productoId, producto, cantidad }`; la relación es `tickets.pedido.ventaId → ventas/{id}`. Las reglas exigen que esa venta pertenezca al mismo cliente. Soporte lo ve resaltado arriba de la conversación.
+- **Respuesta del cliente:** mientras el ticket esté **En proceso** el cliente puede seguir escribiendo (por ejemplo para dar la evidencia que soporte le pidió). Cada mensaje se agrega al final de `hilo` y el ticket vuelve a quedar `esperaSoporte: true`, así que reaparece en el contador de soporte. Con estado **Solucionado** o **Cerrado** ya no se puede responder (lo bloquean la pantalla y las reglas `ticketRespondidoPorCliente`).
+- **Evidencia:** el proyecto no usa Firebase Storage, por lo que la evidencia se entrega como texto o como enlace (Drive, Dropbox, etc.) dentro de la respuesta.

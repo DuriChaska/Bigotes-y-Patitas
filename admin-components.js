@@ -23,7 +23,7 @@ const adminPaginaActual = window.location.pathname.split('/').pop();
 //   administrador -> todo
 //   vendedor      -> "Ventas": CRM + órdenes ERP + consulta de productos e inventario
 //   logistica     -> SCM completo + órdenes ERP
-const R_TODOS   = ['administrador', 'vendedor', 'logistica','soporte'];
+const R_TODOS   = ['administrador', 'vendedor', 'logistica'];
 const R_ADMIN   = ['administrador'];
 const R_CRM     = ['administrador', 'vendedor'];
 const R_SCM     = ['administrador', 'logistica'];

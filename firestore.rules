@@ -343,7 +343,32 @@ service cloud.firestore {
         && d.esperaSoporte == true
         && d.leidoCliente == true
         && d.respuesta == ''
-        && d.hilo is list && d.hilo.size() == 1;
+        && d.hilo is list && d.hilo.size() == 1
+        && pedidoDeTicketValido(d);
+    }
+    // Producto de la queja (opcional): debe pertenecer a una compra del mismo cliente.
+    function pedidoDeTicketValido(d) {
+      return !('pedido' in d) || (d.pedido is map
+        && d.pedido.keys().hasOnly(['ventaId', 'folio', 'productoId', 'producto', 'cantidad'])
+        && d.pedido.ventaId is string && d.pedido.ventaId.size() > 0 && d.pedido.ventaId.size() <= 60
+        && d.pedido.producto is string && d.pedido.producto.size() <= 200
+        && get(/databases/$(database)/documents/ventas/$(d.pedido.ventaId)).data.clienteId == request.auth.uid);
+    }
+    // El cliente contesta en su propio ticket (evidencia, más datos) solo mientras esté "En proceso":
+    // agrega exactamente UN mensaje suyo al final del hilo y lo deja en espera de soporte.
+    function ticketRespondidoPorCliente() {
+      let n = request.resource.data;
+      let o = resource.data;
+      return request.auth.uid == o.clienteId
+        && o.estado == 'En proceso'
+        && n.diff(o).affectedKeys().hasOnly(['hilo', 'esperaSoporte', 'leidoCliente', 'actualizadoEn'])
+        && n.esperaSoporte == true && n.leidoCliente == true
+        && n.hilo is list && n.hilo.size() == o.hilo.size() + 1
+        && n.hilo[0:o.hilo.size()] == o.hilo
+        && n.hilo[o.hilo.size()].de == 'cliente'
+        && n.hilo[o.hilo.size()].texto is string
+        && n.hilo[o.hilo.size()].texto.size() > 0 && n.hilo[o.hilo.size()].texto.size() <= 2000
+        && n.hilo[o.hilo.size()].nombre is string && n.hilo[o.hilo.size()].nombre.size() <= 120;
     }
     function ticketRespondidoValido() {
       return request.resource.data.diff(resource.data).affectedKeys()
@@ -361,7 +386,7 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       allow read: if esSoporte() || (request.auth != null && resource.data.clienteId == request.auth.uid);
       allow create: if request.auth != null && ticketNuevoValido(request.resource.data, ticketId);
-      allow update: if (esSoporte() && ticketRespondidoValido()) || ticketLeidoPorCliente();
+      allow update: if (esSoporte() && ticketRespondidoValido()) || ticketLeidoPorCliente() || ticketRespondidoPorCliente();
       allow delete: if false;
     }
 

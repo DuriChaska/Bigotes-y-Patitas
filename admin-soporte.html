@@ -219,7 +219,10 @@
       const hilo = Array.isArray(t.hilo) && t.hilo.length ? t.hilo
         : [{ de: 'cliente', nombre: t.clienteNombre, texto: t.mensaje, fecha: '' }].concat(
             t.respuesta ? [{ de: 'soporte', nombre: t.agente, texto: t.respuesta, fecha: '' }] : []);
-      $('t-hilo').innerHTML = hilo.map(m => `
+      const pedidoHtml = t.pedido && t.pedido.producto
+        ? `<div class="tk-pedido">📦 Producto de la queja: <strong>${esc(t.pedido.producto)}</strong>${t.pedido.cantidad > 1 ? ' ×' + Number(t.pedido.cantidad) : ''} · Pedido <strong>${esc(t.pedido.folio || t.pedido.ventaId)}</strong></div>`
+        : '';
+      $('t-hilo').innerHTML = pedidoHtml + hilo.map(m => `
         <div class="tk-msg ${m.de === 'soporte' ? 'soporte' : ''}">
           <div class="tk-msg-top">
             <strong>${m.de === 'soporte' ? '🎧 ' + esc(m.nombre || 'Soporte') : esc(m.nombre || 'Cliente')}</strong>
