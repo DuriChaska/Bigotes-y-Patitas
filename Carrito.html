@@ -126,8 +126,8 @@
     let productos;
     try {
       productos = await obtenerProductosScm();
-    } catch (err) {
-      console.error(err);
+    } catch {
+      (window.bpNotificar || (() => {}))('No se pudo revisar el stock actual (sin conexión). Se volverá a revisar al pagar.', 'error');
       return carrito; // sin conexión: se muestra el carrito tal cual, sin bloquear a la persona
     }
 
@@ -210,8 +210,7 @@
       guardarCupon(r.cupon);
       renderCart();
       alert("Cupón aplicado correctamente.");
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.");
     }
   }
@@ -228,7 +227,7 @@
       } else {
         guardarCupon(r.cupon);   // por si cambió su descuento
       }
-    } catch (err) { console.error(err); }
+    } catch { /* sin conexión: el cupón se vuelve a validar al pagar */ }
   }
 
   function renderCart() {

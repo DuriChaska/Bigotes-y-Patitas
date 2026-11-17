@@ -689,8 +689,8 @@
       let productos;
       try {
         productos = await obtenerProductosScm();
-      } catch (err) {
-        console.error(err);
+      } catch {
+        (window.bpNotificar || (() => {}))('No se pudo revisar el stock actual (sin conexión). Se revisará otra vez al confirmar el pago.', 'error');
         return carrito;
       }
 
@@ -1035,7 +1035,11 @@
         if (!pagoDetalle) return;
       } else if (clave === 'monedero') {
         // Se vuelve a leer el saldo por si cambió en otra pestaña (recarga u otra compra).
-        try { monedero = await obtenerMonedero(usuarioActual.uid); } catch (err) { console.error(err); }
+        try {
+          monedero = await obtenerMonedero(usuarioActual.uid);
+        } catch {
+          bpNotificar('No se pudo revisar tu saldo actualizado; se usa el último que cargó la página.', 'error');
+        }
         const saldo = Number(monedero?.saldo) || 0;
         pintarMonedero(resumen.total);
         if (saldo + 0.001 < resumen.total) {
@@ -1108,7 +1112,7 @@
             calle: valor('street'), ciudad: valor('city'), estado: valor('state'), cp: valor('zip'),
             telefono: valor('phone').replace(/\D/g, ''), referencias: valor('notes'),
             predeterminada: direccionesGuardadas.length === 0,
-          }, null, direccionesGuardadas).catch(err => console.error('[direcciones] No se pudo guardar:', err));
+          }, null, direccionesGuardadas).catch(() => bpNotificar('Tu compra sí se realizó, pero no se pudo guardar la dirección en tu cuenta.', 'error'));
         }
 
         const recibo = reciboDesdeVenta({
@@ -1135,7 +1139,6 @@
         mostrarConfirmacion(recibo, venta.saldoMonedero);
         enviarCorreo(recibo, direccionEnvio.correo || usuarioActual.email);
       } catch (err) {
-        console.error(err);
         alert(err.message || "No se pudo completar tu pedido. Intenta de nuevo.");
         // Si el problema fue de stock o precio, se refresca el carrito con los datos reales.
         if (/stock|agot|quedan|precio/i.test(err.message || '')) {
@@ -1143,7 +1146,7 @@
           renderSummary();
         }
         if (/saldo/i.test(err.message || '')) {
-          try { monedero = await obtenerMonedero(usuarioActual.uid); } catch (e) { console.error(e); }
+          try { monedero = await obtenerMonedero(usuarioActual.uid); } catch { /* el alert de arriba ya explicó el error */ }
           renderSummary();
         }
       } finally {
@@ -1204,8 +1207,7 @@
       try {
         await enviarReciboPorCorreo(recibo, correo);
         estado.textContent = `📧 Te enviamos el recibo a ${correo}.`;
-      } catch (err) {
-        console.error('[correo]', err);
+      } catch {
         estado.textContent = 'No pudimos enviar el recibo por correo, pero puedes reenviarlo desde "Ver mi pedido".';
       }
     }
@@ -1255,18 +1257,24 @@
       try {
         perfilCliente = await obtenerPerfilCliente(usuarioActual.uid);
         precargarDireccion(perfilCliente);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        (window.bpNotificar || (() => {}))('No se pudieron cargar tus datos. Escribe tu dirección de envío.', 'error');
       }
 
       // Etapa 4: monedero y direcciones guardadas (si fallan, el checkout sigue funcionando).
-      try { monedero = await obtenerMonedero(usuarioActual.uid); } catch (err) { console.error('[monedero]', err); }
+      try {
+        monedero = await obtenerMonedero(usuarioActual.uid);
+      } catch {
+        bpNotificar('No se pudo cargar tu monedero. Puedes pagar con otro método.', 'error');
+      }
       try {
         direccionesGuardadas = await obtenerDirecciones(usuarioActual.uid);
         pintarDireccionesGuardadas();
         const pred = direccionesGuardadas.find(d => d.predeterminada) || direccionesGuardadas[0];
         if (pred) usarDireccionGuardada(pred.id);
-      } catch (err) { console.error('[direcciones]', err); }
+      } catch {
+        bpNotificar('No se pudieron cargar tus direcciones guardadas. Escribe la dirección de envío.', 'error');
+      }
 
       configIva = await obtenerImpuestoIva();
       await sincronizarConStockReal();
@@ -1282,7 +1290,7 @@
           } else {
             localStorage.setItem("cuponAplicado", JSON.stringify(r.cupon));
           }
-        } catch (err) { console.error(err); }
+        } catch { /* sin conexión: el cupón se vuelve a validar dentro de la compra */ }
       }
 
       renderSummary();

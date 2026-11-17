@@ -152,7 +152,6 @@
           toast('Dirección eliminada.');
         }
       } catch (err) {
-        console.error(err);
         toast(mensajeError(err));
       }
     });
@@ -172,7 +171,6 @@
         toast(editando ? 'Dirección actualizada.' : 'Dirección guardada.');
         limpiarFormulario();
       } catch (err) {
-        console.error(err);
         avisoError('dir-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -192,7 +190,6 @@
         direcciones = lista;
         pintar();
       }, (err) => {
-        console.error(err);
         $('lista').innerHTML = '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus direcciones.</p>';
       });
     })();

@@ -162,9 +162,8 @@ import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, 
     try {
       const perfil = await obtenerPerfilCliente(user.uid);
       clienteHeader = perfil || { nombre: user.displayName || user.email };
-    } catch (err) {
-      console.error(err);
-      clienteHeader = { nombre: user.displayName || user.email };
+    } catch {
+      clienteHeader = { nombre: user.displayName || user.email };   // sin perfil: se usa el nombre de la cuenta
     }
     pintarHeaderFooter(clienteHeader);
 
@@ -172,12 +171,37 @@ import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, 
     cancelarTickets = escucharTicketsDeCliente(user.uid, (lista) => {
       const n = lista.filter(t => t.leidoCliente === false).length;
       if (n !== ticketsSinLeer) { ticketsSinLeer = n; pintarHeaderFooter(clienteHeader); }
-    }, (err) => console.error('No se pudieron leer los tickets:', err));
+    }, () => { /* sin tickets: solo no se muestra la alerta junto al nombre */ });
   });
-}).catch((err) => console.error('No se pudo cargar la sesión del cliente:', err));
+}).catch(() => {
+  window.bpNotificar('No se pudo conectar con tu cuenta. Revisa tu conexión y recarga la página.', 'error');
+});
+
+// Etapa 4: notificación en pantalla para toda la tienda (en lugar de mensajes en la consola).
+// tipo: 'info' (café) | 'error' (rojo) | 'ok' (verde). Uso: bpNotificar('Texto', 'error');
+window.bpNotificar = function (texto, tipo = 'info') {
+  let caja = document.getElementById('bp-notificacion');
+  if (!caja) {
+    caja = document.createElement('div');
+    caja.id = 'bp-notificacion';
+    caja.setAttribute('role', 'status');
+    caja.setAttribute('aria-live', 'polite');
+    caja.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:min(92vw,520px);'
+      + 'color:#fff;padding:12px 18px;border-radius:12px;font:14px/1.45 "DM Sans",sans-serif;'
+      + 'box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:99999;transition:opacity .3s;opacity:0;pointer-events:none;';
+    document.body.appendChild(caja);
+  }
+  caja.style.background = { error: '#a3322a', ok: '#2f6b3a' }[tipo] || '#4a3826';
+  caja.textContent = texto;
+  caja.style.opacity = '1';
+  clearTimeout(window.bpNotificar._t);
+  window.bpNotificar._t = setTimeout(() => { caja.style.opacity = '0'; }, 6500);
+};
 
 // Etapa 4: carrito guardado en la cuenta (Firebase), caducidad de 72 h y aviso de stock en vivo.
-import('./carrito-sync.js').catch((err) => console.error('No se pudo cargar la sincronización del carrito:', err));
+import('./carrito-sync.js').catch(() => {
+  window.bpNotificar('No se pudo conectar tu carrito con tu cuenta. Tu carrito se sigue guardando en este navegador.', 'error');
+});
 
 // ── LÓGICA DEL BADGE DEL CARRITO ──
 

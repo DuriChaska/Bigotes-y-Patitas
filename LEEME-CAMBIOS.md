@@ -35,7 +35,7 @@ que ya trae lo de compras/pagos (Brenda) y soporte (Axel).
 | `firestore.rules` | Reglas de `monederos`, `monedero_movimientos`, `direcciones`, `carritos`; venta con monedero solo si se descontó el saldo | Todos |
 | `Checkout.html` | Monedero real en vez de "Puntos (500)", direcciones guardadas, marca el carrito como Comprado, `<div id="footer">` que faltaba | Brenda |
 | `Carrito.html` | Se repinta si el carrito cambia por fuera (stock, caducidad, otro dispositivo) + nota de 72 h | Brenda |
-| `components.js` | Carga `carrito-sync.js` | — |
+| `components.js` | Carga `carrito-sync.js` y define `bpNotificar()` (notificación en pantalla) | — |
 | `carpeta.html` | `guardarCarrito` ahora avisa al badge y a la sincronización | — |
 | `login.html` | "¿Olvidaste tu contraseña?" | — |
 | `Interfaz Cliente - Perfil.html` | Saldo del monedero y botones a las pantallas nuevas | — |
@@ -45,9 +45,18 @@ que ya trae lo de compras/pagos (Brenda) y soporte (Axel).
 | `DOCUMENTACION-TECNICA.md` | Secciones **12** (cuenta y monedero) y **13** (carrito persistente) | — |
 | `SETUP-FIREBASE.md` | Pasos al final | — |
 
+## Sin mensajes en consola
+
+En todos los archivos de esta carpeta se quitaron los `console.log` / `console.error`, también los que ya
+traían Carrito, Checkout, Perfil, components, admin-components y firebase-db. Si algo falla, la persona ve una
+**notificación en pantalla** (abajo al centro: roja si es error) o el mensaje dentro del formulario. Los fallos
+que no le afectan (como el contador de tickets) se ignoran en silencio. Detalle en `DOCUMENTACION-TECNICA.md` §13.6.
+
+Los demás archivos del proyecto que no vienen en esta carpeta todavía tienen mensajes de consola de etapas anteriores.
+
 ## Lo que se probó
 
-Las pantallas se probaron en Chrome con una copia de Firebase simulada en memoria (70 revisiones, 0 fallas):
+Las pantallas se probaron en Chrome con una copia de Firebase simulada en memoria (70 revisiones, 0 fallas, y la consola sin mensajes al provocar errores):
 - recarga, compra con monedero, saldo insuficiente y reembolso al cancelar;
 - direcciones, mis pedidos, mis datos y "olvidé mi contraseña";
 - roles del panel;

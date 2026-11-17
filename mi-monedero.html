@@ -250,7 +250,6 @@
         pintarMontos();
         if (volverA) $('btn-volver-pago').style.display = 'block';
       } catch (err) {
-        console.error(err);
         avisoError('recarga-error', mensajeError(err, 'No se pudo hacer la recarga.'));
       } finally {
         enviando = false;
@@ -348,16 +347,15 @@
       try {
         monedero = await asegurarMonedero({ uid, nombre: sesion.nombre, correo: sesion.usuario.email });
       } catch (err) {
-        console.error(err);
         avisoError('recarga-error', mensajeError(err, 'No se pudo abrir tu monedero.'));
       }
       if (monedero && faltante > 0) {
         $('otro-monto').value = Math.max(MONEDERO.recargaMinima, Math.ceil(faltante - (Number(monedero.saldo) || 0)));
         actualizarTextoMonto();
       }
-      escucharMonedero(uid, (m) => { monedero = m || monedero; pintarMonedero(); }, (err) => console.error(err));
+      escucharMonedero(uid, (m) => { monedero = m || monedero; pintarMonedero(); },
+        () => toast('Se perdió la conexión con tu monedero. Recarga la página para ver tu saldo actualizado.'));
       escucharMovimientosMonedero(uid, (lista) => { movimientos = lista; pintarMovimientos(); }, (err) => {
-        console.error(err);
         $('tabla-movimientos').innerHTML = '<tr><td colspan="5" style="color:#b3261e;">No se pudo cargar tu historial.</td></tr>';
       });
       if (window.location.hash === '#historial') $('caja-historial').scrollIntoView();

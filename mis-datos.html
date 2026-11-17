@@ -130,7 +130,6 @@
         toast('Datos actualizados');
         $('sesion-nombre').textContent = $('d-nombre').value.trim();
       } catch (err) {
-        console.error(err);
         avisoError('datos-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -153,7 +152,6 @@
         ['p-actual', 'p-nueva', 'p-confirma'].forEach(id => { $(id).value = ''; });
         mostrarOk('pass-ok');
       } catch (err) {
-        console.error(err);
         avisoError('pass-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -166,7 +164,6 @@
         await enviarCorreoRecuperacion(correo);
         toast(`Enlace enviado a ${correo}. Revisa también tu carpeta de spam.`);
       } catch (err) {
-        console.error(err);
         avisoError('pass-error', mensajeError(err));
       }
     });
@@ -185,7 +182,6 @@
         $('c-pass').value = '';
         mostrarOk('correo-ok', `✓ Enviamos un enlace a ${nuevo}. Ábrelo y después vuelve a iniciar sesión con tu correo nuevo.`);
       } catch (err) {
-        console.error(err);
         avisoError('correo-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -203,7 +199,9 @@
           aviso.style.display = 'flex';
           pintar(await obtenerPerfilCliente(sesion.usuario.uid));
         }
-      } catch (err) { console.error('[correo] No se pudo sincronizar:', err); }
+      } catch {
+        toast('Tu correo nuevo ya está activo, pero no se pudo actualizar en tu perfil. Vuelve a entrar más tarde.');
+      }
     })();
   </script>
 </body>

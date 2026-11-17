@@ -667,6 +667,10 @@ export function escucharVentasDeCliente(uid, callback, onError) {
 
 export const IVA_POR_DEFECTO = Object.freeze({ id: "iva", nombre: "IVA", tasa: 16, activo: true, incluidoEnPrecio: false });
 
+// Notificación en pantalla (la define components.js en la tienda); en páginas sin ella no hace nada.
+const notificar = (texto, tipo = "error") => {
+  if (typeof window !== "undefined" && typeof window.bpNotificar === "function") window.bpNotificar(texto, tipo);
+};
 const redondear2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const dineroTxt = (n) => `$${redondear2(n).toFixed(2)}`;
 
@@ -675,8 +679,8 @@ export async function obtenerImpuestoIva() {
   try {
     const snap = await getDoc(doc(db, "impuestos", "iva"));
     return snap.exists() ? { ...IVA_POR_DEFECTO, ...snap.data(), id: "iva" } : { ...IVA_POR_DEFECTO };
-  } catch (err) {
-    console.error("[impuestos] No se pudo leer el IVA, se usa 16%:", err);
+  } catch {
+    notificar("No se pudo leer el IVA configurado; se calcula con 16%.");
     return { ...IVA_POR_DEFECTO };
   }
 }
@@ -945,8 +949,9 @@ export async function crearVenta(datosVenta, productosActuales) { // eslint-disa
       referenciaPago,
       iva: ivaCalc.iva,
     });
-  } catch (err) {
-    console.error("[Etapa 4] La compra se guardó, pero no se pudo sincronizar con pagos/CRM/ERP:", err);
+  } catch {
+    // La compra ya quedó guardada (venta + stock); lo que falló es el registro en pagos/CRM/ERP.
+    notificar("Tu compra quedó registrada. Algunos datos de tu cuenta se actualizarán más tarde.", "info");
   }
   return { id: ventaRef.id, folio, referenciaPago, estadoPago, total: ivaCalc.totalConIva, iva: ivaCalc.iva, tasaIva: ivaCalc.tasa, ivaIncluido: ivaCalc.incluido, saldoMonedero };
 }

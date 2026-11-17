@@ -845,7 +845,7 @@ Equivalencia con los endpoints del PDF:
 | `admin-carritos.html` (nuevo) | Panel (administrador y ventas): carritos activos, **abandonados** (activos sin cambios en 24 h), comprados y expirados, con lo que tiene cada uno y enlace a la ficha del cliente en el CRM. |
 | `firebase-db.js` | `CARRITO`, `obtenerCarritoRemoto`, `escucharCarritoRemoto`, `guardarCarritoRemoto`, `escucharCarritos`. |
 | `firestore.rules` | `carritos/{uid}` y `detalle`: solo el dueño escribe (con validación de cantidad y precio); ventas/admin leen. |
-| `components.js` | Carga `carrito-sync.js`. |
+| `components.js` | Carga `carrito-sync.js` y define `bpNotificar(texto, tipo)`: la notificación en pantalla de toda la tienda (ver §13.6). |
 | `Carrito.html` | Se repinta con `carritoCambioExterno`; aviso de las 72 h. |
 | `Checkout.html` | Al pagar marca el carrito como `Comprado`; el resumen se repinta si el carrito cambia por fuera. |
 | `carpeta.html` | Su `guardarCarrito` ahora también lanza `actualizarCarrito` (antes no avisaba). |
@@ -872,3 +872,16 @@ Equivalencia con los endpoints del PDF:
 - Sin sesión, el carrito sigue solo en el navegador (con caducidad y aviso de stock, pero sin copia en Firebase).
 - Las reglas no comparan la cantidad del carrito contra el stock: eso se avisa en la pantalla y se garantiza
   al pagar, dentro de la transacción de `crearVenta()`.
+
+### 13.6 Errores: notificación en pantalla, no mensajes en consola
+
+En las pantallas de la Etapa 4 (y en los archivos de la tienda que esta entrega modifica) **no se usa
+`console.log` ni `console.error`**. Cuando algo falla:
+
+- si el error le importa a la persona, se le avisa **en pantalla**: con `bpNotificar(texto, 'error' | 'info' | 'ok')`
+  en la tienda, `toast()` / el aviso del formulario en "Mi cuenta", y la tabla o `mostrarToast()` en el panel;
+- si no le afecta (por ejemplo, el contador de tickets sin leer), se ignora en silencio con un comentario
+  que explica por qué.
+
+Los errores de conexión del carrito se avisan **una sola vez** (no en cada intento) hasta que vuelva a funcionar.
+

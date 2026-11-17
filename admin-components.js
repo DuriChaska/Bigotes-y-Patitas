@@ -260,8 +260,8 @@ function activarAlertaTicketsMenu(rol) {
         b.textContent = pendientes;
         b.title = pendientes + ' ticket(s) en espera de respuesta';
       });
-    }, (err) => console.error('[soporte] No se pudieron leer los tickets:', err));
-  }).catch((err) => console.error(err));
+    }, () => { /* sin conexión: solo no se muestra el número de tickets en espera */ });
+  }).catch(() => { /* idem */ });
 }
 
 function cerrarSesionAdmin(e) {

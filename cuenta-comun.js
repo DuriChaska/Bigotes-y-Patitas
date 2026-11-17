@@ -87,7 +87,11 @@ export async function iniciarCuenta(pagina, idMenu) {
     return null;
   }
   let perfil = null;
-  try { perfil = await obtenerPerfilCliente(usuario.uid); } catch (err) { console.error(err); }
+  try {
+    perfil = await obtenerPerfilCliente(usuario.uid);
+  } catch {
+    toast('No se pudieron cargar los datos de tu perfil. Revisa tu conexión.');
+  }
   const nombre = perfil?.nombre || usuario.displayName || usuario.email;
   const chip = document.getElementById('sesion-nombre');
   if (chip) chip.textContent = nombre;
@@ -98,7 +102,7 @@ export async function iniciarCuenta(pagina, idMenu) {
       const sinLeer = lista.filter(t => t.leidoCliente === false).length;
       if (typeof pintarMenuCuenta === 'function') pintarMenuCuenta(idMenu, sinLeer);
     }, () => {});
-  } catch (err) { console.error(err); }
+  } catch { /* sin tickets: solo no se muestra la alerta del menú */ }
 
   return { usuario, perfil, nombre };
 }

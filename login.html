@@ -83,7 +83,6 @@
         // Por seguridad no se dice si el correo existe o no.
         olvideMsg.textContent = `Si ${correo} tiene una cuenta, te llegará un enlace en unos minutos (revisa también spam).`;
       } catch (err) {
-        console.error(err);
         olvideMsg.style.color = '#c0392b';
         olvideMsg.textContent = err.code === 'auth/too-many-requests'
           ? 'Demasiados intentos. Espera un momento.'
@@ -106,7 +105,6 @@
         await loginCliente(correo, pass);
         window.location.href = next || 'Interfaz Cliente - Perfil.html';
       } catch (err) {
-        console.error(err);
         error.textContent = ERRORES_FIREBASE[err.code] || 'No se pudo iniciar sesión. Revisa tu conexión.';
         error.style.display = 'block';
         boton.disabled = false;

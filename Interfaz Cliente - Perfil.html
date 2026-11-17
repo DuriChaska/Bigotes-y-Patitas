@@ -319,7 +319,7 @@
     });
 
     async function cerrarSesion() {
-      try { await logoutCliente(); } catch (err) { console.error(err); }
+      try { await logoutCliente(); } catch { /* de todos modos se manda al login */ }
       window.location.href = "login.html";
     }
 
@@ -383,8 +383,8 @@
       let perfil = null;
       try {
         perfil = await obtenerPerfilCliente(usuario.uid);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        (window.bpNotificar || (() => {}))('No se pudieron cargar los datos de tu perfil. Revisa tu conexión.', 'error');
       }
       pintarPerfil(perfil, usuario);
 
@@ -397,12 +397,15 @@
           abiertoPorEnlace = true;
           abrirCompras();
         }
-      }, (err) => console.error(err));
+      }, () => (window.bpNotificar || (() => {}))('No se pudieron cargar tus compras. Revisa tu conexión.', 'error'));
 
       // Saldo del monedero (Etapa 4): se actualiza solo si recarga o paga en otra pestaña.
       escucharMonedero(usuario.uid, (m) => {
         document.getElementById("saldoMonedero").textContent = formatearMoneda(m ? m.saldo : 0);
-      }, (err) => console.error(err));
+      }, () => {
+        document.getElementById("saldoMonedero").textContent = "No disponible";
+        if (window.bpNotificar) bpNotificar("No se pudo cargar el saldo de tu monedero.", "error");
+      });
 
       inicializarDatosPublicaciones();
       actualizarResumenPublicaciones();

@@ -57,21 +57,17 @@ function escribirLocal(items, motivo) {
   window.dispatchEvent(new CustomEvent('carritoCambioExterno', { detail: { motivo } }));
 }
 
-function aviso(texto) {
-  let caja = document.getElementById('bp-aviso-carrito');
-  if (!caja) {
-    caja = document.createElement('div');
-    caja.id = 'bp-aviso-carrito';
-    caja.setAttribute('role', 'status');
-    caja.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:min(92vw,520px);'
-      + 'background:#4a3826;color:#fff;padding:12px 18px;border-radius:12px;font:14px/1.45 "DM Sans",sans-serif;'
-      + 'box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:99999;transition:opacity .3s;';
-    document.body.appendChild(caja);
-  }
-  caja.innerHTML = '🛒 ' + texto;
-  caja.style.opacity = '1';
-  clearTimeout(aviso._t);
-  aviso._t = setTimeout(() => { caja.style.opacity = '0'; }, 6500);
+/** Notificación en pantalla (la de components.js). */
+function aviso(texto, tipo = 'info') {
+  if (typeof window.bpNotificar === 'function') window.bpNotificar('🛒 ' + texto, tipo);
+}
+
+// Los errores de conexión se avisan UNA vez (no en cada intento) hasta que vuelva a funcionar.
+const erroresAvisados = new Set();
+function avisoError(clave, texto) {
+  if (erroresAvisados.has(clave)) return;
+  erroresAvisados.add(clave);
+  aviso(texto, 'error');
 }
 
 // ---------- 1. caducidad ----------
@@ -121,8 +117,9 @@ async function subir() {
     pendiente = false;
     estadoPendiente = undefined;
     if (ventaComprada) localStorage.removeItem(CLAVE_COMPRADO);
-  } catch (err) {
-    console.error('[carrito] No se pudo guardar en tu cuenta:', err);
+    erroresAvisados.delete('subir');
+  } catch {
+    avisoError('subir', 'No se pudo guardar tu carrito en tu cuenta. Revisa tu conexión; mientras tanto se guarda en este navegador.');
   }
 }
 
@@ -152,7 +149,11 @@ async function alIniciarSesion(user) {
   localStorage.setItem(CLAVE_DUENO, user.uid);
 
   let remoto = null;
-  try { remoto = await obtenerCarritoRemoto(user.uid); } catch (err) { console.error('[carrito]', err); }
+  try {
+    remoto = await obtenerCarritoRemoto(user.uid);
+  } catch {
+    avisoError('leer', 'No se pudo recuperar el carrito guardado en tu cuenta. Revisa tu conexión.');
+  }
   const local = leer();
   const juntos = juntar(local, remoto?.items || []);
   if (huella(juntos) !== huella(local)) {
@@ -177,7 +178,7 @@ async function alIniciarSesion(user) {
     if (pendiente || h === huella(leer())) return;
     ultimoSubido = h + '|';
     escribirLocal(remotoItems, 'otro-dispositivo');
-  }, (err) => console.error('[carrito]', err));
+  }, () => avisoError('escuchar', 'Se perdió la conexión con tu cuenta: los cambios de tu carrito en otros dispositivos no se verán aquí.'));
 }
 
 function alCerrarSesion() {
@@ -226,7 +227,7 @@ function vigilarStock() {
       programarSubida();
       if (mensajes.length) aviso(mensajes.join(' '));
     }
-  }, (err) => console.error('[carrito] No se pudo vigilar el stock:', err));
+  }, () => avisoError('stock', 'No se pudo revisar el stock en vivo. Al pagar se vuelve a revisar que haya piezas.'));
 }
 
 // ---------- arranque ----------
@@ -247,6 +248,6 @@ window.addEventListener('storage', (e) => {
 });
 
 observarSesionCliente((user) => {
-  if (user) alIniciarSesion(user).catch(err => console.error('[carrito]', err));
+  if (user) alIniciarSesion(user).catch(() => avisoError('sesion', 'No se pudo sincronizar tu carrito con tu cuenta.'));
   else alCerrarSesion();
 });
