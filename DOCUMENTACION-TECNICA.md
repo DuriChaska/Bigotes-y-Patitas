@@ -845,7 +845,7 @@ Equivalencia con los endpoints del PDF:
 | `admin-carritos.html` (nuevo) | Panel (administrador y ventas): carritos activos, **abandonados** (activos sin cambios en 24 h), comprados y expirados, con lo que tiene cada uno y enlace a la ficha del cliente en el CRM. |
 | `firebase-db.js` | `CARRITO`, `obtenerCarritoRemoto`, `escucharCarritoRemoto`, `guardarCarritoRemoto`, `escucharCarritos`. |
 | `firestore.rules` | `carritos/{uid}` y `detalle`: solo el dueño escribe (con validación de cantidad y precio); ventas/admin leen. |
-| `components.js` | Carga `carrito-sync.js`. |
+| `components.js` | Carga `carrito-sync.js` y define `bpNotificar(texto, tipo)`: la notificación en pantalla de toda la tienda (ver §13.6). |
 | `Carrito.html` | Se repinta con `carritoCambioExterno`; aviso de las 72 h. |
 | `Checkout.html` | Al pagar marca el carrito como `Comprado`; el resumen se repinta si el carrito cambia por fuera. |
 | `carpeta.html` | Su `guardarCarrito` ahora también lanza `actualizarCarrito` (antes no avisaba). |
@@ -872,3 +872,60 @@ Equivalencia con los endpoints del PDF:
 - Sin sesión, el carrito sigue solo en el navegador (con caducidad y aviso de stock, pero sin copia en Firebase).
 - Las reglas no comparan la cantidad del carrito contra el stock: eso se avisa en la pantalla y se garantiza
   al pagar, dentro de la transacción de `crearVenta()`.
+
+### 13.6 Ventanas emergentes propias y cero mensajes en consola
+
+**Ningún archivo del proyecto usa ya `alert()`, `confirm()`, `prompt()` ni `console.*`.** Esas ventanas
+del navegador decían "localhost:5500 dice", no se podían adaptar al diseño y se veían distintas en cada
+navegador.
+
+`dialogos.js` (nuevo) define tres ventanas con el diseño de la tienda. Todas devuelven una promesa, así que
+se usan con `await`:
+
+| Función | Reemplaza a | Devuelve |
+|---|---|---|
+| `bpAlerta(texto, { tipo, titulo })` | `alert()` | nada; se cumple al cerrar |
+| `bpConfirmar(texto, { titulo, aceptar, cancelar, peligro })` | `confirm()` | `true` (Aceptar) o `false` (Cancelar, Esc o clic fuera) |
+| `bpPedirTexto(texto, { valor, tipoCampo })` | `prompt()` | lo escrito, o `null` si se canceló |
+| `bpNotificar(texto, 'error' \| 'info' \| 'ok')` | `console.error` en errores de fondo | aviso pequeño abajo que se quita solo |
+
+- `tipo`: `info`, `exito`, `error`, `aviso`, `pregunta` (cambia el ícono y el color de la franja de arriba).
+- `peligro: true` pinta el botón en rojo y deja el foco en **Cancelar**, para que un Enter sin querer no borre nada.
+- Teclado: **Enter** acepta, **Esc** cancela, y **Tab** se queda dentro de la ventana. Al cerrar, el foco
+  regresa a donde estaba.
+- Si se piden dos ventanas al mismo tiempo, salen una después de otra.
+- En la tienda se carga con `<script src="dialogos.js"></script>` en el `<head>` de cada página que lo usa.
+  En el panel lo carga solo `admin-auth-guard.js`, así que cualquier página nueva del panel ya lo tiene.
+
+Para los errores:
+- si le importan a la persona, se avisan en pantalla (en el formulario, con `bpAlerta` o con `bpNotificar`);
+- si no le afectan (por ejemplo, el contador de tickets), se ignoran en silencio con un comentario.
+
+Los errores de conexión del carrito se avisan una sola vez hasta que vuelva a funcionar.
+
+### 13.7 Foto de perfil del cliente
+
+Antes, el perfil mostraba la misma foto fija (`Imagenes/Kim.jpg`) a **todos** los clientes. Ahora:
+
+- **Sin foto se ve el ícono genérico de perfil** (silueta), en el Perfil, en "Mis datos" y en el ícono del
+  menú de arriba.
+- El cliente puede **agregar, cambiar o quitar** su foto. Puede hacerlo con el botón "📷 Agregar foto" o
+  haciendo clic en el círculo, en el Perfil o en "Mis datos".
+- La imagen se recorta al centro en cuadro y se reduce a **256×256 JPEG** en el navegador (pesa entre 3 y
+  60 KB). Acepta JPG, PNG, WEBP o GIF de hasta 8 MB.
+- Ya con foto, el ícono del menú superior muestra la foto del cliente.
+
+```
+fotos_perfil/{uid}        ← una foto por cliente (id = uid)
+  foto: "data:image/jpeg;base64,..."   (máx. ~200 KB de texto, revisado en las reglas)
+  actualizadoEn
+```
+
+- Está en una colección **aparte** de `clientes` para que las listas del CRM no carguen fotos.
+- No se usa Firebase Storage porque en proyectos nuevos exige el plan de pago (Blaze).
+- Reglas: solo el dueño la crea, cambia o borra; el personal (ventas/admin) puede verla.
+- Archivos:
+  - `foto-perfil.js` (nuevo): ícono genérico, `reducirFoto()` y `montarFotoPerfil()`.
+  - `firebase-db.js`: `escucharFotoPerfil`, `guardarFotoPerfil`, `quitarFotoPerfil`.
+  - `Interfaz Cliente - Perfil.html`, `mis-datos.html`, `components.js` (ícono del menú), `styles.css`
+    y `firestore.rules`.

@@ -309,14 +309,14 @@
       const o = ordenes.find(x => x.id === detalleId);
       if (!o) return;
       const nuevo = btn.dataset.estado;
-      if (nuevo === 'Cancelada' && !confirm(`¿Cancelar la orden ${o.folio || ''}? Los productos regresarán al inventario.`)) return;
+      if (nuevo === 'Cancelada' && !(await bpConfirmar(`¿Cancelar la orden ${o.folio || ''}? Los productos regresarán al inventario${o.metodoPagoClave === 'monedero' ? ' y el dinero regresará al monedero del cliente' : ''}.`, { titulo: 'Cancelar orden', aceptar: 'Cancelar orden', cancelar: 'No cancelar', peligro: true }))) return;
+      if (cambiando) return;
       cambiando = true;
       btn.disabled = true;
       try {
         await cambiarEstadoOrdenErp(o, nuevo, window.BP_SESION);
         toast(nuevo === 'Cancelada' ? 'Orden cancelada y stock devuelto al inventario' : `Orden marcada como ${nuevo}`);
       } catch (err) {
-        console.error(err);
         toast(err.code === 'permission-denied'
           ? 'Permiso denegado. Revisa las reglas de Firestore.'
           : (err.message || 'No se pudo cambiar el estado.'), 6000);
@@ -354,7 +354,6 @@
           }
         },
         (err) => {
-          console.error(err);
           cargado    = true;
           errorCarga = err.code === 'permission-denied'
             ? 'Permiso denegado. Revisa las reglas de Firestore.'

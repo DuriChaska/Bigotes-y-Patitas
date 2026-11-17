@@ -120,7 +120,6 @@
     $('f-estado').addEventListener('change', pintar);
     document.addEventListener('bp-sesion-lista', () => {
       escucharCarritos((lista) => { carritos = lista; pintar(); }, (err) => {
-        console.error(err);
         $('tabla').innerHTML = '<tr><td colspan="7" style="color:var(--admin-danger,#dc2626);">No se pudieron leer los carritos (¿ya publicaste firestore.rules?).</td></tr>';
       });
       setInterval(pintar, 60 * 1000);   // "abandonado" depende de la hora actual

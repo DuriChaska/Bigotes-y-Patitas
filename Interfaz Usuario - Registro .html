@@ -12,28 +12,34 @@
 
   <section class="client-interface registration">
     <h2>Registro Usuario</h2>
-    <form class="registration-form" id="registerForm">
+    <!-- novalidate: las revisiones las hace registro.js para mostrar los mensajes en español y en un solo lugar -->
+    <form class="registration-form" id="registerForm" novalidate>
       <div class="input-group">
-        <input type="text" placeholder="Nombre" />
-        <input type="text" placeholder="Apellidos" />
+        <input type="text" id="reg-nombre" placeholder="Nombre" autocomplete="given-name" maxlength="60" required />
+        <input type="text" id="reg-apellidos" placeholder="Apellidos" autocomplete="family-name" maxlength="60" required />
       </div>
-      <input type="email" placeholder="Correo" />
-      <input type="password" placeholder="Contraseña" />
-      <input type="password" placeholder="Confirmar Contraseña" />
+      <input type="email" id="reg-correo" placeholder="Correo" autocomplete="email" maxlength="120" required />
+      <input type="tel" id="reg-telefono" placeholder="Teléfono (10 dígitos)" autocomplete="tel" inputmode="numeric" required />
+      <input type="text" id="reg-mascota" placeholder="Nombre de tu mascota (opcional)" maxlength="60" />
+      <input type="password" id="reg-pass" placeholder="Contraseña (mínimo 6 caracteres)" autocomplete="new-password" minlength="6" required />
+      <input type="password" id="reg-pass2" placeholder="Confirmar Contraseña" autocomplete="new-password" minlength="6" required />
       <button type="submit">REGISTRARSE</button>
-      <p id="registerMessage" style="display:none; color:#054704; margin-top:15px;">
+      <p id="registerError" role="alert" style="display:none; color:#b3261e; margin-top:15px;"></p>
+      <p id="registerMessage" role="status" style="display:none; color:#054704; margin-top:15px;">
         ¡Cuenta creada! Ya iniciaste sesión, te llevamos a la tienda...
       </p>
     </form>
     <p style="margin-top:1rem; font-size:.9rem;">
       ¿Ya tienes cuenta?
-      <a href="#" id="linkLogin" style="color:var(--pink-medio); font-weight:600;">Inicia sesión aquí</a>
+      <a href="login.html" id="linkLogin" style="color:var(--pink-medio); font-weight:600;">Inicia sesión aquí</a>
     </p>
   </section>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script src="registro.js"></script>
+  <!-- type="module" es obligatorio: registro.js usa "import" (sin esto el navegador no lo ejecuta
+       y el formulario solo recarga la página sin registrar a nadie). -->
+  <script type="module" src="registro.js"></script>
 </body>
 </html>

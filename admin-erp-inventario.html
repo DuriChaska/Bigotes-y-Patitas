@@ -159,7 +159,7 @@
       if (iniciado || !sesion) return;
       iniciado = true;
       pintar();
-      escucharProductosScm((lista) => { productos = lista; cargado = true; pintar(); }, (err) => console.error(err));
+      escucharProductosScm((lista) => { productos = lista; cargado = true; pintar(); }, () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error'));
     }
     if (window.BP_SESION) iniciar(window.BP_SESION);
     else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });

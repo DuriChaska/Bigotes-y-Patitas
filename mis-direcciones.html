@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mis direcciones - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -38,8 +39,8 @@
               <div><label for="f-estado">Estado</label><input type="text" id="f-estado" maxlength="80" /></div>
             </div>
             <div class="cta-fila">
-              <div><label for="f-cp">Código postal</label><input type="text" id="f-cp" maxlength="5" inputmode="numeric" /></div>
-              <div><label for="f-telefono">Teléfono</label><input type="tel" id="f-telefono" maxlength="10" inputmode="numeric" /></div>
+              <div><label for="f-cp">Código postal</label><input type="text" id="f-cp" inputmode="numeric" /></div>
+              <div><label for="f-telefono">Teléfono</label><input type="tel" id="f-telefono" inputmode="numeric" placeholder="10 dígitos" /></div>
             </div>
             <label for="f-pais">País</label>
             <input type="text" id="f-pais" maxlength="60" value="México" />
@@ -79,8 +80,9 @@
     let direcciones = [];
     let editando = null;     // id de la dirección que se está editando (null = nueva)
 
-    ['f-cp', 'f-telefono'].forEach(id => $(id).addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '');
+    // Solo números (se quitan guiones y espacios ANTES de recortar al largo permitido).
+    [['f-cp', 5], ['f-telefono', 10]].forEach(([id, largo]) => $(id).addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, largo);
     }));
 
     function leerFormulario() {
@@ -146,13 +148,12 @@
           await marcarDireccionPredeterminada(sesion.usuario.uid, id, direcciones);
           toast(`"${d.alias}" es ahora tu dirección predeterminada.`);
         } else if (b.dataset.accion === 'borrar') {
-          if (!confirm(`¿Eliminar la dirección "${d.alias || d.calle}"? Esta acción no se puede deshacer.`)) return;
+          if (!(await bpConfirmar(`¿Eliminar la dirección "${d.alias || d.calle}"? Esta acción no se puede deshacer.`, { titulo: 'Eliminar dirección', aceptar: 'Eliminar', peligro: true }))) return;
           await eliminarDireccion(sesion.usuario.uid, id, direcciones);
           if (editando === id) limpiarFormulario();
           toast('Dirección eliminada.');
         }
       } catch (err) {
-        console.error(err);
         toast(mensajeError(err));
       }
     });
@@ -172,7 +173,6 @@
         toast(editando ? 'Dirección actualizada.' : 'Dirección guardada.');
         limpiarFormulario();
       } catch (err) {
-        console.error(err);
         avisoError('dir-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -192,7 +192,6 @@
         direcciones = lista;
         pintar();
       }, (err) => {
-        console.error(err);
         $('lista').innerHTML = '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus direcciones.</p>';
       });
     })();

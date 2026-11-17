@@ -352,7 +352,6 @@
         }
         cerrarModal();
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
       }
       boton.disabled = false;
@@ -368,12 +367,11 @@
       if (boton.dataset.accion === 'editar') {
         abrirModal(pedido);
       } else if (boton.dataset.accion === 'eliminar') {
-        if (!confirm(`¿Eliminar el pedido ${pedido.folio}? Esta acción no se puede deshacer.`)) return;
+        if (!(await bpConfirmar(`¿Eliminar el pedido ${pedido.folio}? Esta acción no se puede deshacer.`, { titulo: 'Eliminar pedido', aceptar: 'Eliminar', peligro: true }))) return;
         try {
           await eliminarPedidoScm(id);
           mostrarToast(`Pedido ${pedido.folio} eliminado`);
         } catch (err) {
-          console.error(err);
           mostrarToast('No se pudo eliminar. Revisa tu conexión y los permisos en Firebase.');
         }
       }
@@ -403,7 +401,7 @@
           mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
         }
       } catch (err) {
-        console.error('No se pudo generar la reposición automática:', err);
+        bpNotificar('No se pudo generar el pedido de reposición automática. Revisa los permisos en Firebase.', 'error');
       } finally {
         revisandoReposicion = false;
       }
@@ -419,12 +417,11 @@
         productos = lista;
         pintarBannerStockBajo(productos, 'panelFiltrosPedidos');
         revisarReposicionAutomatica();
-      }, (err) => console.error(err));
-      escucharProveedoresScm((lista) => { proveedores = lista; }, (err) => console.error(err));
+      }, () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error'));
+      escucharProveedoresScm((lista) => { proveedores = lista; }, () => bpNotificar('No se pudieron cargar los proveedores. Revisa tu conexión y los permisos en Firebase.', 'error'));
       escucharPedidosScm(
         (lista) => { pedidos = lista; cargado = true; errorCarga = null; pintar(); revisarReposicionAutomatica(); },
         (err) => {
-          console.error(err);
           cargado = true;
           errorCarga = err && err.code === 'permission-denied'
             ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'

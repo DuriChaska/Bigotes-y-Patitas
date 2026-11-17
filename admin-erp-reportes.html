@@ -213,7 +213,6 @@
         pintarDona(m.inventario);
         if (typeof pintarIconosBP === 'function') pintarIconosBP();
       } catch (err) {
-        console.error(err);
         toast(err.code === 'permission-denied'
           ? 'Permiso denegado en Firebase. Revisa las reglas de Firestore.'
           : 'No se pudieron cargar los reportes. Revisa tu conexión.', 6000);
@@ -226,7 +225,6 @@
       iniciado = true;
       cargar();
       escucharOperacionesErp(pintarActividad, err => {
-        console.error(err);
         $('rep-actividad').innerHTML = '<p style="color:var(--gray);font-size:.85rem;">No se pudo cargar la actividad.</p>';
       }, 8);
     }

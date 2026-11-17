@@ -235,7 +235,6 @@
         cerrarModal();
         mostrarToast(`Movimiento de ${tipo.toLowerCase()} registrado para ${prod.nombre}`);
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
       }
       boton.disabled = false;
@@ -276,12 +275,11 @@
       pintarMovimientos();
       escucharProductosScm(
         (lista) => { productos = lista; llenarSelectProductos(); },
-        (err) => console.error(err)
+        () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error')
       );
       escucharMovimientosScm(
         (lista) => { movimientos = lista; cargado = true; errorCarga = null; pintarMovimientos(); },
         (err) => {
-          console.error(err);
           cargado = true;
           errorCarga = err && err.code === 'permission-denied'
             ? 'permiso denegado. Publica firestore.rules y entra con una cuenta de administrador.'

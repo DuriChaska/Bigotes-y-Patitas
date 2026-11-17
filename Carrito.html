@@ -28,6 +28,7 @@
   .nota-iva { font-size: 12px; color: #777; margin-top: 4px; }
   </style>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -126,8 +127,8 @@
     let productos;
     try {
       productos = await obtenerProductosScm();
-    } catch (err) {
-      console.error(err);
+    } catch {
+      (window.bpNotificar || (() => {}))('No se pudo revisar el stock actual (sin conexión). Se volverá a revisar al pagar.', 'error');
       return carrito; // sin conexión: se muestra el carrito tal cual, sin bloquear a la persona
     }
 
@@ -157,7 +158,7 @@
 
     if (avisos.length) {
       guardarCarrito(ajustado);
-      alert(avisos.join('\n'));
+      bpAlerta(avisos.join('\n'), { tipo: 'aviso', titulo: 'Ajustamos tu carrito' });
     }
     return ajustado;
   }
@@ -202,17 +203,16 @@
   async function aplicarCuponDesdeCarrito() {
     const input = document.getElementById("coupon-code");
     const codigo = input.value.trim().toUpperCase();
-    if (!codigo) { alert("Ingresa un código."); return; }
+    if (!codigo) { await bpAlerta("Ingresa un código.", { tipo: 'aviso' }); return; }
 
     try {
       const r = await validarCupon(codigo);
-      if (!r.ok) { alert(r.motivo); return; }
+      if (!r.ok) { await bpAlerta(r.motivo, { tipo: 'error', titulo: 'Cupón no válido' }); return; }
       guardarCupon(r.cupon);
       renderCart();
-      alert("Cupón aplicado correctamente.");
-    } catch (err) {
-      console.error(err);
-      alert("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.");
+      bpAlerta("Cupón aplicado correctamente.", { tipo: 'exito' });
+    } catch {
+      bpAlerta("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.", { tipo: 'error' });
     }
   }
 
@@ -224,11 +224,11 @@
       const r = await validarCupon(guardado.codigo);
       if (!r.ok) {
         localStorage.removeItem("cuponAplicado");
-        alert(`El cupón ${guardado.codigo} ya no está vigente y se quitó de tu carrito.`);
+        bpAlerta(`El cupón ${guardado.codigo} ya no está vigente y se quitó de tu carrito.`, { tipo: 'aviso', titulo: 'Cupón vencido' });
       } else {
         guardarCupon(r.cupon);   // por si cambió su descuento
       }
-    } catch (err) { console.error(err); }
+    } catch { /* sin conexión: el cupón se vuelve a validar al pagar */ }
   }
 
   function renderCart() {
@@ -318,9 +318,9 @@
     // El "+" nunca puede pasar el stock real del producto.
     const stock = stockPorId.has(item.id) ? stockPorId.get(item.id) : null;
     if (delta > 0 && stock !== null && nueva > stock) {
-      alert(stock <= 0
+      bpAlerta(stock <= 0
         ? `"${item.nombre}" se agotó.`
-        : `Solo ${stock === 1 ? 'queda 1 pieza' : `quedan ${stock} piezas`} de "${item.nombre}".`);
+        : `Solo ${stock === 1 ? 'queda 1 pieza' : `quedan ${stock} piezas`} de "${item.nombre}".`, { tipo: 'aviso', titulo: 'Sin más piezas' });
       return;
     }
     item.cantidad = nueva;
@@ -328,21 +328,28 @@
     renderCart();
   }
 
-  function eliminarItem(index) {
-    let carrito = obtenerCarrito();
-    const item = carrito[index];
+  async function eliminarItem(index) {
+    const item = obtenerCarrito()[index];
     if (!item) return;
-    if (!confirm(`¿Seguro que quieres quitar "${item.nombre}" de tu carrito?`)) return;
-    carrito.splice(index, 1);
+    const ok = await bpConfirmar(`¿Seguro que quieres quitar "${item.nombre}" de tu carrito?`,
+      { titulo: 'Quitar producto', aceptar: 'Quitar', cancelar: 'Conservar', peligro: true });
+    if (!ok) return;
+    // Se vuelve a leer: mientras la ventana estaba abierta el carrito pudo cambiar (stock, otro dispositivo).
+    const carrito = obtenerCarrito();
+    const pos = carrito.findIndex(i => i.id === item.id);
+    if (pos === -1) return;
+    carrito.splice(pos, 1);
     guardarCarrito(carrito);
     renderCart();
   }
 
-  function vaciarCarrito() {
+  async function vaciarCarrito() {
     const carrito = obtenerCarrito();
     if (carrito.length === 0) return;
     const piezas = carrito.reduce((t, i) => t + Number(i.cantidad), 0);
-    if (!confirm(`¿Seguro que quieres vaciar tu carrito? Se quitarán ${piezas} pieza${piezas !== 1 ? 's' : ''}. Esta acción no se puede deshacer.`)) return;
+    const ok = await bpConfirmar(`¿Seguro que quieres vaciar tu carrito? Se quitarán ${piezas} pieza${piezas !== 1 ? 's' : ''}. Esta acción no se puede deshacer.`,
+      { titulo: 'Vaciar carrito', aceptar: 'Vaciar carrito', cancelar: 'Cancelar', peligro: true });
+    if (!ok) return;
     localStorage.removeItem("cuponAplicado");
     guardarCarrito([]);
     renderCart();

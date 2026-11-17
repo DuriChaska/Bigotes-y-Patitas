@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Comunidad - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 
   <style>
     /* ⭐ estrellas */
@@ -86,12 +87,12 @@
       const texto = input.value.trim();
 
       if (!texto) {
-        alert("Por favor, escribe un comentario.");
+        bpAlerta("Por favor, escribe un comentario.", { tipo: 'aviso' });
         return;
       }
 
       if (calificacionSeleccionada === 0) {
-        alert("Selecciona una calificación.");
+        bpAlerta("Selecciona una calificación.", { tipo: 'aviso' });
         return;
       }
 

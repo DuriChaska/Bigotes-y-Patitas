@@ -197,7 +197,7 @@
     window.cambiarRol = cambiarRol;
 
     async function eliminarUsuario(uid, nombre) {
-      if (!confirm(`¿Quitarle el acceso al panel a ${nombre}? Podrá seguir existiendo su cuenta de correo, pero ya no podrá entrar.`)) return;
+      if (!(await bpConfirmar(`¿Quitarle el acceso al panel a ${nombre}? Podrá seguir existiendo su cuenta de correo, pero ya no podrá entrar.`, { titulo: 'Quitar acceso', aceptar: 'Quitar acceso', peligro: true }))) return;
       try {
         await eliminarPerfilUsuario(uid);
         mostrarToast(`Se quitó el acceso de ${nombre}`);

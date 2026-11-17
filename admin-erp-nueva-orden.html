@@ -678,7 +678,6 @@
         irPaso(5);
 
       } catch (err) {
-        console.error(err);
         $('procTitulo').textContent = 'No se pudo registrar la orden';
         pintarProceso(pasoActual, true);
         $('procError').classList.remove('hidden');
@@ -692,7 +691,7 @@
       if (iniciado || !sesion) return;
       iniciado = true;
       escucharClientes(lista => { clientes = lista; });
-      escucharProductosScm(lista => { productos = lista; }, err => console.error(err));
+      escucharProductosScm(lista => { productos = lista; }, () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error'));
     }
 
     if (window.BP_SESION) iniciar(window.BP_SESION);

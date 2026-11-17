@@ -268,11 +268,14 @@ export function escucharTodasInteracciones(callback) {
 }
 
 /** Escucha únicamente las interacciones de un cliente. */
-export function escucharInteraccionesDeCliente(clienteId, callback) {
-  const q = query(interaccionesRef, where("clienteId", "==", clienteId), orderBy("creadoEn", "desc"));
+// Igual que las ventas: se ordena aquí para no necesitar un índice compuesto en Firebase.
+export function escucharInteraccionesDeCliente(clienteId, callback, onError) {
+  const q = query(interaccionesRef, where("clienteId", "==", clienteId));
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.creadoEn) - milisDe(a.creadoEn));
+    callback(lista);
+  }, onError);
 }
 
 export function crearInteraccion(datos) {
@@ -651,10 +654,14 @@ export async function crearMovimientoScm(datos, stockActual) {
 const ventasRef = collection(db, "ventas");
 
 /** Escucha en tiempo real las ventas de UN cliente (para su historial de compras). */
+// Solo filtra por cliente y ordena aquí (más nueva primero): where + orderBy en campos distintos
+// obligaba a crear un índice compuesto en Firebase y, sin él, "Mis pedidos" no cargaba.
 export function escucharVentasDeCliente(uid, callback, onError) {
-  const q = query(ventasRef, where("clienteId", "==", uid), orderBy("creadoEn", "desc"));
+  const q = query(ventasRef, where("clienteId", "==", uid));
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.creadoEn) - milisDe(a.creadoEn));
+    callback(lista);
   }, onError);
 }
 
@@ -667,6 +674,10 @@ export function escucharVentasDeCliente(uid, callback, onError) {
 
 export const IVA_POR_DEFECTO = Object.freeze({ id: "iva", nombre: "IVA", tasa: 16, activo: true, incluidoEnPrecio: false });
 
+// Notificación en pantalla (la define components.js en la tienda); en páginas sin ella no hace nada.
+const notificar = (texto, tipo = "error") => {
+  if (typeof window !== "undefined" && typeof window.bpNotificar === "function") window.bpNotificar(texto, tipo);
+};
 const redondear2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const dineroTxt = (n) => `$${redondear2(n).toFixed(2)}`;
 
@@ -675,8 +686,8 @@ export async function obtenerImpuestoIva() {
   try {
     const snap = await getDoc(doc(db, "impuestos", "iva"));
     return snap.exists() ? { ...IVA_POR_DEFECTO, ...snap.data(), id: "iva" } : { ...IVA_POR_DEFECTO };
-  } catch (err) {
-    console.error("[impuestos] No se pudo leer el IVA, se usa 16%:", err);
+  } catch {
+    notificar("No se pudo leer el IVA configurado; se calcula con 16%.");
     return { ...IVA_POR_DEFECTO };
   }
 }
@@ -945,8 +956,9 @@ export async function crearVenta(datosVenta, productosActuales) { // eslint-disa
       referenciaPago,
       iva: ivaCalc.iva,
     });
-  } catch (err) {
-    console.error("[Etapa 4] La compra se guardó, pero no se pudo sincronizar con pagos/CRM/ERP:", err);
+  } catch {
+    // La compra ya quedó guardada (venta + stock); lo que falló es el registro en pagos/CRM/ERP.
+    notificar("Tu compra quedó registrada. Algunos datos de tu cuenta se actualizarán más tarde.", "info");
   }
   return { id: ventaRef.id, folio, referenciaPago, estadoPago, total: ivaCalc.totalConIva, iva: ivaCalc.iva, tasaIva: ivaCalc.tasa, ivaIncluido: ivaCalc.incluido, saldoMonedero };
 }
@@ -2204,4 +2216,32 @@ export function escucharCarritos(callback, onError) {
   return onSnapshot(collection(db, "carritos"), (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, onError);
+}
+
+// =====================================================================
+// ---------- Etapa 4 · Foto de perfil del cliente ----------
+// =====================================================================
+//   fotos_perfil/{uid}  { foto: "data:image/jpeg;base64,...", actualizadoEn }
+// La foto se reduce en el navegador a 256×256 (JPEG, ~20-60 KB) y se guarda como texto en
+// Firestore, en una colección APARTE de "clientes" para que las listas del CRM no carguen
+// fotos. No se usa Firebase Storage porque en proyectos nuevos exige el plan de pago (Blaze).
+// Sin foto, las pantallas muestran el ícono genérico de perfil.
+
+/** Escucha la foto de perfil del cliente (callback recibe el texto de la imagen o "" si no tiene). */
+export function escucharFotoPerfil(uid, callback, onError) {
+  return onSnapshot(doc(db, "fotos_perfil", uid), (snap) => {
+    callback(snap.exists() ? (snap.data().foto || "") : "");
+  }, onError);
+}
+
+/** Guarda (o reemplaza) la foto. dataUrl debe venir de reducirFoto() (foto-perfil.js). */
+export async function guardarFotoPerfil(uid, dataUrl) {
+  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(dataUrl || "")) throw new Error("La imagen no es válida.");
+  if (dataUrl.length > 200000) throw new Error("La imagen es demasiado pesada.");
+  await setDoc(doc(db, "fotos_perfil", uid), { foto: dataUrl, actualizadoEn: serverTimestamp() });
+}
+
+/** Quita la foto: vuelve a verse el ícono genérico. */
+export function quitarFotoPerfil(uid) {
+  return deleteDoc(doc(db, "fotos_perfil", uid));
 }

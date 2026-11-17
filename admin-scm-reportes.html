@@ -146,8 +146,8 @@
       try {
         const m = await calcularMetricasScm();
         pintarDashboard(m);
-      } catch (err) {
-        console.error(err);
+      } catch {
+        bpNotificar('No se pudieron calcular los reportes. Revisa tu conexión y los permisos en Firebase.', 'error');
       }
     }
 

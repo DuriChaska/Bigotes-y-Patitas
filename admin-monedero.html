@@ -333,7 +333,7 @@
       if (!clienteId) return mostrarError('Elige un cliente.');
       if (!(monto > 0)) return mostrarError('Escribe un monto mayor a $0.');
       if (motivo.length < 5) return mostrarError('Escribe el motivo (mínimo 5 letras).');
-      if (!confirm(`${efecto === 'abono' ? 'Sumar' : 'Restar'} ${dinero(monto)} ${efecto === 'abono' ? 'al' : 'del'} monedero de ${nombre}?`)) return;
+      if (!(await bpConfirmar(`¿${efecto === 'abono' ? 'Sumar' : 'Restar'} ${dinero(monto)} ${efecto === 'abono' ? 'al' : 'del'} monedero de ${nombre}?\nMotivo: ${motivo}`, { titulo: tipo === 'Recarga' ? 'Recarga manual' : 'Ajuste de saldo', aceptar: efecto === 'abono' ? 'Sumar saldo' : 'Restar saldo', peligro: efecto === 'cargo' }))) return;
 
       const boton = $('btn-ajuste');
       boton.disabled = true;
@@ -343,7 +343,6 @@
         $('a-monto').value = '';
         $('a-motivo').value = '';
       } catch (err) {
-        console.error(err);
         mostrarError(err.code === 'permission-denied'
           ? 'Firebase no lo permitió: publica las reglas actualizadas (firestore.rules).'
           : (err.message || 'No se pudo registrar el movimiento.'));
@@ -361,14 +360,12 @@
         monederos = lista;
         pintarKpis(); pintarMonederos(); pintarSelectorClientes(); pintarMovimientos();
       }, (err) => {
-        console.error(err);
         $('tabla-monederos').innerHTML = '<tr><td colspan="5" style="color:var(--admin-danger,#dc2626);">No se pudieron leer los monederos (¿ya publicaste firestore.rules?).</td></tr>';
       });
       escucharMovimientosMonederoTodos((lista) => {
         movimientos = lista;
         pintarKpis(); pintarMovimientos(); pintarGrafica();
       }, (err) => {
-        console.error(err);
         $('tabla-movs').innerHTML = '<tr><td colspan="8" style="color:var(--admin-danger,#dc2626);">No se pudo leer el historial.</td></tr>';
       });
       if (esAdmin) {

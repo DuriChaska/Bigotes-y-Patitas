@@ -276,7 +276,6 @@
         }
         cerrarModal();
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
       }
       boton.disabled = false;
@@ -305,11 +304,10 @@
           mostrarToast(`No se puede eliminar "${prov.nombre}": tiene ${n} producto${n === 1 ? '' : 's'} asociado${n === 1 ? '' : 's'}. Cámbialos de proveedor primero.`, 5500);
           return;
         }
-        if (!confirm(`¿Eliminar a "${prov.nombre}" de la lista de proveedores? Esta acción no se puede deshacer.`)) return;
+        if (!(await bpConfirmar(`¿Eliminar a "${prov.nombre}" de la lista de proveedores? Esta acción no se puede deshacer.`, { titulo: 'Eliminar proveedor', aceptar: 'Eliminar', peligro: true }))) return;
         await eliminarProveedorScm(id);
         mostrarToast(`Proveedor "${prov.nombre}" eliminado`);
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudo eliminar. Revisa tu conexión y los permisos en Firebase.');
       } finally {
         boton.disabled = false;
@@ -323,7 +321,6 @@
         await cargarProveedoresScmEjemplo(EJEMPLOS_PROVEEDORES);
         mostrarToast('Proveedores de ejemplo cargados');
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudieron cargar los ejemplos. Revisa los permisos en Firebase.');
         if (boton) boton.disabled = false;
       }
@@ -340,7 +337,6 @@
       escucharProveedoresScm(
         (lista) => { proveedores = lista; cargado = true; errorCarga = null; pintar(); },
         (err) => {
-          console.error(err);
           cargado = true;
           errorCarga = err && err.code === 'permission-denied'
             ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'

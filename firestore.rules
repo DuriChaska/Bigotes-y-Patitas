@@ -590,6 +590,19 @@ service cloud.firestore {
       }
     }
 
+    // ---- Foto de perfil del cliente (Etapa 4) ----
+    // fotos_perfil/{uid}: solo el dueño la cambia o la quita; el personal la ve en el CRM.
+    // Solo se acepta una imagen JPEG reducida (máximo ~200 KB de texto).
+    match /fotos_perfil/{uid} {
+      allow read: if (request.auth != null && request.auth.uid == uid) || esStaff();
+      allow create, update: if request.auth != null && request.auth.uid == uid
+                            && request.resource.data.keys().hasOnly(['foto', 'actualizadoEn'])
+                            && request.resource.data.foto is string
+                            && request.resource.data.foto.size() <= 200000
+                            && request.resource.data.foto.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Cualquier otra colección queda bloqueada por defecto.
     match /{document=**} {
       allow read, write: if false;

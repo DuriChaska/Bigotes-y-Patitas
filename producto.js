@@ -182,7 +182,6 @@ escucharProductosScm(
     else pintarNoEncontrado();
   },
   (err) => {
-    console.error(err);
     mostrarToast("No se pudo cargar el producto. Revisa tu conexión.", "error");
   }
 );

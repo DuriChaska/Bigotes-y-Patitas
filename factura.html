@@ -262,6 +262,7 @@
       .invoice-header, .chip, .ref-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
+<script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -424,7 +425,6 @@
           if (!venta) { mostrarVacio("No encontramos ese pedido."); return; }
           pintarRecibo(reciboDesdeVenta(venta));
         } catch (err) {
-          console.error(err);
           mostrarVacio("No tienes permiso para ver este pedido o no hay conexión.");
         }
         return;
@@ -447,8 +447,9 @@
         estado.textContent = "El envío por correo aún no está activado en la tienda. Usa \"Descargar PDF\".";
         return;
       }
-      const correo = prompt("¿A qué correo te enviamos el recibo?", reciboActual.correo || "");
-      if (correo === null) return;
+      const correo = await bpPedirTexto("¿A qué correo te enviamos el recibo?",
+        { valor: reciboActual.correo || "", tipoCampo: "email", titulo: "Enviar recibo", aceptar: "Enviar", placeholder: "nombre@correo.com" });
+      if (correo === null || !correo.trim()) return;
       const boton = document.getElementById("btn-correo");
       boton.disabled = true;
       estado.textContent = "Enviando…";
@@ -456,7 +457,6 @@
         await enviarReciboPorCorreo(reciboActual, correo);
         estado.textContent = `📧 Recibo enviado a ${correo}.`;
       } catch (err) {
-        console.error(err);
         estado.textContent = err.message || "No se pudo enviar el correo. Intenta de nuevo.";
       } finally {
         boton.disabled = false;

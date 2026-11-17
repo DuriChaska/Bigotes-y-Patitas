@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mis datos - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -26,12 +27,20 @@
         <!-- Datos de contacto -->
         <div class="cta-card">
           <h3>Perfil del usuario</h3>
+          <div class="foto-perfil-wrap compacta">
+            <img id="fotoPerfil" alt="Foto de perfil" class="foto-perfil sin-foto" title="Cambiar foto de perfil" />
+            <div class="foto-perfil-acciones">
+              <button type="button" id="btnCambiarFoto" class="foto-perfil-btn">📷 Agregar foto</button>
+              <button type="button" id="btnQuitarFoto" class="foto-perfil-btn quitar" style="display:none;">Quitar foto</button>
+              <small>JPG o PNG. Se recorta en cuadro automáticamente.</small>
+            </div>
+          </div>
           <form id="form-datos" novalidate>
             <label for="d-nombre">Nombre completo</label>
             <input type="text" id="d-nombre" maxlength="120" autocomplete="name" />
 
             <label for="d-telefono">Teléfono (10 dígitos)</label>
-            <input type="tel" id="d-telefono" maxlength="14" inputmode="numeric" autocomplete="tel" />
+            <input type="tel" id="d-telefono" inputmode="numeric" autocomplete="tel" />
 
             <label for="d-mascota">Nombre de tu mascota</label>
             <input type="text" id="d-mascota" maxlength="60" placeholder="Opcional" />
@@ -94,6 +103,7 @@
       sincronizarCorreoCliente, enviarCorreoRecuperacion, obtenerPerfilCliente,
     } from './firebase-db.js';
     import { iniciarCuenta, toast, avisoError, mensajeError, RE_CORREO, esc } from './cuenta-comun.js';
+    import { montarFotoPerfil } from './foto-perfil.js';
 
     const $ = (id) => document.getElementById(id);
     let sesion = null;
@@ -130,7 +140,6 @@
         toast('Datos actualizados');
         $('sesion-nombre').textContent = $('d-nombre').value.trim();
       } catch (err) {
-        console.error(err);
         avisoError('datos-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -153,7 +162,6 @@
         ['p-actual', 'p-nueva', 'p-confirma'].forEach(id => { $(id).value = ''; });
         mostrarOk('pass-ok');
       } catch (err) {
-        console.error(err);
         avisoError('pass-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -161,12 +169,11 @@
 
     $('btn-olvide').addEventListener('click', async () => {
       const correo = sesion.usuario.email;
-      if (!confirm(`Te enviaremos un enlace a ${correo} para crear una contraseña nueva. ¿Continuar?`)) return;
+      if (!(await bpConfirmar(`Te enviaremos un enlace a ${correo} para crear una contraseña nueva. ¿Continuar?`, { titulo: 'Restablecer contraseña', aceptar: 'Enviar enlace' }))) return;
       try {
         await enviarCorreoRecuperacion(correo);
         toast(`Enlace enviado a ${correo}. Revisa también tu carpeta de spam.`);
       } catch (err) {
-        console.error(err);
         avisoError('pass-error', mensajeError(err));
       }
     });
@@ -185,7 +192,6 @@
         $('c-pass').value = '';
         mostrarOk('correo-ok', `✓ Enviamos un enlace a ${nuevo}. Ábrelo y después vuelve a iniciar sesión con tu correo nuevo.`);
       } catch (err) {
-        console.error(err);
         avisoError('correo-error', mensajeError(err));
       }
       boton.disabled = false;
@@ -195,6 +201,7 @@
       sesion = await iniciarCuenta('mis-datos.html', 'datos');
       if (!sesion) return;
       pintar(sesion.perfil);
+      montarFotoPerfil({ img: $('fotoPerfil'), btnCambiar: $('btnCambiarFoto'), btnQuitar: $('btnQuitarFoto'), uid: sesion.usuario.uid });
       // Si ya confirmó el enlace de cambio de correo, el perfil del CRM se pone al día solo.
       try {
         if (await sincronizarCorreoCliente(sesion.usuario.uid, sesion.perfil)) {
@@ -203,7 +210,9 @@
           aviso.style.display = 'flex';
           pintar(await obtenerPerfilCliente(sesion.usuario.uid));
         }
-      } catch (err) { console.error('[correo] No se pudo sincronizar:', err); }
+      } catch {
+        toast('Tu correo nuevo ya está activo, pero no se pudo actualizar en tu perfil. Vuelve a entrar más tarde.');
+      }
     })();
   </script>
 </body>
