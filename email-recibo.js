@@ -26,9 +26,9 @@
 // ============================================
 
 export const EMAILJS_CONFIG = {
-  publicKey:  "",   // ej. "AbCdEfGhIjKlMnOp"
-  serviceId:  "",   // ej. "service_abc123"
-  templateId: "",   // ej. "template_xyz789"
+  publicKey:  "NVwUghzHqOM-2CaC9",
+  serviceId:  "service_5i0wsc6",
+  templateId: "template_jl19tgn",
 };
 
 const URL_EMAILJS = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
