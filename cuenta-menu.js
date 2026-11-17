@@ -15,10 +15,10 @@
 
 const ITEMS_CUENTA = [
   { id: 'cuenta',      label: 'Mi cuenta',           icono: '👤', href: 'Interfaz Cliente - Perfil.html' },
-  { id: 'pedidos',     label: 'Mis pedidos',         icono: '📦', href: 'Interfaz Cliente - Perfil.html#pedidos' },
-  { id: 'monedero',    label: 'Mi monedero',         icono: '👛', href: null },   // pendiente (integrante 2)
-  { id: 'datos',       label: 'Mis datos',           icono: '🪪', href: null },   // pendiente (integrante 2)
-  { id: 'direcciones', label: 'Direcciones',         icono: '📍', href: null },   // pendiente (integrante 2)
+  { id: 'pedidos',     label: 'Mis pedidos',         icono: '📦', href: 'mis-pedidos.html' },
+  { id: 'monedero',    label: 'Mi monedero',         icono: '👛', href: 'mi-monedero.html' },
+  { id: 'datos',       label: 'Mis datos',           icono: '🪪', href: 'mis-datos.html' },
+  { id: 'direcciones', label: 'Direcciones',         icono: '📍', href: 'mis-direcciones.html' },
   { id: 'atencion',    label: 'Atención a clientes', icono: '🎧', href: 'atencion-clientes.html' },
 ];
 

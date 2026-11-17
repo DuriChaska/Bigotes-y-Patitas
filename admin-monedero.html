@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monedero de clientes - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+  <style>
+    .mn-layout { display: grid; grid-template-columns: 7fr 5fr; gap: 20px; align-items: start; margin-top: 20px; }
+    .mn-abono { color: var(--admin-green, #2f6b3a); font-weight: 700; }
+    .mn-cargo { color: var(--admin-danger, #dc2626); font-weight: 700; }
+    .mn-id { font-family: monospace; font-size: .72rem; color: var(--gray); }
+    .mn-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .mn-solo-admin-aviso { background: #fcefd0; color: #7a5a10; border-radius: 10px; padding: 10px 12px; font-size: .82rem; }
+    .mn-fila-sel td { background: #fbf6ec; }
+    #form-ajuste .admin-form-group input, #form-ajuste .admin-form-group select, #form-ajuste .admin-form-group textarea { width: 100%; }
+    @media (max-width: 1000px) { .mn-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<!-- data-roles: administrador (consulta y ajusta) y ventas/vendedor (solo consulta y reportes) -->
+<body data-roles="administrador,vendedor">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Monedero de clientes</h1>
+          <p class="admin-breadcrumb">Panel de administración · Consulta de saldos, recargas manuales, ajustes y reportes de uso</p>
+        </div>
+      </div>
+
+      <!-- Reportes rápidos -->
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon green" data-bp-icon="wallet"></div></div>
+          <div class="stat-num" id="k-saldo">$0.00</div>
+          <div class="stat-label">Saldo total en monederos</div>
+          <div class="stat-delta up" id="k-monederos">0 monederos</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon blue" data-bp-icon="plus"></div></div>
+          <div class="stat-num" id="k-recargado">$0.00</div>
+          <div class="stat-label">Total recargado</div>
+          <div class="stat-delta up" id="k-recargas">0 recargas</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon yellow" data-bp-icon="clipboard"></div></div>
+          <div class="stat-num" id="k-gastado">$0.00</div>
+          <div class="stat-label">Pagado con monedero</div>
+          <div class="stat-delta up" id="k-pagos">0 compras</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon orange" data-bp-icon="warning"></div></div>
+          <div class="stat-num" id="k-bajo">0</div>
+          <div class="stat-label">Clientes con saldo bajo</div>
+          <div class="stat-delta warn">Menos de $100</div>
+        </div>
+      </div>
+
+      <div class="mn-layout">
+        <!-- Saldos por cliente -->
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <h2>Saldos por cliente</h2>
+            <span class="admin-count-pill" id="conteo-monederos">0</span>
+          </div>
+          <p class="panel-sub">Colección <code>monederos</code> (un monedero por cliente; el id es el mismo del cliente).</p>
+          <div class="mn-filtros">
+            <div class="admin-search" style="flex:1; min-width:180px;">
+              <span data-bp-icon="search"></span>
+              <input type="text" id="buscar" placeholder="Buscar cliente…" />
+            </div>
+            <select id="orden" class="admin-select">
+              <option value="saldo">Mayor saldo</option>
+              <option value="nombre">Nombre (A-Z)</option>
+              <option value="reciente">Movimiento más reciente</option>
+            </select>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Cliente</th><th style="text-align:right;">Saldo</th><th style="text-align:right;">Recargado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Acciones</th></tr></thead>
+              <tbody id="tabla-monederos"><tr><td colspan="5" style="color:var(--gray);">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recarga manual / ajuste -->
+        <div class="admin-panel">
+          <div class="admin-panel-head"><h2>Recarga manual o ajuste</h2></div>
+          <p class="panel-sub">Cada cambio queda en el historial con tu nombre y el motivo. El saldo nunca puede quedar negativo.</p>
+          <div class="mn-solo-admin-aviso" id="aviso-solo-admin" style="display:none;">
+            Solo un <b>administrador</b> puede recargar o ajustar saldos. Con tu rol puedes consultar saldos, movimientos y reportes.
+          </div>
+          <form id="form-ajuste" novalidate>
+            <div class="admin-form-group">
+              <label for="a-cliente">Cliente</label>
+              <select id="a-cliente" class="admin-select"></select>
+            </div>
+            <div class="admin-form-group">
+              <label for="a-tipo">Tipo de movimiento</label>
+              <select id="a-tipo" class="admin-select">
+                <option value="Recarga|abono">Recarga manual (+ suma saldo)</option>
+                <option value="Ajuste|abono">Ajuste a favor (+ suma saldo)</option>
+                <option value="Ajuste|cargo">Ajuste en contra (− resta saldo)</option>
+              </select>
+            </div>
+            <div class="admin-form-group">
+              <label for="a-monto">Monto ($)</label>
+              <input type="number" id="a-monto" min="1" step="0.01" placeholder="0.00" />
+            </div>
+            <div class="admin-form-group">
+              <label for="a-motivo">Motivo</label>
+              <textarea id="a-motivo" rows="3" maxlength="300" placeholder="Ej. Compensación por pedido CC-261114-AB12 llegado dañado (ticket T-105)"></textarea>
+            </div>
+            <p id="a-saldo" style="font-size:.82rem; color:var(--gray);"></p>
+            <p id="a-error" style="color:var(--admin-danger,#dc2626); font-size:.82rem; display:none;"></p>
+            <button type="submit" class="admin-btn-primary" id="btn-ajuste">Registrar movimiento</button>
+          </form>
+
+          <div style="margin-top:22px;">
+            <h2 style="font-size:1rem;">Recargas vs. pagos (últimos 6 meses)</h2>
+            <div id="grafica-meses"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial de movimientos -->
+      <div class="admin-panel" style="margin-top:20px;">
+        <div class="admin-panel-head">
+          <h2>Historial de movimientos</h2>
+          <span class="admin-count-pill" id="conteo-movs">0</span>
+        </div>
+        <p class="panel-sub">Colección <code>monedero_movimientos</code>: solo se agregan, nunca se editan ni se borran. Últimos 200.</p>
+        <div class="mn-filtros">
+          <select id="f-tipo" class="admin-select">
+            <option value="">Todos los tipos</option>
+            <option>Recarga</option><option>Pago</option><option>Reembolso</option><option>Ajuste</option>
+          </select>
+          <span id="f-cliente-chip" style="display:none;" class="admin-tag info"></span>
+          <button type="button" class="admin-btn-secondary" id="btn-quitar-filtro" style="display:none;">Ver todos los clientes</button>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Fecha</th><th>ID</th><th>Cliente</th><th>Tipo</th><th>Detalle</th><th>Registró</th><th style="text-align:right;">Monto</th><th style="text-align:right;">Saldo</th></tr></thead>
+            <tbody id="tabla-movs"><tr><td colspan="8" style="color:var(--gray);">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script src="admin-charts.js"></script>
+  <script type="module">
+    import {
+      escucharMonederos, escucharMovimientosMonederoTodos, ajustarMonedero, escucharClientes, MONEDERO,
+    } from './firebase-db.js';
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const dinero = (n) => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const aFecha = (v) => (v && typeof v.toDate === 'function') ? v.toDate() : (v ? new Date(v) : null);
+    const fechaHora = (v) => { const f = aFecha(v); return f && !isNaN(f) ? f.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : ''; };
+
+    let esAdmin = false;
+    let monederos = [];
+    let movimientos = [];
+    let clientes = [];          // del CRM, para poder recargar a quien aún no tiene monedero
+    let clienteFiltro = '';     // id del cliente cuyos movimientos se están viendo
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 3000);
+    }
+    function mostrarError(msg) { const e = $('a-error'); e.textContent = msg; e.style.display = msg ? '' : 'none'; }
+
+    // ---------- Reportes ----------
+    function pintarKpis() {
+      const saldoTotal = monederos.reduce((s, m) => s + (Number(m.saldo) || 0), 0);
+      const recargado = monederos.reduce((s, m) => s + (Number(m.totalRecargado) || 0), 0);
+      const gastado = monederos.reduce((s, m) => s + (Number(m.totalGastado) || 0), 0);
+      $('k-saldo').textContent = dinero(saldoTotal);
+      $('k-monederos').textContent = `${monederos.length} monedero${monederos.length === 1 ? '' : 's'}`;
+      $('k-recargado').textContent = dinero(recargado);
+      $('k-gastado').textContent = dinero(gastado);
+      $('k-bajo').textContent = monederos.filter(m => (Number(m.saldo) || 0) < MONEDERO.saldoBajo).length;
+      $('k-recargas').textContent = `${movimientos.filter(m => m.tipo === 'Recarga').length} recargas recientes`;
+      $('k-pagos').textContent = `${movimientos.filter(m => m.tipo === 'Pago').length} compras recientes`;
+    }
+
+    function pintarGrafica() {
+      if (!window.BPCharts) return;
+      const meses = [];
+      const hoy = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const f = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+        meses.push({ clave: `${f.getFullYear()}-${f.getMonth()}`, etiqueta: f.toLocaleDateString('es-MX', { month: 'short' }), rec: 0, pag: 0 });
+      }
+      movimientos.forEach(m => {
+        const f = aFecha(m.creadoEn) || (m.fecha ? new Date(m.fecha + 'T12:00:00') : null);
+        if (!f || isNaN(f)) return;
+        const mes = meses.find(x => x.clave === `${f.getFullYear()}-${f.getMonth()}`);
+        if (!mes) return;
+        if (m.tipo === 'Recarga') mes.rec += Number(m.monto) || 0;
+        if (m.tipo === 'Pago') mes.pag += Number(m.monto) || 0;
+      });
+      BPCharts.montar($('grafica-meses'), {
+        id: 'monedero-meses',
+        titulo: 'Recargas vs pagos con monedero por mes',
+        tipo: 'barras',
+        series: [{ nombre: 'Recargas', color: '#6b8f71' }, { nombre: 'Pagos', color: '#d97b4f' }],
+        datos: meses.map(m => ({ etiqueta: m.etiqueta, valores: [Math.round(m.rec), Math.round(m.pag)] })),
+        formato: (v) => '$' + Number(v).toLocaleString('es-MX'),
+        vacio: 'Todavía no hay recargas ni pagos con monedero.',
+      });
+    }
+
+    // ---------- Saldos ----------
+    function pintarMonederos() {
+      const texto = $('buscar').value.trim().toLowerCase();
+      const orden = $('orden').value;
+      const lista = monederos
+        .filter(m => !texto || String(m.clienteNombre || '').toLowerCase().includes(texto) || m.id.toLowerCase().includes(texto))
+        .sort((a, b) => orden === 'nombre' ? String(a.clienteNombre).localeCompare(String(b.clienteNombre))
+          : orden === 'reciente' ? ((aFecha(b.actualizadoEn)?.getTime() || 0) - (aFecha(a.actualizadoEn)?.getTime() || 0))
+          : (Number(b.saldo) || 0) - (Number(a.saldo) || 0));
+      $('conteo-monederos').textContent = monederos.length;
+      $('tabla-monederos').innerHTML = lista.length ? lista.map(m => {
+        const bajo = (Number(m.saldo) || 0) < MONEDERO.saldoBajo;
+        return `<tr class="${m.id === clienteFiltro ? 'mn-fila-sel' : ''}">
+          <td><strong>${esc(m.clienteNombre || 'Cliente')}</strong><br><span class="mn-id">${esc(m.id)}</span></td>
+          <td style="text-align:right;"><strong>${dinero(m.saldo)}</strong>${bajo ? '<br><span class="admin-tag warn">Saldo bajo</span>' : ''}</td>
+          <td style="text-align:right;">${dinero(m.totalRecargado)}</td>
+          <td style="text-align:right;">${dinero(m.totalGastado)}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <button type="button" class="admin-btn-secondary" data-ver="${esc(m.id)}">Movimientos</button>
+            ${esAdmin ? `<button type="button" class="admin-btn-secondary" data-ajustar="${esc(m.id)}">Ajustar</button>` : ''}
+          </td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="5" style="color:var(--gray);">${monederos.length ? 'Ningún cliente coincide con la búsqueda.' : 'Aún ningún cliente ha abierto su monedero.'}</td></tr>`;
+    }
+
+    $('buscar').addEventListener('input', pintarMonederos);
+    $('orden').addEventListener('change', pintarMonederos);
+    $('tabla-monederos').addEventListener('click', (e) => {
+      const ver = e.target.closest('[data-ver]');
+      const aj = e.target.closest('[data-ajustar]');
+      if (ver) {
+        clienteFiltro = ver.dataset.ver;
+        pintarMonederos();
+        pintarMovimientos();
+        $('tabla-movs').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (aj) {
+        $('a-cliente').value = aj.dataset.ajustar;
+        pintarSaldoElegido();
+        $('a-monto').focus();
+      }
+    });
+
+    // ---------- Movimientos ----------
+    function pintarMovimientos() {
+      const tipo = $('f-tipo').value;
+      const lista = movimientos.filter(m => (!tipo || m.tipo === tipo) && (!clienteFiltro || m.clienteId === clienteFiltro));
+      const elegido = monederos.find(m => m.id === clienteFiltro);
+      $('f-cliente-chip').style.display = clienteFiltro ? '' : 'none';
+      $('btn-quitar-filtro').style.display = clienteFiltro ? '' : 'none';
+      $('f-cliente-chip').textContent = elegido ? 'Cliente: ' + (elegido.clienteNombre || elegido.id) : '';
+      $('conteo-movs').textContent = lista.length;
+      $('tabla-movs').innerHTML = lista.length ? lista.map(m => {
+        const abono = m.efecto !== 'cargo';
+        const detalle = m.motivo || [m.metodo, m.detalle].filter(Boolean).join(' · ');
+        const claseTipo = { Recarga: 'ok', Pago: 'info', Reembolso: 'warn', Ajuste: 'muted' }[m.tipo] || 'muted';
+        return `<tr>
+          <td>${esc(fechaHora(m.creadoEn) || m.fecha)}</td>
+          <td><span class="mn-id">${esc(m.id)}</span></td>
+          <td>${esc(m.clienteNombre || m.clienteId)}</td>
+          <td><span class="admin-tag ${claseTipo}">${esc(m.tipo)}</span></td>
+          <td>${esc(detalle)}${m.folio && !detalle.includes(m.folio) ? ` · <b>${esc(m.folio)}</b>` : ''}</td>
+          <td>${esc(m.usuarioNombre || '—')}</td>
+          <td style="text-align:right;" class="${abono ? 'mn-abono' : 'mn-cargo'}">${abono ? '+' : '−'}${dinero(m.monto)}</td>
+          <td style="text-align:right;">${dinero(m.saldoNuevo)}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="8" style="color:var(--gray);">No hay movimientos con este filtro.</td></tr>';
+    }
+    $('f-tipo').addEventListener('change', pintarMovimientos);
+    $('btn-quitar-filtro').addEventListener('click', () => { clienteFiltro = ''; pintarMonederos(); pintarMovimientos(); });
+
+    // ---------- Formulario de ajuste (solo administrador) ----------
+    function pintarSelectorClientes() {
+      const sel = $('a-cliente');
+      const actual = sel.value;
+      // Clientes con monedero + clientes del CRM con cuenta de la tienda que aún no lo abren.
+      const mapa = new Map();
+      monederos.forEach(m => mapa.set(m.id, m.clienteNombre || 'Cliente'));
+      clientes.forEach(c => { if (!mapa.has(c.id)) mapa.set(c.id, c.nombre || c.correo || 'Cliente'); });
+      const opciones = [...mapa.entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+      sel.innerHTML = '<option value="">— Elige un cliente —</option>' + opciones.map(([id, nombre]) => {
+        const m = monederos.find(x => x.id === id);
+        return `<option value="${esc(id)}">${esc(nombre)} · ${m ? dinero(m.saldo) : 'sin monedero'}</option>`;
+      }).join('');
+      if (mapa.has(actual)) sel.value = actual;
+      pintarSaldoElegido();
+    }
+
+    function pintarSaldoElegido() {
+      const id = $('a-cliente').value;
+      const m = monederos.find(x => x.id === id);
+      $('a-saldo').textContent = id ? `Saldo actual: ${dinero(m ? m.saldo : 0)}${m ? '' : ' (se le creará su monedero)'}` : '';
+    }
+    $('a-cliente').addEventListener('change', pintarSaldoElegido);
+
+    $('form-ajuste').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      mostrarError('');
+      if (!esAdmin) return mostrarError('Solo un administrador puede registrar movimientos.');
+      const clienteId = $('a-cliente').value;
+      const [tipo, efecto] = $('a-tipo').value.split('|');
+      const monto = Number($('a-monto').value);
+      const motivo = $('a-motivo').value.trim();
+      const nombre = monederos.find(m => m.id === clienteId)?.clienteNombre
+        || clientes.find(c => c.id === clienteId)?.nombre || 'Cliente';
+      if (!clienteId) return mostrarError('Elige un cliente.');
+      if (!(monto > 0)) return mostrarError('Escribe un monto mayor a $0.');
+      if (motivo.length < 5) return mostrarError('Escribe el motivo (mínimo 5 letras).');
+      if (!confirm(`${efecto === 'abono' ? 'Sumar' : 'Restar'} ${dinero(monto)} ${efecto === 'abono' ? 'al' : 'del'} monedero de ${nombre}?`)) return;
+
+      const boton = $('btn-ajuste');
+      boton.disabled = true;
+      try {
+        const r = await ajustarMonedero({ clienteId, clienteNombre: nombre, efecto, monto, motivo, tipo }, window.BP_SESION);
+        mostrarToast(`Listo. Nuevo saldo de ${nombre}: ${dinero(r.saldoNuevo)}`);
+        $('a-monto').value = '';
+        $('a-motivo').value = '';
+      } catch (err) {
+        console.error(err);
+        mostrarError(err.code === 'permission-denied'
+          ? 'Firebase no lo permitió: publica las reglas actualizadas (firestore.rules).'
+          : (err.message || 'No se pudo registrar el movimiento.'));
+      }
+      boton.disabled = false;
+    });
+
+    // ---------- Inicio ----------
+    document.addEventListener('bp-sesion-lista', (e) => {
+      esAdmin = e.detail.rol === 'administrador';
+      $('aviso-solo-admin').style.display = esAdmin ? 'none' : '';
+      $('form-ajuste').style.display = esAdmin ? '' : 'none';
+
+      escucharMonederos((lista) => {
+        monederos = lista;
+        pintarKpis(); pintarMonederos(); pintarSelectorClientes(); pintarMovimientos();
+      }, (err) => {
+        console.error(err);
+        $('tabla-monederos').innerHTML = '<tr><td colspan="5" style="color:var(--admin-danger,#dc2626);">No se pudieron leer los monederos (¿ya publicaste firestore.rules?).</td></tr>';
+      });
+      escucharMovimientosMonederoTodos((lista) => {
+        movimientos = lista;
+        pintarKpis(); pintarMovimientos(); pintarGrafica();
+      }, (err) => {
+        console.error(err);
+        $('tabla-movs').innerHTML = '<tr><td colspan="8" style="color:var(--admin-danger,#dc2626);">No se pudo leer el historial.</td></tr>';
+      });
+      if (esAdmin) {
+        escucharClientes((lista) => { clientes = lista; pintarSelectorClientes(); });
+      }
+    }, { once: true });
+  </script>
+</body>
+</html>

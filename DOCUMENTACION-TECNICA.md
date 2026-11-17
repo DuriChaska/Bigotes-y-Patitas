@@ -499,7 +499,7 @@ código) y la **sincronización automática** de cada compra de la tienda con `p
 | Archivo | Qué hace |
 |---|---|
 | `atencion-clientes.html` (nuevo) | Pantalla del cliente dentro de "Mi cuenta": formulario **Nuevo ticket** (izquierda) y **Mis tickets** (derecha) con el hilo de respuestas. |
-| `cuenta-menu.js` (nuevo) | Menú lateral de "Mi cuenta" compartido (Mi cuenta, Mis pedidos, Mi monedero, Mis datos, Direcciones, Atención a clientes). Las opciones sin `href` aparecen como "Pronto" hasta que el integrante 2 entregue esas pantallas. |
+| `cuenta-menu.js` (nuevo) | Menú lateral de "Mi cuenta" compartido (Mi cuenta, Mis pedidos, Mi monedero, Mis datos, Direcciones, Atención a clientes). Desde la entrega del integrante 2 (§12) todas las opciones tienen su pantalla. |
 | `admin-soporte.html` (nuevo) | Panel del rol `soporte`: alerta de tickets en espera, bandeja con todo el historial, ficha del cliente en el CRM y formulario de respuesta + cambio de estado. |
 | `admin-promociones.html` (nuevo) | CRUD de cupones con vigencia + vista en vivo de la sincronización (pagos ↔ CRM ↔ erp_operaciones). Solo administrador y ventas. |
 | `firebase-db.js` | Funciones nuevas: `crearTicket`, `escucharTicketsDeCliente`, `escucharTodosLosTickets`, `responderTicket`, `marcarTicketLeido`, `escucharClienteUno`, `obtenerPromocion`, `validarCupon`, `guardarPromocion`, `escucharPromociones`, `cargarPromocionesEjemplo`, `escucharPagos`, `registrarIntegracionCompra`. `crearVenta` y `crearOrdenErp`/`cambiarEstadoOrdenErp` se ampliaron (ver 11.4). |
@@ -629,8 +629,7 @@ en el carrito, la compra se rechaza con un mensaje claro.
 - Cancelar una orden marca su pago como `Cancelado`, pero **no** resta esa compra del CRM.
 - La alerta de soporte y la de respuestas son en pantalla (tiempo real); no se envían correos
   (haría falta EmailJS o una Cloud Function).
-- Las pantallas **Mi monedero, Mis datos y Direcciones** son del integrante 2: en el menú de Mi
-  cuenta aparecen como "Pronto" hasta que existan (se activan poniéndoles su `href` en `cuenta-menu.js`).
+- ~~Las pantallas Mi monedero, Mis datos y Direcciones aparecían como "Pronto"~~: ya existen (ver §12).
 - Los tickets de clientes que el CRM dio de alta a mano (sin cuenta) no existen: para abrir un ticket
   hace falta tener cuenta real en la tienda.
 
@@ -639,3 +638,141 @@ en el carrito, la compra se rechaza con un mensaje claro.
 - **Producto de la queja:** al crear el ticket el cliente puede elegir uno de los productos de sus compras (las canceladas no aparecen). Se guarda en `tickets.pedido = { ventaId, folio, productoId, producto, cantidad }`; la relación es `tickets.pedido.ventaId → ventas/{id}`. Las reglas exigen que esa venta pertenezca al mismo cliente. Soporte lo ve resaltado arriba de la conversación.
 - **Respuesta del cliente:** mientras el ticket esté **En proceso** el cliente puede seguir escribiendo (por ejemplo para dar la evidencia que soporte le pidió). Cada mensaje se agrega al final de `hilo` y el ticket vuelve a quedar `esperaSoporte: true`, así que reaparece en el contador de soporte. Con estado **Solucionado** o **Cerrado** ya no se puede responder (lo bloquean la pantalla y las reglas `ticketRespondidoPorCliente`).
 - **Evidencia:** el proyecto no usa Firebase Storage, por lo que la evidencia se entrega como texto o como enlace (Drive, Dropbox, etc.) dentro de la respuesta.
+
+---
+
+## 12. Etapa 4: cuenta del cliente y monedero (integrante 2)
+
+Esta parte completa **"Mi cuenta"** del cliente: monedero (saldo, recargas, historial y pago de
+compras), direcciones guardadas, edición de datos, cambio y recuperación de contraseña, y el
+historial de pedidos con **línea de tiempo**. También agrega la pantalla de **administración del
+monedero** (consulta, recargas manuales, ajustes y reportes). Todo se conecta con lo que ya existía:
+la compra con monedero es la misma `crearVenta()` (stock + pagos + CRM + ERP), y cancelar una orden
+pagada con monedero devuelve el dinero al saldo.
+
+Analogía: el monedero es como una **alcancía con libreta**. El saldo es lo que hay dentro, y la
+libreta (`monedero_movimientos`) anota cada vez que se mete o se saca dinero, quién lo hizo y por qué.
+Nadie puede cambiar el saldo sin escribir en la libreta en ese mismo momento, y las hojas de la
+libreta no se pueden borrar.
+
+### 12.1 Archivos nuevos y modificados
+
+| Archivo | Qué hace |
+|---|---|
+| `mi-monedero.html` (nuevo) | Saldo actual, total recargado/gastado, **alerta de saldo bajo** (menos de $100), recarga con montos rápidos ($100/$200/$500/$1,000) u otro monto, 3 métodos con su formulario (tarjeta con validación Luhn, PayPal, transferencia SPEI con CLABE y clave de rastreo) e **historial de movimientos** filtrable con el id de cada movimiento. Si llega desde el checkout por falta de saldo, propone recargar lo que falta y ofrece "Volver a mi pago". |
+| `mis-pedidos.html` (nuevo) | Historial de todo lo comprado (en tiempo real), con filtros y **línea de tiempo** Confirmada → Preparando → Enviada → Entregada con la fecha de cada paso (sale de `ventas.historial`). Pedidos cancelados en rojo. Botones "Ver recibo" y "Ayuda con este pedido" (ticket). |
+| `mis-datos.html` (nuevo) | Editar nombre, teléfono y mascota; **cambiar contraseña** (pide la actual); **"¿Olvidaste tu contraseña?"**; **cambiar correo** con enlace de confirmación. |
+| `mis-direcciones.html` (nuevo) | **Agregar, editar, eliminar** (con confirmación) y elegir la **predeterminada** de hasta 10 direcciones. |
+| `admin-monedero.html` (nuevo) | Panel: 4 indicadores, saldos por cliente, historial de movimientos, gráfica recargas vs pagos por mes y formulario de **recarga manual / ajuste** con motivo (solo administrador; ventas solo consulta). |
+| `cuenta-comun.js` (nuevo) | Lo que comparten las pantallas de Mi cuenta: exigir sesión, menú con alerta de tickets, formato de dinero/fechas, validación de tarjeta. |
+| `firebase-db.js` | Funciones nuevas (§12.3). `crearVenta()` cobra con monedero **dentro de su transacción**; `cambiarEstadoOrdenErp()` reembolsa al cancelar. |
+| `firestore.rules` | Reglas de `monederos`, `monedero_movimientos` y `clientes/{uid}/direcciones`; una venta "pagada con monedero" solo se crea si se descontó el saldo en la misma transacción; el cliente puede actualizar su `correo` solo al correo verificado de su cuenta. |
+| `Checkout.html` | La opción fija "Puntos Cotton Candy (500 puntos)" se reemplazó por **Monedero** real: saldo disponible, total, saldo después del pago y bloqueo + botón "Recargar" si no alcanza. Selector **"Usar una de mis direcciones"** (carga la predeterminada sola) y casilla "Guardar esta dirección en mi cuenta". La confirmación muestra el saldo anterior y el actual. |
+| `login.html` | Enlace **"¿Olvidaste tu contraseña?"** que envía el correo de recuperación de Firebase. |
+| `cuenta-menu.js` | Las opciones Mis pedidos, Mi monedero, Mis datos y Direcciones ya tienen su pantalla. |
+| `Interfaz Cliente - Perfil.html` | Saldo del monedero en vivo y botones a las pantallas nuevas. |
+| `admin-components.js`, `admin-icons.js`, `styles.css` | Opción "Monedero" en el menú del panel (CRM y modo ERP), ícono y estilos. |
+
+### 12.2 Colecciones nuevas y relaciones (punto 4.2)
+
+```
+monederos/{uid}                      ← el id ES el uid del cliente: un cliente tiene UN monedero
+  clienteId ───────────────────────► clientes/{uid}
+  clienteNombre, saldo, totalRecargado, totalGastado
+  ultimoMovimientoId ──────────────► monedero_movimientos/{id}   (el movimiento que hizo el último cambio)
+  creadoEn, actualizadoEn
+
+monedero_movimientos/{id}            ← historial: solo se agregan (no se editan ni se borran)
+  clienteId ───────────────────────► clientes/{uid} y monederos/{uid}
+  tipo: "Recarga" | "Pago" | "Ajuste" | "Reembolso"
+  efecto: "abono" (suma) | "cargo" (resta), monto, saldoAnterior, saldoNuevo
+  metodo ("Tarjeta de crédito/débito" | "PayPal" | "Transferencia bancaria" | "Monedero" | "Panel de administración")
+  detalle (p. ej. "Visa •••• 4242", nunca la tarjeta completa), motivo (ajustes)
+  ventaId, folio ──────────────────► ventas/{id}   (en Pago y Reembolso)
+  usuarioId, usuarioNombre ────────► quién lo hizo (el cliente o el administrador / logística)
+  fecha, creadoEn
+
+clientes/{uid}/direcciones/{id}      ← subcolección: un cliente tiene varias direcciones
+  alias, nombre, apellido, pais, calle, ciudad, estado, cp (5 dígitos), telefono (10 dígitos),
+  referencias, predeterminada (solo una en true), creadoEn, actualizadoEn
+```
+
+Relación de una compra pagada con monedero (todo en **una** transacción, o pasa todo o nada):
+
+```
+ventas/{id}  (metodoPagoClave "monedero", pagoDetalle.saldoAnterior / saldoNuevo)
+   ├──► scm_productos (stock −)  +  scm_movimientos ("Salida")
+   ├──► monederos/{uid} (saldo −, totalGastado +, ultimoMovimientoId)
+   └──► monedero_movimientos (tipo "Pago", ventaId = ventas.id)
+después (§11.4): pagos/{id} + clientes/{uid} (CRM) + erp_operaciones
+```
+
+### 12.3 Funciones nuevas en `firebase-db.js`
+
+| Función | Para qué |
+|---|---|
+| `asegurarMonedero`, `obtenerMonedero`, `escucharMonedero` | Crear el monedero en $0 la primera vez y leer el saldo (en vivo). |
+| `recargarMonedero({ cliente, monto, metodo, detalle })` | Recarga del cliente ($50 a $10,000, pesos completos) en una transacción: saldo + movimiento. |
+| `escucharMovimientosMonedero(uid)` / `escucharMovimientosMonederoTodos()` / `escucharMonederos()` | Historial del cliente / historial y saldos para el panel. |
+| `ajustarMonedero({ clienteId, efecto, monto, motivo, tipo }, usuario)` | Recarga manual o ajuste del administrador, con motivo. Nunca deja saldo negativo. |
+| `agregarReembolsoMonedero` (interna) | La usa `cambiarEstadoOrdenErp()`: al cancelar una orden pagada con monedero, devuelve el total al saldo y marca el pago como `Reembolsado`. |
+| `escucharDirecciones`, `obtenerDirecciones`, `guardarDireccion`, `eliminarDireccion`, `marcarDireccionPredeterminada`, `errorDeDireccion` | CRUD de direcciones. Solo una predeterminada (se ajustan las demás en el mismo lote). |
+| `actualizarDatosCliente`, `cambiarContrasenaCliente`, `solicitarCambioCorreoCliente`, `sincronizarCorreoCliente`, `enviarCorreoRecuperacion` | Mis datos, contraseña, correo y "olvidé mi contraseña". |
+
+Equivalencia con los endpoints del PDF (no hay servidor REST; Firestore se usa directo, igual que en el resto del proyecto):
+
+| Endpoint del PDF | En este proyecto |
+|---|---|
+| `GET /auth/perfil`, `PUT /auth/perfil` | `obtenerPerfilCliente()`, `actualizarDatosCliente()` |
+| `POST /pagos/procesar` (con Monedero) | `crearVenta()` con `metodoPagoClave: "monedero"` |
+| Monedero: consultar / recargar / historial | `escucharMonedero()`, `recargarMonedero()`, `escucharMovimientosMonedero()` |
+| Monedero (Administración): ajustes, recargas manuales, reportes | `ajustarMonedero()`, `admin-monedero.html` |
+
+### 12.4 Qué pasa en los casos difíciles
+
+- **Saldo insuficiente:** el checkout bloquea el botón y muestra cuánto falta; aun así, `crearVenta()`
+  vuelve a leer el saldo **dentro de la transacción**. Si el cliente gastó su saldo en otra pestaña un
+  segundo antes, la compra se rechaza con "Saldo insuficiente…" y no se descuenta nada (ni stock).
+- **Dos compras al mismo tiempo con el mismo monedero:** Firestore repite la transacción de la segunda
+  con el saldo nuevo; si ya no alcanza, la rechaza. El saldo nunca queda negativo.
+- **Alguien intenta subirse el saldo desde la consola del navegador:** las reglas solo aceptan un cambio de
+  saldo si en la misma operación se crea su movimiento con el **mismo monto**, y una recarga solo puede ser
+  de $50 a $10,000 hecha por el propio cliente. Una venta marcada "pagada con monedero" sin haber
+  descontado el saldo es rechazada por las reglas de `ventas`.
+- **Cancelar una orden pagada con monedero:** logística o administrador la cancelan en Órdenes; en la misma
+  operación se devuelve el stock, el dinero regresa al saldo (movimiento "Reembolso") y el pago queda
+  `Reembolsado`. No se puede reembolsar dos veces (la regla exige que la orden no estuviera cancelada antes).
+- **Recarga por transferencia:** no hay banco real; se pide la clave de rastreo del comprobante y la recarga se
+  aplica al momento (simulado, igual que tarjeta y PayPal en el checkout).
+- **Cambio de correo:** Firebase manda un enlace al correo nuevo; el cambio ocurre cuando la persona lo abre.
+  La siguiente vez que entra a "Mis datos", el correo del CRM (`clientes/{uid}.correo`) se actualiza solo. Las
+  reglas solo permiten poner como correo el que la cuenta ya verificó.
+
+### 12.5 Cómo probarlo (después de publicar `firestore.rules`)
+
+1. Como cliente: **Mi cuenta → Mi monedero** → recarga $500 con la tarjeta de prueba `4242 4242 4242 4242`,
+   vencimiento futuro, CVV `123`. Debe aparecer el movimiento con su id y el saldo nuevo.
+2. Agrega un producto al carrito → Checkout → elige **Monedero**: se ven saldo, total y saldo después. Paga.
+   La confirmación muestra el saldo anterior y el actual; en Mi monedero aparece el movimiento "Pago" con
+   enlace al recibo.
+3. Prueba con un carrito más caro que tu saldo: el botón se bloquea y "Recargar mi monedero" lleva a la
+   recarga con el monto que falta; al terminar, "Volver a mi pago".
+4. **Mis pedidos:** la compra aparece con la línea de tiempo en "Confirmada". En el panel (ventas o
+   logística) cámbiala a "En proceso" / "Enviada" y mira cómo avanza sola la línea en la pantalla del cliente.
+5. En el panel, cancela una orden pagada con monedero: el saldo del cliente regresa (movimiento "Reembolso").
+6. **Direcciones:** agrega dos, marca una como predeterminada y abre el checkout: se carga sola.
+7. **Mis datos:** cambia el teléfono; en el CRM (Clientes) se ve el cambio. Prueba "¿Olvidaste tu contraseña?"
+   en `login.html`.
+8. Panel → **Monedero:** como administrador haz una recarga manual con motivo; como ventas, verifica que solo
+   puedes consultar.
+
+### 12.6 Limitaciones que hay que tener claras
+
+- Las recargas no pasan por una pasarela real (como el resto de los pagos del proyecto): se valida el
+  formulario y se guarda solo un resumen seguro (marca y últimos 4 dígitos, correo de PayPal o clave de rastreo).
+- El reembolso automático solo aplica a órdenes pagadas con **monedero**; para tarjeta/PayPal/OXXO/SPEI el pago
+  queda `Cancelado` y la devolución sería manual (fuera del sistema).
+- El correo de recuperación de contraseña y el de cambio de correo los manda Firebase Authentication
+  (plantilla editable en la consola: Authentication → Plantillas). Pueden llegar a spam.
+- Los clientes que el CRM dio de alta a mano (sin cuenta) pueden recibir una recarga manual del administrador,
+  pero no podrán usarla hasta que tengan cuenta en la tienda.

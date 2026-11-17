@@ -327,6 +327,19 @@
       .summary-column { position: static; width: 100%; }
     }
 
+    /* Etapa 4: monedero y direcciones guardadas */
+    .monedero-resumen { display: grid; gap: 6px; font-size: 14px; }
+    .monedero-resumen div { display: flex; justify-content: space-between; }
+    .monedero-resumen .despues { border-top: 1px dashed #ccc; padding-top: 6px; color: #2f6b3a; }
+    .monedero-alerta { background: #fdecea; color: #8a1f15; border: 1px solid #f2b8b1; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 10px; }
+    .monedero-recargar { display: block; text-align: center; margin-top: 10px; padding: 10px; border-radius: 8px; border: 2px solid #b34a8e; color: #b34a8e; font-weight: bold; }
+    .monedero-recargar.hidden, .monedero-alerta.hidden { display: none; }
+    .dir-guardadas { background: #fff7f0; border: 1px solid #f0d9c7; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 13px; }
+    .dir-guardadas label { display: block; font-weight: bold; margin-bottom: 6px; }
+    .dir-guardadas select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 6px; font: inherit; }
+    .dir-guardadas a { color: #b34a8e; font-weight: bold; font-size: 12px; }
+    .dir-guardar { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 4px 0 10px; cursor: pointer; }
+
     @media (max-width: 600px) {
       .input-group, .card-row, .checkout-nav { flex-direction: column; }
       .continue-btn, .back-link, .btn-home { width: 100%; text-align: center; }
@@ -350,6 +363,13 @@
         <div id="step-shipping">
           <h2>Dirección de Envío</h2>
 
+          <!-- Etapa 4: direcciones guardadas en Mi cuenta → Direcciones -->
+          <div class="dir-guardadas" id="dir-guardadas" style="display:none;">
+            <label for="dir-select">Usar una de mis direcciones</label>
+            <select id="dir-select" onchange="usarDireccionGuardada(this.value)"></select>
+            <a href="mis-direcciones.html" target="_blank">Administrar mis direcciones</a>
+          </div>
+
           <div class="input-group">
             <input type="text" id="fname" placeholder="Primer Nombre" />
             <input type="text" id="lname" placeholder="Apellido" />
@@ -370,6 +390,7 @@
 
           <input type="email" id="email" placeholder="Email" />
           <textarea id="notes" placeholder="Referencias" rows="3"></textarea>
+          <label class="dir-guardar" id="dir-guardar-wrap"><input type="checkbox" id="dir-guardar" /> Guardar esta dirección en mi cuenta</label>
 
           <div class="checkout-nav">
             <a href="Carrito.html" class="back-link">← REGRESAR AL CARRITO</a>
@@ -455,17 +476,22 @@
               </div>
             </div>
 
-            <div class="payment-option" id="opt-points">
-              <div class="payment-option-header" onclick="selectMethod('points')">
-                <input type="radio" name="pay-method" value="points" />
-                <span style="font-size: 20px; margin-right: 8px;">✨</span>
-                <span class="method-label">Puntos Cotton Candy</span>
+            <div class="payment-option" id="opt-monedero">
+              <div class="payment-option-header" onclick="selectMethod('monedero')">
+                <input type="radio" name="pay-method" value="monedero" />
+                <span style="font-size: 20px; margin-right: 8px;">👛</span>
+                <span class="method-label">Monedero <small id="monedero-saldo-chip" style="font-weight:500;"></small></span>
               </div>
-              <div class="payment-option-body hidden" id="body-points">
+              <div class="payment-option-body hidden" id="body-monedero">
                 <div class="transfer-info">
-                  <p>Tienes disponibles: <strong>500 puntos</strong></p>
-                  <p style="font-size: 12px; color: #666;">1 punto = $1.00 MXN. Se descontarán de tu cuenta al confirmar.</p>
-                  <button class="continue-btn" style="float:none; width:100%; margin-top:12px;" onclick="confirmarPedido('points')">PAGAR CON PUNTOS</button>
+                  <div class="monedero-resumen">
+                    <div><span>Saldo disponible</span><strong id="mon-saldo">$0.00</strong></div>
+                    <div><span>Total a pagar</span><strong id="mon-total">$0.00</strong></div>
+                    <div class="despues"><span>Saldo después del pago</span><strong id="mon-despues">$0.00</strong></div>
+                  </div>
+                  <p class="monedero-alerta hidden" id="mon-alerta"></p>
+                  <button class="continue-btn" id="btn-pagar-monedero" style="float:none; width:100%; margin-top:12px;" onclick="confirmarPedido('monedero')">PAGAR CON MONEDERO</button>
+                  <a class="monedero-recargar hidden" id="mon-recargar" href="mi-monedero.html">RECARGAR MI MONEDERO</a>
                 </div>
               </div>
             </div>
@@ -517,11 +543,14 @@
     </div>
   </section>
 
+  <div id="footer"></div>
+
   <script src="components.js"></script>
   <script type="module">
     import {
       crearVenta, obtenerProductosScm, obtenerUsuarioActual, obtenerPerfilCliente, validarCupon,
       obtenerImpuestoIva, calcularIva, IVA_POR_DEFECTO,
+      obtenerMonedero, obtenerDirecciones, guardarDireccion,
     } from './firebase-db.js';
     import { enviarReciboPorCorreo, reciboDesdeVenta, textoReferencia, correoConfigurado } from './email-recibo.js';
 
@@ -537,8 +566,10 @@
       card:   'Tarjeta de crédito/débito',
       oxxo:   'Efectivo en OXXO',
       spei:   'Transferencia SPEI',
-      points: 'Puntos Cotton Candy',
+      monedero: 'Monedero',
     };
+    let monedero = null;          // { saldo, ... } del cliente (null = aún no tiene)
+    let direccionesGuardadas = [];
 
     function obtenerCarrito() {
       return JSON.parse(localStorage.getItem("carrito") || "[]");
@@ -738,6 +769,7 @@
 
       const totalStr = formatearMoneda(resumen.total);
       document.querySelectorAll(".oxxo-total-val").forEach(el => el.textContent = totalStr);
+      pintarMonedero(resumen.total);
 
       const discountRow = document.getElementById("summary-discount-row");
       if (resumen.descuento > 0) {
@@ -890,8 +922,56 @@
       window.scrollTo(0, 0);
     }
 
+    // ---------------- Monedero (Etapa 4) ----------------
+    // Muestra saldo disponible, total y saldo después del pago. Si no alcanza, bloquea el botón
+    // y ofrece recargar exactamente lo que falta (al terminar regresa aquí mismo).
+    function pintarMonedero(total) {
+      const saldo = Number(monedero?.saldo) || 0;
+      const alcanza = saldo + 0.001 >= total;
+      document.getElementById('monedero-saldo-chip').textContent = `(saldo ${formatearMoneda(saldo)})`;
+      document.getElementById('mon-saldo').textContent = formatearMoneda(saldo);
+      document.getElementById('mon-total').textContent = formatearMoneda(total);
+      document.getElementById('mon-despues').textContent = alcanza ? formatearMoneda(saldo - total) : '—';
+      const alerta = document.getElementById('mon-alerta');
+      const recargar = document.getElementById('mon-recargar');
+      const boton = document.getElementById('btn-pagar-monedero');
+      boton.disabled = !alcanza || enviando;
+      boton.style.opacity = alcanza ? '' : '.5';
+      alerta.classList.toggle('hidden', alcanza);
+      recargar.classList.toggle('hidden', alcanza);
+      if (!alcanza) {
+        const falta = Math.round((total - saldo) * 100) / 100;
+        alerta.textContent = `Saldo insuficiente: te faltan ${formatearMoneda(falta)}. Recarga tu monedero o elige otro método de pago.`;
+        recargar.href = `mi-monedero.html?next=Checkout.html&faltante=${encodeURIComponent(total)}`;
+      }
+    }
+
+    // ---------------- Direcciones guardadas (Etapa 4) ----------------
+    function pintarDireccionesGuardadas() {
+      const caja = document.getElementById('dir-guardadas');
+      if (!direccionesGuardadas.length) { caja.style.display = 'none'; return; }
+      caja.style.display = '';
+      document.getElementById('dir-select').innerHTML =
+        '<option value="">— Escribir otra dirección —</option>' +
+        direccionesGuardadas.map(d => `<option value="${esc(d.id)}">${esc(d.alias)}${d.predeterminada ? ' ⭐' : ''} · ${esc(d.calle)}, ${esc(d.ciudad)}</option>`).join('');
+    }
+
+    function usarDireccionGuardada(id) {
+      const d = direccionesGuardadas.find(x => x.id === id);
+      document.getElementById('dir-select').value = d ? id : '';
+      document.getElementById('dir-guardar-wrap').style.display = d ? 'none' : '';
+      if (!d) return;
+      const campos = { fname: d.nombre, lname: d.apellido, country: d.pais, street: d.calle, city: d.ciudad,
+                       state: d.estado, zip: d.cp, phone: d.telefono, notes: d.referencias };
+      Object.entries(campos).forEach(([id, v]) => {
+        const el = document.getElementById(id);
+        el.value = v || '';
+        marcarCampo(id, '');
+      });
+    }
+
     function selectMethod(method) {
-      ['paypal', 'card', 'transfer', 'points'].forEach(m => {
+      ['paypal', 'card', 'transfer', 'monedero'].forEach(m => {
         const opt = document.getElementById(`opt-${m}`);
         const body = document.getElementById(`body-${m}`);
         const radio = opt.querySelector('input[type="radio"]');
@@ -926,7 +1006,7 @@
     let enviando = false;
 
     // Crea la venta de verdad en Firestore (transacción: valida stock, guarda la venta,
-    // descuenta el stock y registra el pago). clave: paypal | card | oxxo | spei | points.
+    // descuenta el stock y registra el pago). clave: paypal | card | oxxo | spei | monedero.
     async function confirmarPedido(clave) {
       if (enviando) return;
       clave = clave || 'paypal';
@@ -953,12 +1033,24 @@
       } else if (clave === 'paypal') {
         pagoDetalle = validarPaypal();
         if (!pagoDetalle) return;
+      } else if (clave === 'monedero') {
+        // Se vuelve a leer el saldo por si cambió en otra pestaña (recarga u otra compra).
+        try { monedero = await obtenerMonedero(usuarioActual.uid); } catch (err) { console.error(err); }
+        const saldo = Number(monedero?.saldo) || 0;
+        pintarMonedero(resumen.total);
+        if (saldo + 0.001 < resumen.total) {
+          alert(`Saldo insuficiente en tu monedero (${formatearMoneda(saldo)}). Recarga o elige otro método de pago.`);
+          return;
+        }
+        pagoDetalle = { saldoAntes: saldo };
       }
 
       const metodoPago = METODOS[clave] + (clave === 'card' ? ` (${pagoDetalle.marca} •••• ${pagoDetalle.ultimos4})` : '');
       const mensajeConfirmar = (clave === 'oxxo' || clave === 'spei')
         ? `Se apartarán tus productos y se generará tu ${clave === 'spei' ? 'CLABE' : 'referencia'} de pago por ${formatearMoneda(resumen.total)}. ¿Continuar?`
-        : `Se cobrarán ${formatearMoneda(resumen.total)} con ${metodoPago}. ¿Confirmar compra?`;
+        : clave === 'monedero'
+          ? `Se descontarán ${formatearMoneda(resumen.total)} de tu monedero. Te quedarán ${formatearMoneda((Number(monedero?.saldo) || 0) - resumen.total)}. ¿Confirmar compra?`
+          : `Se cobrarán ${formatearMoneda(resumen.total)} con ${metodoPago}. ¿Confirmar compra?`;
       if (!confirm(mensajeConfirmar)) return;
 
       enviando = true;
@@ -1008,6 +1100,17 @@
 
         const venta = await crearVenta(datosVenta);
 
+        // Guarda la dirección en "Mi cuenta → Direcciones" si el cliente lo pidió (no detiene la compra si falla).
+        if (document.getElementById('dir-guardar').checked && !document.getElementById('dir-select').value) {
+          guardarDireccion(usuarioActual.uid, {
+            alias: 'Dirección ' + (direccionesGuardadas.length + 1),
+            nombre: valor('fname'), apellido: valor('lname'), pais: valor('country') || 'México',
+            calle: valor('street'), ciudad: valor('city'), estado: valor('state'), cp: valor('zip'),
+            telefono: valor('phone').replace(/\D/g, ''), referencias: valor('notes'),
+            predeterminada: direccionesGuardadas.length === 0,
+          }, null, direccionesGuardadas).catch(err => console.error('[direcciones] No se pudo guardar:', err));
+        }
+
         const recibo = reciboDesdeVenta({
           ...datosVenta,
           id: venta.id,
@@ -1026,7 +1129,7 @@
         localStorage.removeItem("cuponAplicado");
         if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
 
-        mostrarConfirmacion(recibo);
+        mostrarConfirmacion(recibo, venta.saldoMonedero);
         enviarCorreo(recibo, direccionEnvio.correo || usuarioActual.email);
       } catch (err) {
         console.error(err);
@@ -1036,13 +1139,19 @@
           await sincronizarConStockReal();
           renderSummary();
         }
+        if (/saldo/i.test(err.message || '')) {
+          try { monedero = await obtenerMonedero(usuarioActual.uid); } catch (e) { console.error(e); }
+          renderSummary();
+        }
       } finally {
         enviando = false;
         botones.forEach(b => b.disabled = false);
+        // El botón del monedero sigue bloqueado si el saldo no alcanza.
+        if (document.getElementById('step-confirm').classList.contains('hidden')) pintarMonedero(obtenerResumenCompra().total);
       }
     }
 
-    function mostrarConfirmacion(recibo) {
+    function mostrarConfirmacion(recibo, saldoMonedero) {
       document.getElementById('step-payment').classList.add('hidden');
       document.getElementById('step-shipping').classList.add('hidden');
       document.getElementById('step-confirm').classList.remove('hidden');
@@ -1072,6 +1181,8 @@
         <div><span>Envío</span><span>${formatearMoneda(recibo.envio)}</span></div>
         ${recibo.tasaIva > 0 ? `<div><span>${recibo.ivaIncluido ? 'IVA incluido' : 'IVA'} (${recibo.tasaIva}%)</span><span>${formatearMoneda(recibo.iva)}</span></div>` : ''}
         <div class="total"><span>Total</span><span>${formatearMoneda(recibo.total)}</span></div>
+        ${saldoMonedero ? `<div><span>Saldo anterior del monedero</span><span>${formatearMoneda(saldoMonedero.anterior)}</span></div>
+        <div class="total"><span>Saldo actual del monedero</span><span>${formatearMoneda(saldoMonedero.nuevo)}</span></div>` : ''}
       `;
 
       document.getElementById('btn-ver-pedido').onclick = () => {
@@ -1118,6 +1229,7 @@
     window.formatCard = formatCard;
     window.formatExpiry = formatExpiry;
     window.confirmarPedido = confirmarPedido;
+    window.usarDireccionGuardada = usarDireccionGuardada;
 
     (async function iniciar() {
       // El checkout requiere una cuenta real: si nadie inició sesión, se manda
@@ -1138,6 +1250,15 @@
       } catch (err) {
         console.error(err);
       }
+
+      // Etapa 4: monedero y direcciones guardadas (si fallan, el checkout sigue funcionando).
+      try { monedero = await obtenerMonedero(usuarioActual.uid); } catch (err) { console.error('[monedero]', err); }
+      try {
+        direccionesGuardadas = await obtenerDirecciones(usuarioActual.uid);
+        pintarDireccionesGuardadas();
+        const pred = direccionesGuardadas.find(d => d.predeterminada) || direccionesGuardadas[0];
+        if (pred) usarDireccionGuardada(pred.id);
+      } catch (err) { console.error('[direcciones]', err); }
 
       configIva = await obtenerImpuestoIva();
       await sincronizarConStockReal();

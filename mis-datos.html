@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis datos - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="cta-wrap">
+    <aside class="cta-menu" id="cuenta-menu"></aside>
+
+    <div>
+      <div class="cta-head">
+        <h2>Mis datos</h2>
+        <p>Actualiza tu información de contacto, tu correo y tu contraseña.
+           Sesión: <strong id="sesion-nombre">…</strong></p>
+      </div>
+
+      <div class="mc-alerta verde" id="aviso-correo"></div>
+
+      <div class="cta-main" style="grid-template-columns: 1fr 1fr;">
+        <!-- Datos de contacto -->
+        <div class="cta-card">
+          <h3>Perfil del usuario</h3>
+          <form id="form-datos" novalidate>
+            <label for="d-nombre">Nombre completo</label>
+            <input type="text" id="d-nombre" maxlength="120" autocomplete="name" />
+
+            <label for="d-telefono">Teléfono (10 dígitos)</label>
+            <input type="tel" id="d-telefono" maxlength="14" inputmode="numeric" autocomplete="tel" />
+
+            <label for="d-mascota">Nombre de tu mascota</label>
+            <input type="text" id="d-mascota" maxlength="60" placeholder="Opcional" />
+
+            <label>Correo de la cuenta</label>
+            <input type="email" id="d-correo" disabled />
+
+            <p class="cta-hint">Cliente desde: <strong id="d-registro">—</strong> · Etapa: <strong id="d-etapa">—</strong></p>
+            <p class="cta-aviso" id="datos-error"></p>
+            <p class="cta-ok" id="datos-ok">✓ Tus datos se guardaron.</p>
+            <button type="submit" class="cta-btn" id="btn-datos">Guardar cambios</button>
+          </form>
+        </div>
+
+        <div>
+          <!-- Cambiar contraseña -->
+          <div class="cta-card">
+            <h3>Cambiar contraseña</h3>
+            <form id="form-pass" novalidate>
+              <label for="p-actual">Contraseña actual</label>
+              <input type="password" id="p-actual" autocomplete="current-password" />
+              <label for="p-nueva">Nueva contraseña (mínimo 6 caracteres)</label>
+              <input type="password" id="p-nueva" autocomplete="new-password" />
+              <label for="p-confirma">Confirmar nueva contraseña</label>
+              <input type="password" id="p-confirma" autocomplete="new-password" />
+              <p class="cta-aviso" id="pass-error"></p>
+              <p class="cta-ok" id="pass-ok">✓ Tu contraseña se cambió.</p>
+              <button type="submit" class="cta-btn" id="btn-pass">Cambiar contraseña</button>
+              <button type="button" class="cta-btn sec" id="btn-olvide">¿Olvidaste tu contraseña? Enviarme un enlace</button>
+            </form>
+          </div>
+
+          <!-- Cambiar correo -->
+          <div class="cta-card">
+            <h3>Cambiar correo</h3>
+            <form id="form-correo" novalidate>
+              <label for="c-nuevo">Correo nuevo</label>
+              <input type="email" id="c-nuevo" autocomplete="email" />
+              <label for="c-pass">Tu contraseña actual</label>
+              <input type="password" id="c-pass" autocomplete="current-password" />
+              <p class="cta-hint">Te mandaremos un enlace al correo nuevo. El cambio se hace cuando lo abras.</p>
+              <p class="cta-aviso" id="correo-error"></p>
+              <p class="cta-ok" id="correo-ok"></p>
+              <button type="submit" class="cta-btn" id="btn-correo">Enviar enlace de confirmación</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+  <div class="cta-toast" id="toast"></div>
+
+  <script src="components.js"></script>
+  <script src="cuenta-menu.js"></script>
+  <script type="module">
+    import {
+      actualizarDatosCliente, cambiarContrasenaCliente, solicitarCambioCorreoCliente,
+      sincronizarCorreoCliente, enviarCorreoRecuperacion, obtenerPerfilCliente,
+    } from './firebase-db.js';
+    import { iniciarCuenta, toast, avisoError, mensajeError, RE_CORREO, esc } from './cuenta-comun.js';
+
+    const $ = (id) => document.getElementById(id);
+    let sesion = null;
+
+    function mostrarOk(id, texto) {
+      const el = $(id);
+      if (texto) el.textContent = texto;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    function pintar(perfil) {
+      $('d-nombre').value = perfil?.nombre || sesion.usuario.displayName || '';
+      $('d-telefono').value = perfil?.telefono || '';
+      $('d-mascota').value = perfil?.mascota && perfil.mascota !== 'Sin especificar' ? perfil.mascota : '';
+      $('d-correo').value = sesion.usuario.email || '';
+      $('d-registro').textContent = perfil?.fechaRegistro || '—';
+      $('d-etapa').textContent = perfil?.etapa || '—';
+    }
+
+    $('d-telefono').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); });
+
+    $('form-datos').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      avisoError('datos-error', '');
+      const boton = $('btn-datos');
+      boton.disabled = true;
+      boton.textContent = 'Guardando…';
+      try {
+        await actualizarDatosCliente(sesion.usuario.uid, {
+          nombre: $('d-nombre').value, telefono: $('d-telefono').value, mascota: $('d-mascota').value,
+        });
+        mostrarOk('datos-ok');
+        toast('Datos actualizados');
+        $('sesion-nombre').textContent = $('d-nombre').value.trim();
+      } catch (err) {
+        console.error(err);
+        avisoError('datos-error', mensajeError(err));
+      }
+      boton.disabled = false;
+      boton.textContent = 'Guardar cambios';
+    });
+
+    $('form-pass').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      avisoError('pass-error', '');
+      const actual = $('p-actual').value;
+      const nueva = $('p-nueva').value;
+      if (!actual) return avisoError('pass-error', 'Escribe tu contraseña actual.');
+      if (nueva.length < 6) return avisoError('pass-error', 'La nueva contraseña debe tener al menos 6 caracteres.');
+      if (nueva !== $('p-confirma').value) return avisoError('pass-error', 'Las contraseñas nuevas no coinciden.');
+      if (nueva === actual) return avisoError('pass-error', 'La nueva contraseña debe ser distinta a la actual.');
+      const boton = $('btn-pass');
+      boton.disabled = true;
+      try {
+        await cambiarContrasenaCliente(nueva, actual);
+        ['p-actual', 'p-nueva', 'p-confirma'].forEach(id => { $(id).value = ''; });
+        mostrarOk('pass-ok');
+      } catch (err) {
+        console.error(err);
+        avisoError('pass-error', mensajeError(err));
+      }
+      boton.disabled = false;
+    });
+
+    $('btn-olvide').addEventListener('click', async () => {
+      const correo = sesion.usuario.email;
+      if (!confirm(`Te enviaremos un enlace a ${correo} para crear una contraseña nueva. ¿Continuar?`)) return;
+      try {
+        await enviarCorreoRecuperacion(correo);
+        toast(`Enlace enviado a ${correo}. Revisa también tu carpeta de spam.`);
+      } catch (err) {
+        console.error(err);
+        avisoError('pass-error', mensajeError(err));
+      }
+    });
+
+    $('form-correo').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      avisoError('correo-error', '');
+      const nuevo = $('c-nuevo').value.trim();
+      if (!RE_CORREO.test(nuevo)) return avisoError('correo-error', 'Escribe un correo válido.');
+      if (nuevo.toLowerCase() === (sesion.usuario.email || '').toLowerCase()) return avisoError('correo-error', 'Ese ya es tu correo actual.');
+      if (!$('c-pass').value) return avisoError('correo-error', 'Escribe tu contraseña actual.');
+      const boton = $('btn-correo');
+      boton.disabled = true;
+      try {
+        await solicitarCambioCorreoCliente(nuevo, $('c-pass').value);
+        $('c-pass').value = '';
+        mostrarOk('correo-ok', `✓ Enviamos un enlace a ${nuevo}. Ábrelo y después vuelve a iniciar sesión con tu correo nuevo.`);
+      } catch (err) {
+        console.error(err);
+        avisoError('correo-error', mensajeError(err));
+      }
+      boton.disabled = false;
+    });
+
+    (async function iniciar() {
+      sesion = await iniciarCuenta('mis-datos.html', 'datos');
+      if (!sesion) return;
+      pintar(sesion.perfil);
+      // Si ya confirmó el enlace de cambio de correo, el perfil del CRM se pone al día solo.
+      try {
+        if (await sincronizarCorreoCliente(sesion.usuario.uid, sesion.perfil)) {
+          const aviso = $('aviso-correo');
+          aviso.innerHTML = `✅ Tu correo se actualizó a <strong>${esc(sesion.usuario.email)}</strong>.`;
+          aviso.style.display = 'flex';
+          pintar(await obtenerPerfilCliente(sesion.usuario.uid));
+        }
+      } catch (err) { console.error('[correo] No se pudo sincronizar:', err); }
+    })();
+  </script>
+</body>
+</html>

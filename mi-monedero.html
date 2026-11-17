@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi monedero - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="cta-wrap">
+    <aside class="cta-menu" id="cuenta-menu"></aside>
+
+    <div>
+      <div class="cta-head">
+        <h2>Mi monedero</h2>
+        <p>Saldo, recargas y movimientos. Puedes pagar tus compras con este saldo en el checkout.
+           Sesión: <strong id="sesion-nombre">…</strong></p>
+      </div>
+
+      <div class="mc-alerta" id="alerta-saldo"></div>
+
+      <div class="cta-main">
+        <!-- Izquierda: saldo -->
+        <div>
+          <div class="cta-card">
+            <h3>Saldo actual</h3>
+            <div class="mc-saldo">
+              <small>Disponible</small>
+              <strong id="saldo-actual">$0.00</strong>
+              <span id="saldo-actualizado">Cargando…</span>
+            </div>
+            <div class="mc-stats">
+              <div>Total recargado<b id="total-recargado">$0.00</b></div>
+              <div>Total gastado<b id="total-gastado">$0.00</b></div>
+            </div>
+            <button type="button" class="cta-btn" id="btn-ir-recargar">＋ Recargar saldo</button>
+            <button type="button" class="cta-btn sec" id="btn-ir-historial">🧾 Historial de movimientos</button>
+            <p class="cta-hint" id="id-monedero"></p>
+          </div>
+        </div>
+
+        <!-- Derecha: recargar -->
+        <div class="cta-card" id="caja-recarga">
+          <h3>Recargar monedero</h3>
+          <form id="form-recarga" novalidate>
+            <label>Monto de recarga</label>
+            <div class="mc-montos" id="montos-rapidos"></div>
+
+            <label for="otro-monto">Otro monto (de $50 a $10,000, pesos completos)</label>
+            <input type="number" id="otro-monto" min="50" max="10000" step="1" placeholder="$" inputmode="numeric" />
+
+            <label>Método de pago</label>
+            <div class="mc-metodos">
+              <label class="mc-metodo sel"><input type="radio" name="metodo" value="Tarjeta de crédito/débito" checked /> 💳 Tarjeta de crédito / débito</label>
+              <label class="mc-metodo"><input type="radio" name="metodo" value="PayPal" /> 🅿️ PayPal</label>
+              <label class="mc-metodo"><input type="radio" name="metodo" value="Transferencia bancaria" /> 🏦 Transferencia bancaria</label>
+            </div>
+
+            <!-- Formulario de cada método -->
+            <div class="mc-subform" id="sub-tarjeta">
+              <label for="tj-numero">Número de tarjeta <span id="tj-marca" style="color:var(--pink-fuerte);"></span></label>
+              <input type="text" id="tj-numero" maxlength="19" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" />
+              <label for="tj-titular">Titular</label>
+              <input type="text" id="tj-titular" maxlength="60" autocomplete="cc-name" placeholder="Como aparece en la tarjeta" />
+              <div class="cta-fila">
+                <div>
+                  <label for="tj-venc">Vencimiento</label>
+                  <input type="text" id="tj-venc" maxlength="5" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA" />
+                </div>
+                <div>
+                  <label for="tj-cvv">CVV</label>
+                  <input type="password" id="tj-cvv" maxlength="4" inputmode="numeric" autocomplete="cc-csc" placeholder="123" />
+                </div>
+              </div>
+              <p>🔒 Solo guardamos la marca y los últimos 4 dígitos. Nunca el número completo ni el CVV.</p>
+            </div>
+
+            <div class="mc-subform" id="sub-paypal" style="display:none;">
+              <label for="pp-correo">Correo de tu cuenta PayPal</label>
+              <input type="email" id="pp-correo" autocomplete="email" placeholder="nombre@correo.com" />
+              <p>Se autoriza el cargo en tu cuenta PayPal (simulado, no hay pasarela real).</p>
+            </div>
+
+            <div class="mc-subform" id="sub-transferencia" style="display:none;">
+              <p><strong>Transfiere desde la app de tu banco a:</strong></p>
+              <p>Banco: <strong>STP</strong> · Beneficiario: <strong>Bigotes y Patitas</strong><br />
+                 CLABE: <strong id="tr-clabe">—</strong><br />
+                 Concepto: <strong id="tr-concepto">—</strong><br />
+                 Monto: <strong id="tr-monto">$0.00</strong></p>
+              <label for="tr-rastreo">Clave de rastreo de tu transferencia</label>
+              <input type="text" id="tr-rastreo" maxlength="30" placeholder="La encuentras en el comprobante de tu banco" />
+            </div>
+
+            <p class="cta-aviso" id="recarga-error"></p>
+            <button type="submit" class="cta-btn" id="btn-recargar">Recargar</button>
+            <a class="cta-btn sec" id="btn-volver-pago" href="Checkout.html" style="display:none; text-align:center;">← Volver a mi pago</a>
+          </form>
+        </div>
+      </div>
+
+      <!-- Historial -->
+      <div class="cta-card" id="caja-historial">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+          <h3 style="margin:0;">Historial de movimientos</h3>
+          <div class="mc-filtros" id="filtros">
+            <button type="button" class="sel" data-tipo="">Todos</button>
+            <button type="button" data-tipo="Recarga">Recargas</button>
+            <button type="button" data-tipo="Pago">Pagos</button>
+            <button type="button" data-tipo="Reembolso">Reembolsos</button>
+            <button type="button" data-tipo="Ajuste">Ajustes</button>
+          </div>
+        </div>
+        <div class="mc-tabla-wrap">
+          <table class="mc-tabla">
+            <thead>
+              <tr><th>Fecha</th><th>Movimiento</th><th>Detalle</th><th class="num">Monto</th><th class="num">Saldo</th></tr>
+            </thead>
+            <tbody id="tabla-movimientos"><tr><td colspan="5" style="color:var(--gray);">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+  <div class="cta-toast" id="toast"></div>
+
+  <script src="components.js"></script>
+  <script src="cuenta-menu.js"></script>
+  <script type="module">
+    import { MONEDERO, asegurarMonedero, escucharMonedero, escucharMovimientosMonedero, recargarMonedero } from './firebase-db.js';
+    import {
+      iniciarCuenta, esc, dinero, fechaHora, toast, avisoError, mensajeError, RE_CORREO,
+      validarTarjeta, formatearNumeroTarjeta, formatearVencimiento,
+    } from './cuenta-comun.js';
+
+    const $ = (id) => document.getElementById(id);
+    const params = new URLSearchParams(window.location.search);
+    const volverA = params.get('next');                 // p. ej. Checkout.html cuando falta saldo
+    const faltante = Math.max(0, Number(params.get('faltante')) || 0);
+
+    let sesion = null;
+    let monedero = null;
+    let movimientos = [];
+    let filtro = '';
+    let montoElegido = 0;
+    let enviando = false;
+
+    // ---------- Montos y métodos ----------
+
+    function pintarMontos() {
+      $('montos-rapidos').innerHTML = MONEDERO.montosRapidos.map(m =>
+        `<button type="button" class="mc-monto ${m === montoElegido ? 'sel' : ''}" data-monto="${m}">$${m.toLocaleString('es-MX')}</button>`).join('');
+    }
+
+    function montoActual() {
+      const otro = Number($('otro-monto').value);
+      return otro > 0 ? otro : montoElegido;
+    }
+
+    function actualizarTextoMonto() {
+      const m = montoActual();
+      $('tr-monto').textContent = dinero(m);
+      $('btn-recargar').textContent = m > 0 ? `Recargar ${dinero(m)}` : 'Recargar';
+    }
+
+    $('montos-rapidos').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-monto]');
+      if (!b) return;
+      montoElegido = Number(b.dataset.monto);
+      $('otro-monto').value = '';
+      pintarMontos();
+      actualizarTextoMonto();
+    });
+    $('otro-monto').addEventListener('input', () => {
+      if (Number($('otro-monto').value) > 0) { montoElegido = 0; pintarMontos(); }
+      actualizarTextoMonto();
+    });
+
+    function metodoElegido() {
+      return document.querySelector('input[name="metodo"]:checked').value;
+    }
+    document.querySelectorAll('input[name="metodo"]').forEach(r => r.addEventListener('change', () => {
+      document.querySelectorAll('.mc-metodo').forEach(l => l.classList.toggle('sel', l.querySelector('input').checked));
+      const m = metodoElegido();
+      $('sub-tarjeta').style.display = m === 'Tarjeta de crédito/débito' ? '' : 'none';
+      $('sub-paypal').style.display = m === 'PayPal' ? '' : 'none';
+      $('sub-transferencia').style.display = m === 'Transferencia bancaria' ? '' : 'none';
+      avisoError('recarga-error', '');
+    }));
+
+    $('tj-numero').addEventListener('input', (e) => { $('tj-marca').textContent = formatearNumeroTarjeta(e.target); });
+    $('tj-venc').addEventListener('input', (e) => formatearVencimiento(e.target));
+    $('tj-cvv').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, ''); });
+
+    // CLABE de la tienda para recargas (STP 646, plaza 180) + concepto único del cliente.
+    function pintarDatosTransferencia(uid) {
+      $('tr-clabe').textContent = '646 180 15700012345 7';
+      $('tr-concepto').textContent = 'REC-' + uid.slice(0, 8).toUpperCase();
+    }
+
+    // Valida el formulario del método y devuelve el texto seguro que se guarda (o null si hay error).
+    function detalleDelMetodo() {
+      const m = metodoElegido();
+      if (m === 'Tarjeta de crédito/débito') {
+        const r = validarTarjeta({ numero: $('tj-numero').value, titular: $('tj-titular').value, vencimiento: $('tj-venc').value, cvv: $('tj-cvv').value });
+        if (r.error) { avisoError('recarga-error', r.error); return null; }
+        return `${r.marca} •••• ${r.ultimos4}`;
+      }
+      if (m === 'PayPal') {
+        const correo = $('pp-correo').value.trim();
+        if (!RE_CORREO.test(correo)) { avisoError('recarga-error', 'Escribe el correo de tu cuenta PayPal.'); return null; }
+        return `PayPal ${correo}`;
+      }
+      const rastreo = $('tr-rastreo').value.trim().toUpperCase();
+      if (!/^[A-Z0-9]{8,30}$/.test(rastreo)) {
+        avisoError('recarga-error', 'Escribe la clave de rastreo de tu transferencia (8 a 30 letras o números).');
+        return null;
+      }
+      return `SPEI rastreo ${rastreo}`;
+    }
+
+    $('form-recarga').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (enviando || !sesion) return;
+      avisoError('recarga-error', '');
+      const monto = montoActual();
+      if (!monto) return avisoError('recarga-error', 'Elige o escribe el monto de la recarga.');
+      if (!Number.isInteger(monto)) return avisoError('recarga-error', 'La recarga debe ser en pesos completos (sin centavos).');
+      if (monto < MONEDERO.recargaMinima || monto > MONEDERO.recargaMaxima) {
+        return avisoError('recarga-error', `La recarga debe ser de ${dinero(MONEDERO.recargaMinima)} a ${dinero(MONEDERO.recargaMaxima)}.`);
+      }
+      const detalle = detalleDelMetodo();
+      if (!detalle) return;
+      const metodo = metodoElegido();
+      if (!confirm(`¿Recargar ${dinero(monto)} a tu monedero con ${metodo}?`)) return;
+
+      enviando = true;
+      $('btn-recargar').disabled = true;
+      $('btn-recargar').textContent = 'Procesando…';
+      try {
+        const r = await recargarMonedero({ cliente: { uid: sesion.usuario.uid, nombre: sesion.nombre }, monto, metodo, detalle });
+        toast(`Recarga exitosa: ${dinero(monto)}. Saldo actual: ${dinero(r.saldoNuevo)}`);
+        ['tj-numero', 'tj-titular', 'tj-venc', 'tj-cvv', 'pp-correo', 'tr-rastreo', 'otro-monto'].forEach(id => { $(id).value = ''; });
+        $('tj-marca').textContent = '';
+        montoElegido = 0;
+        pintarMontos();
+        if (volverA) $('btn-volver-pago').style.display = 'block';
+      } catch (err) {
+        console.error(err);
+        avisoError('recarga-error', mensajeError(err, 'No se pudo hacer la recarga.'));
+      } finally {
+        enviando = false;
+        $('btn-recargar').disabled = false;
+        actualizarTextoMonto();
+      }
+    });
+
+    // ---------- Saldo y alertas ----------
+
+    function pintarMonedero() {
+      const saldo = Number(monedero?.saldo) || 0;
+      $('saldo-actual').textContent = dinero(saldo);
+      $('total-recargado').textContent = dinero(monedero?.totalRecargado);
+      $('total-gastado').textContent = dinero(monedero?.totalGastado);
+      const act = monedero?.actualizadoEn;
+      $('saldo-actualizado').textContent = act ? 'Actualizado: ' + fechaHora(act) : 'Actualizado ahora';
+      $('id-monedero').textContent = 'ID de tu monedero: ' + (monedero?.id || sesion.usuario.uid);
+
+      const alerta = $('alerta-saldo');
+      alerta.className = 'mc-alerta';
+      if (faltante > 0 && volverA) {
+        const falta = Math.max(0, faltante - saldo);
+        alerta.classList.add(falta > 0 ? 'roja' : 'verde');
+        alerta.innerHTML = falta > 0
+          ? `⚠️ Para pagar tu compra con el monedero te faltan <strong>${dinero(falta)}</strong>. Recarga y luego vuelve a tu pago.`
+          : `✅ Ya tienes saldo suficiente para tu compra. <a href="${esc(volverA)}">Volver a mi pago</a>`;
+        alerta.style.display = 'flex';
+      } else if (saldo < MONEDERO.saldoBajo) {
+        alerta.innerHTML = `🔔 Tu saldo es bajo (${dinero(saldo)}). <a href="#caja-recarga">Recarga tu monedero</a> para pagar tus compras más rápido.`;
+        alerta.style.display = 'flex';
+      } else {
+        alerta.style.display = 'none';
+      }
+    }
+
+    // ---------- Historial ----------
+
+    const ETIQUETA = { Recarga: '＋ Recarga', Pago: '🛒 Pago de compra', Reembolso: '↩ Reembolso', Ajuste: '⚙ Ajuste' };
+
+    function pintarMovimientos() {
+      const lista = movimientos.filter(m => !filtro || m.tipo === filtro);
+      const tbody = $('tabla-movimientos');
+      if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--gray);">${movimientos.length ? 'No hay movimientos de este tipo.' : 'Aún no tienes movimientos. Haz tu primera recarga.'}</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = lista.map(m => {
+        const abono = m.efecto !== 'cargo';
+        const detalle = m.tipo === 'Pago' || m.tipo === 'Reembolso'
+          ? `${esc(m.detalle)}${m.ventaId ? ` · <a href="factura.html?id=${encodeURIComponent(m.ventaId)}" style="color:var(--pink-fuerte); font-weight:700;">ver recibo</a>` : ''}`
+          : m.tipo === 'Ajuste' || m.metodo === 'Panel de administración'
+            ? `${esc(m.motivo || 'Ajuste de la tienda')}`
+            : `${esc(m.metodo)}${m.detalle ? ' · ' + esc(m.detalle) : ''}`;
+        return `<tr>
+          <td>${esc(fechaHora(m.creadoEn) || m.fecha)}</td>
+          <td><strong>${ETIQUETA[m.tipo] || esc(m.tipo)}</strong><br><span class="mc-id">${esc(m.id)}</span></td>
+          <td>${detalle}<br><small style="color:var(--gray);">Registrado por: ${esc(m.usuarioNombre || '—')}</small></td>
+          <td class="num ${abono ? 'mc-abono' : 'mc-cargo'}">${abono ? '+' : '−'}${dinero(m.monto)}</td>
+          <td class="num">${dinero(m.saldoNuevo)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    $('filtros').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-tipo]');
+      if (!b) return;
+      filtro = b.dataset.tipo;
+      document.querySelectorAll('#filtros button').forEach(x => x.classList.toggle('sel', x === b));
+      pintarMovimientos();
+    });
+
+    $('btn-ir-recargar').addEventListener('click', () => {
+      $('caja-recarga').scrollIntoView({ behavior: 'smooth' });
+      $('otro-monto').focus({ preventScroll: true });
+    });
+    $('btn-ir-historial').addEventListener('click', () => $('caja-historial').scrollIntoView({ behavior: 'smooth' }));
+
+    // ---------- Inicio ----------
+
+    (async function iniciar() {
+      pintarMontos();
+      sesion = await iniciarCuenta('mi-monedero.html', 'monedero');
+      if (!sesion) return;
+      const uid = sesion.usuario.uid;
+      pintarDatosTransferencia(uid);
+      if (volverA) $('btn-volver-pago').href = volverA;
+
+      // Si viene del checkout con saldo insuficiente, se propone recargar lo que falta (mínimo $50).
+      if (faltante > 0) {
+        $('otro-monto').value = Math.max(MONEDERO.recargaMinima, faltante);
+      }
+      actualizarTextoMonto();
+
+      try {
+        monedero = await asegurarMonedero({ uid, nombre: sesion.nombre, correo: sesion.usuario.email });
+      } catch (err) {
+        console.error(err);
+        avisoError('recarga-error', mensajeError(err, 'No se pudo abrir tu monedero.'));
+      }
+      if (monedero && faltante > 0) {
+        $('otro-monto').value = Math.max(MONEDERO.recargaMinima, Math.ceil(faltante - (Number(monedero.saldo) || 0)));
+        actualizarTextoMonto();
+      }
+      escucharMonedero(uid, (m) => { monedero = m || monedero; pintarMonedero(); }, (err) => console.error(err));
+      escucharMovimientosMonedero(uid, (lista) => { movimientos = lista; pintarMovimientos(); }, (err) => {
+        console.error(err);
+        $('tabla-movimientos').innerHTML = '<tr><td colspan="5" style="color:#b3261e;">No se pudo cargar tu historial.</td></tr>';
+      });
+      if (window.location.hash === '#historial') $('caja-historial').scrollIntoView();
+    })();
+  </script>
+</body>
+</html>
