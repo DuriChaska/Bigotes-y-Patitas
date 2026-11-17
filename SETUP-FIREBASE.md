@@ -334,5 +334,6 @@ tickets/{folio}  contadores/tickets  promociones/{CODIGO}  pagos/{ventaId}
 
 ```
 monederos/{uid}  monedero_movimientos/{id}  clientes/{uid}/direcciones/{id}
+carritos/{uid}  carritos/{uid}/detalle/{productoId}   (carrito guardado en la cuenta, §13)
 ```
 

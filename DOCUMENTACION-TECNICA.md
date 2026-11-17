@@ -776,3 +776,99 @@ Equivalencia con los endpoints del PDF (no hay servidor REST; Firestore se usa d
   (plantilla editable en la consola: Authentication → Plantillas). Pueden llegar a spam.
 - Los clientes que el CRM dio de alta a mano (sin cuenta) pueden recibir una recarga manual del administrador,
   pero no podrán usarla hasta que tengan cuenta en la tienda.
+
+---
+
+## 13. Etapa 4: carrito persistente (modelos Carrito y CarritoDetalle del PDF)
+
+Antes el carrito vivía solo en el navegador (`localStorage`): si el cliente cambiaba de computadora
+lo perdía, nunca caducaba y no se enteraba si otra persona compraba lo mismo. Ahora:
+
+1. **Se guarda en la cuenta del cliente** (Firebase) y se ve igual en cualquier dispositivo.
+2. **Caduca:** cada producto se quita solo **72 horas** después de agregarlo, con un aviso.
+3. **Avisa en vivo** si alguien más compra un producto que tienes en el carrito y ya no alcanza: la
+   cantidad se ajusta (o el producto se quita) y aparece el mensaje "Alguien más acaba de comprar…".
+4. **Al pagar**, el carrito queda en estado `Comprado` con el id de la venta; al **cerrar sesión** se
+   borra del navegador (sigue guardado en la cuenta), así en una computadora compartida nadie ve el
+   carrito de otro.
+
+Analogía: el carrito del navegador es la canasta que traes en la mano; el de Firebase es el casillero
+con tu nombre en la tienda. Cada vez que cambias la canasta, se copia al casillero, y si llegas por otra
+puerta (otro dispositivo) te dan lo que había en tu casillero.
+
+### 13.1 Cómo está hecho (sin reescribir las páginas)
+
+Las páginas de la tienda (`index`, `shop`, `Producto`, `Carrito`, `Checkout`, `carpeta`) **siguen
+usando `localStorage`** como antes, y todas lanzan el evento `actualizarCarrito` al guardar. El archivo
+nuevo **`carrito-sync.js`**, que carga `components.js` en todas las páginas, escucha ese evento y:
+
+- le pone fecha (`agregadoEn`) a cada producto nuevo y quita los que ya tienen 72 h;
+- si hay sesión, copia el carrito a Firebase (`guardarCarritoRemoto`, medio segundo después del último
+  cambio, para no escribir en cada clic);
+- al iniciar sesión **junta** el carrito del navegador con el de la cuenta (por producto se queda la
+  cantidad mayor) y escucha cambios hechos en otro dispositivo;
+- escucha el stock (`scm_productos`, que ya era público) y ajusta el carrito si ya no alcanza.
+
+Cuando `carrito-sync.js` cambia el carrito por su cuenta lanza `carritoCambioExterno`, y
+`Carrito.html` y `Checkout.html` se vuelven a pintar. **La validación final de stock sigue siendo la
+transacción de `crearVenta()`** (§11): el carrito solo avisa antes.
+
+### 13.2 Colecciones y relaciones (punto 4.2)
+
+```
+carritos/{uid}                       ← un cliente tiene UN carrito (id = uid del cliente)
+  clienteId ───────────────────────► clientes/{uid}
+  clienteNombre
+  estado: "Activo" | "Vacío" | "Comprado" | "Expirado"
+  numProductos, totalPiezas, subtotal
+  resumen: [{ nombre, cantidad }]    (para la tabla del panel sin abrir el detalle)
+  ultimaVentaId ───────────────────► ventas/{id}  (cuando terminó en compra)
+  actualizadoEn
+
+carritos/{uid}/detalle/{productoId}  ← un carrito tiene muchos productos (CarritoDetalle)
+  productoId ──────────────────────► scm_productos/{id}
+  nombre, cantidad (1-99), precioUnitario, imagen, agregadoEn (milisegundos)
+```
+
+Equivalencia con los endpoints del PDF:
+
+| Endpoint del PDF | En este proyecto |
+|---|---|
+| `POST /carrito/agregar`, `PUT /carrito/item/{id}`, `DELETE /carrito/item/{id}`, `DELETE /carrito/vaciar/{cliente_id}` | Las páginas cambian `localStorage` y `carrito-sync.js` llama `guardarCarritoRemoto()` (escribe/borra en `detalle`) |
+| `GET /carrito/{cliente_id}` | `obtenerCarritoRemoto()` / `escucharCarritoRemoto()` |
+
+### 13.3 Archivos
+
+| Archivo | Cambio |
+|---|---|
+| `carrito-sync.js` (nuevo) | Caducidad, sincronización con Firebase, unión al iniciar sesión, aviso de stock en vivo. |
+| `admin-carritos.html` (nuevo) | Panel (administrador y ventas): carritos activos, **abandonados** (activos sin cambios en 24 h), comprados y expirados, con lo que tiene cada uno y enlace a la ficha del cliente en el CRM. |
+| `firebase-db.js` | `CARRITO`, `obtenerCarritoRemoto`, `escucharCarritoRemoto`, `guardarCarritoRemoto`, `escucharCarritos`. |
+| `firestore.rules` | `carritos/{uid}` y `detalle`: solo el dueño escribe (con validación de cantidad y precio); ventas/admin leen. |
+| `components.js` | Carga `carrito-sync.js`. |
+| `Carrito.html` | Se repinta con `carritoCambioExterno`; aviso de las 72 h. |
+| `Checkout.html` | Al pagar marca el carrito como `Comprado`; el resumen se repinta si el carrito cambia por fuera. |
+| `carpeta.html` | Su `guardarCarrito` ahora también lanza `actualizarCarrito` (antes no avisaba). |
+| `admin-components.js` | Opción "Carritos" en el menú del panel. |
+
+### 13.4 Cómo probarlo
+
+1. Sin sesión, agrega 2 productos. Inicia sesión: el carrito se conserva y aparece en Firebase
+   (`carritos/{tu uid}/detalle`).
+2. Abre la tienda en otro navegador o en el celular con la misma cuenta: aparecen los mismos productos.
+   Agrega uno ahí y mira cómo llega solo a la primera ventana.
+3. Con un producto en el carrito, entra al panel como logística y baja su stock a 1 (o compra ese
+   producto con otra cuenta): en la ventana del cliente aparece "Alguien más acaba de comprar…" y la
+   cantidad baja.
+4. Para probar la caducidad sin esperar 72 h: en la consola del navegador cambia `agregadoEn` de un
+   producto en `localStorage.carrito` a una fecha de hace 4 días y recarga.
+5. Paga: en el panel → **Carritos**, el de ese cliente aparece como `Comprado`.
+
+### 13.5 Limitaciones
+
+- No hay servidor: la caducidad se revisa cuando el cliente abre la tienda (cada minuto mientras está
+  abierta). Un carrito abandonado sigue en Firebase con sus productos hasta que el cliente vuelve a entrar.
+  Para limpiarlo sin que entre haría falta una Cloud Function programada.
+- Sin sesión, el carrito sigue solo en el navegador (con caducidad y aviso de stock, pero sin copia en Firebase).
+- Las reglas no comparan la cantidad del carrito contra el stock: eso se avisa en la pantalla y se garantiza
+  al pagar, dentro de la transacción de `crearVenta()`.

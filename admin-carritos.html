@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carritos de clientes - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-roles: administrador y ventas (vendedor) consultan los carritos guardados -->
+<body data-roles="administrador,vendedor">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Carritos de clientes</h1>
+          <p class="admin-breadcrumb">Panel de administración · Carritos guardados en la cuenta de cada cliente (colección <code>carritos</code>)</p>
+        </div>
+      </div>
+
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon green" data-bp-icon="package"></div></div>
+          <div class="stat-num" id="k-activos">0</div>
+          <div class="stat-label">Carritos activos</div>
+          <div class="stat-delta up" id="k-valor">$0.00 en productos</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon orange" data-bp-icon="warning"></div></div>
+          <div class="stat-num" id="k-abandonados">0</div>
+          <div class="stat-label">Abandonados</div>
+          <div class="stat-delta warn">Activos sin cambios en 24 h</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon blue" data-bp-icon="check"></div></div>
+          <div class="stat-num" id="k-comprados">0</div>
+          <div class="stat-label">Terminaron en compra</div>
+          <div class="stat-delta up" id="k-conversion">0% de los carritos</div>
+        </div>
+        <div class="admin-stat-card">
+          <div class="admin-stat-top"><div class="admin-stat-icon yellow" data-bp-icon="clock"></div></div>
+          <div class="stat-num" id="k-expirados">0</div>
+          <div class="stat-label">Expirados</div>
+          <div class="stat-delta warn">Productos con más de 72 h</div>
+        </div>
+      </div>
+
+      <div class="admin-panel" style="margin-top:20px;">
+        <div class="admin-panel-head">
+          <h2>Carritos</h2>
+          <span class="admin-count-pill" id="conteo">0</span>
+        </div>
+        <p class="panel-sub">Cada cliente tiene un carrito (<code>carritos/{uid}</code>) con sus productos en <code>carritos/{uid}/detalle</code>.
+          Sirve para ver qué se queda sin comprar y contactar al cliente desde el CRM.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <select id="f-estado" class="admin-select">
+            <option value="">Todos los estados</option>
+            <option value="Activo">Activos</option>
+            <option value="abandonado">Abandonados (24 h)</option>
+            <option value="Comprado">Comprados</option>
+            <option value="Expirado">Expirados</option>
+            <option value="Vacío">Vacíos</option>
+          </select>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Cliente</th><th>Estado</th><th>Productos</th><th style="text-align:right;">Piezas</th><th style="text-align:right;">Subtotal</th><th>Última actualización</th><th></th></tr></thead>
+            <tbody id="tabla"><tr><td colspan="7" style="color:var(--gray);">Cargando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { escucharCarritos } from './firebase-db.js';
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const dinero = (n) => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const ms = (v) => (v && typeof v.toMillis === 'function') ? v.toMillis() : (v ? new Date(v).getTime() : 0);
+    const DIA = 24 * 60 * 60 * 1000;
+    let carritos = [];
+
+    const abandonado = (c) => c.estado === 'Activo' && Date.now() - ms(c.actualizadoEn) > DIA;
+    const clase = { Activo: 'ok', Comprado: 'info', Expirado: 'warn', 'Vacío': 'muted' };
+
+    function pintar() {
+      const activos = carritos.filter(c => c.estado === 'Activo');
+      const comprados = carritos.filter(c => c.estado === 'Comprado').length;
+      $('k-activos').textContent = activos.length;
+      $('k-valor').textContent = dinero(activos.reduce((s, c) => s + (Number(c.subtotal) || 0), 0)) + ' en productos';
+      $('k-abandonados').textContent = carritos.filter(abandonado).length;
+      $('k-comprados').textContent = comprados;
+      $('k-conversion').textContent = (carritos.length ? Math.round(comprados * 100 / carritos.length) : 0) + '% de los carritos';
+      $('k-expirados').textContent = carritos.filter(c => c.estado === 'Expirado').length;
+
+      const f = $('f-estado').value;
+      const lista = carritos
+        .filter(c => !f || (f === 'abandonado' ? abandonado(c) : c.estado === f))
+        .sort((a, b) => ms(b.actualizadoEn) - ms(a.actualizadoEn));
+      $('conteo').textContent = lista.length;
+      $('tabla').innerHTML = lista.length ? lista.map(c => `<tr>
+          <td><strong>${esc(c.clienteNombre || 'Cliente')}</strong><br><span style="font-family:monospace; font-size:.72rem; color:var(--gray);">${esc(c.id)}</span></td>
+          <td><span class="admin-tag ${clase[c.estado] || 'muted'}">${esc(c.estado)}</span>${abandonado(c) ? ' <span class="admin-tag danger">Abandonado</span>' : ''}</td>
+          <td style="font-size:.82rem;">${(c.resumen || []).map(r => `${esc(r.nombre)} ×${Number(r.cantidad)}`).join('<br>') || '—'}</td>
+          <td style="text-align:right;">${Number(c.totalPiezas) || 0}</td>
+          <td style="text-align:right;">${dinero(c.subtotal)}</td>
+          <td>${c.actualizadoEn ? esc(new Date(ms(c.actualizadoEn)).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })) : '—'}</td>
+          <td><a href="admin-cliente-detalle.html?cliente=${encodeURIComponent(c.id)}" class="admin-btn-secondary" style="white-space:nowrap;">Ver cliente</a></td>
+        </tr>`).join('') : '<tr><td colspan="7" style="color:var(--gray);">No hay carritos con este filtro.</td></tr>';
+    }
+
+    $('f-estado').addEventListener('change', pintar);
+    document.addEventListener('bp-sesion-lista', () => {
+      escucharCarritos((lista) => { carritos = lista; pintar(); }, (err) => {
+        console.error(err);
+        $('tabla').innerHTML = '<tr><td colspan="7" style="color:var(--admin-danger,#dc2626);">No se pudieron leer los carritos (¿ya publicaste firestore.rules?).</td></tr>';
+      });
+      setInterval(pintar, 60 * 1000);   // "abandonado" depende de la hora actual
+    }, { once: true });
+  </script>
+</body>
+</html>

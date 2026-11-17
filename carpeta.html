@@ -102,7 +102,7 @@
   <script src="components.js"></script>
   <script>
     function obtenerCarrito() { return JSON.parse(localStorage.getItem("carrito") || "[]"); }
-    function guardarCarrito(c) { localStorage.setItem("carrito", JSON.stringify(c)); }
+    function guardarCarrito(c) { localStorage.setItem("carrito", JSON.stringify(c)); window.dispatchEvent(new Event('actualizarCarrito')); }
 
     function mostrarToast(msg, tipo = 'success') {
       const c = document.getElementById('toast-container');

@@ -73,6 +73,7 @@
       <p id="coupon-line" style="display:none;"><span id="coupon-message"></span></p>
       <p><strong>Total: <span id="total">$0.00</span></strong></p>
       <p class="nota-iva">El envío y el IVA se calculan en el siguiente paso.</p>
+      <p class="nota-iva">🕒 Los productos se quitan solos del carrito 72 horas después de agregarlos. Con sesión iniciada, tu carrito se guarda en tu cuenta.</p>
       <button class="checkout-btn" id="btn-checkout">Proceder a pagar</button>
     </div>
   </section>
@@ -358,6 +359,10 @@
 
   document.getElementById("btn-coupon").addEventListener("click", aplicarCuponDesdeCarrito);
   document.getElementById("btn-vaciar").addEventListener("click", vaciarCarrito);
+
+  // Etapa 4 (carrito-sync.js): stock agotado por otra compra, caducidad de 72 h o cambios desde
+  // otro dispositivo cambian el carrito por fuera; aquí solo se vuelve a pintar.
+  window.addEventListener("carritoCambioExterno", () => renderCart());
 
   document.getElementById("btn-actualizar").addEventListener("click", async () => {
     await sincronizarConStockReal();

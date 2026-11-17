@@ -39,6 +39,9 @@
 //                          detalle, ventaId, folio, motivo, usuarioId, usuarioNombre, fecha, creadoEn }
 //    clientes/{uid}/direcciones/{id} { alias, nombre, apellido, pais, calle, ciudad, estado, cp,
 //                          telefono, referencias, predeterminada, creadoEn, actualizadoEn }
+//    carritos/{uid}      { clienteId, clienteNombre, estado, numProductos, totalPiezas, subtotal,
+//                          resumen, ultimaVentaId, actualizadoEn }
+//    carritos/{uid}/detalle/{productoId} { productoId, nombre, cantidad, precioUnitario, imagen, agregadoEn }
 // ============================================
 
 import { auth, db, firebaseConfig } from "./firebase-config.js";
@@ -2120,4 +2123,85 @@ export function cambiarContrasenaCliente(contrasenaNueva, contrasenaActual) {
 export function enviarCorreoRecuperacion(correo) {
   auth.languageCode = "es";
   return sendPasswordResetEmail(auth, String(correo || "").trim());
+}
+
+// =====================================================================
+// ---------- Etapa 4 · Carrito persistente (modelos Carrito y CarritoDetalle del PDF) ----------
+// =====================================================================
+//   carritos/{uid}                     ← un cliente tiene UN carrito (id = uid)
+//     { clienteId, clienteNombre, estado: "Activo"|"Vacío"|"Comprado"|"Expirado",
+//       numProductos, totalPiezas, subtotal, resumen: [{ nombre, cantidad }],
+//       ultimaVentaId, actualizadoEn }
+//   carritos/{uid}/detalle/{productoId} ← cada producto del carrito
+//     { productoId, nombre, cantidad, precioUnitario, imagen, agregadoEn (ms) }
+// En el navegador el carrito se sigue leyendo de localStorage (así funciona igual sin sesión);
+// carrito-sync.js lo copia a Firebase cuando hay un cliente con sesión y lo trae de vuelta
+// desde cualquier dispositivo.
+
+export const CARRITO = Object.freeze({
+  horasCaducidad: 72,       // un producto se quita solo del carrito 72 h después de agregarlo
+  maxPiezasPorProducto: 99,
+});
+
+/** Lee el carrito guardado de un cliente: { estado, items: [...] } o null. */
+export async function obtenerCarritoRemoto(uid) {
+  const [cab, det] = await Promise.all([
+    getDoc(doc(db, "carritos", uid)),
+    getDocs(collection(db, "carritos", uid, "detalle")),
+  ]);
+  if (!cab.exists() && det.empty) return null;
+  return { ...(cab.exists() ? cab.data() : {}), items: det.docs.map(d => ({ id: d.id, ...d.data() })) };
+}
+
+/** Escucha los productos del carrito guardado (para ver en vivo cambios hechos en otro dispositivo). */
+export function escucharCarritoRemoto(uid, callback, onError) {
+  return onSnapshot(collection(db, "carritos", uid, "detalle"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * Guarda el carrito completo del cliente: actualiza la cabecera, escribe cada producto en
+ * "detalle" y borra los que ya no están. items = [{ id, nombre, precio, cantidad, imagen, agregadoEn }].
+ * extra = { estado, ultimaVentaId, clienteNombre }.
+ */
+export async function guardarCarritoRemoto(uid, items, extra = {}) {
+  const limpios = (items || [])
+    .map(i => ({
+      productoId: String(i.id || i.productoId || ""),
+      nombre: String(i.nombre || "Producto").slice(0, 200),
+      cantidad: Math.min(CARRITO.maxPiezasPorProducto, Math.max(1, Math.floor(Number(i.cantidad) || 1))),
+      precioUnitario: redondear2(i.precio ?? i.precioUnitario),
+      imagen: String(i.imagen || "").slice(0, 500),
+      agregadoEn: Number(i.agregadoEn) || Date.now(),
+    }))
+    .filter(i => i.productoId && !i.productoId.includes("/"));
+
+  const actuales = await getDocs(collection(db, "carritos", uid, "detalle"));
+  const lote = writeBatch(db);
+  const ids = new Set(limpios.map(i => i.productoId));
+  actuales.docs.forEach(d => { if (!ids.has(d.id)) lote.delete(d.ref); });
+  limpios.forEach(i => lote.set(doc(db, "carritos", uid, "detalle", i.productoId), i));
+
+  const totalPiezas = limpios.reduce((s, i) => s + i.cantidad, 0);
+  const estado = extra.estado || (limpios.length ? "Activo" : "Vacío");
+  lote.set(doc(db, "carritos", uid), {
+    clienteId: uid,
+    clienteNombre: String(extra.clienteNombre || "").slice(0, 120),
+    estado,
+    numProductos: limpios.length,
+    totalPiezas,
+    subtotal: redondear2(limpios.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0)),
+    resumen: limpios.slice(0, 30).map(i => ({ nombre: i.nombre, cantidad: i.cantidad })),
+    ultimaVentaId: String(extra.ultimaVentaId || ""),
+    actualizadoEn: serverTimestamp(),
+  }, { merge: true });
+  await lote.commit();
+}
+
+/** Panel: todos los carritos (activos, abandonados, comprados, expirados). */
+export function escucharCarritos(callback, onError) {
+  return onSnapshot(collection(db, "carritos"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
 }

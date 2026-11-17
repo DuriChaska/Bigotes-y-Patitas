@@ -1125,8 +1125,11 @@
 
         // Respaldo local (factura.html lo usa si no puede leer la venta de Firebase).
         localStorage.setItem("ultimaCompra", JSON.stringify(recibo));
+        // Etapa 4: el carrito guardado en la cuenta queda en estado "Comprado" (carrito-sync.js).
+        localStorage.setItem("carritoComprado", venta.id);
         localStorage.removeItem("carrito");
         localStorage.removeItem("cuponAplicado");
+        window.dispatchEvent(new Event('actualizarCarrito'));
         if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
 
         mostrarConfirmacion(recibo, venta.saldoMonedero);
@@ -1230,6 +1233,11 @@
     window.formatExpiry = formatExpiry;
     window.confirmarPedido = confirmarPedido;
     window.usarDireccionGuardada = usarDireccionGuardada;
+
+    // Si el carrito cambia por fuera (stock agotado, caducidad, otro dispositivo), se actualiza el resumen.
+    window.addEventListener('carritoCambioExterno', () => {
+      if (document.getElementById('step-confirm').classList.contains('hidden')) renderSummary();
+    });
 
     (async function iniciar() {
       // El checkout requiere una cuenta real: si nadie inició sesión, se manda

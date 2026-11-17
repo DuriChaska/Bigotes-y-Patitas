@@ -71,6 +71,7 @@ const adminErpItems = [
   { href: 'admin-erp-reportes.html',   label: 'Reportes ERP',            icon: 'chart',       roles: R_TODOS },
   { href: 'admin-promociones.html',    label: 'Promociones y sincronía', icon: 'tag',         roles: R_CRM },
   { href: 'admin-monedero.html',       label: 'Monedero de clientes',    icon: 'wallet',      roles: R_CRM },
+  { href: 'admin-carritos.html',       label: 'Carritos de clientes',    icon: 'package',     roles: R_CRM },
   { href: 'admin-soporte.html',        label: 'Atención a clientes',     icon: 'headset',     roles: R_SOPORTE },
   { href: 'admin-impuestos.html',      label: 'Impuestos (IVA)',         icon: 'tag',         roles: R_ADMIN },
   { href: 'admin-erp-madurez.html',    label: 'Nivel de implementación', icon: 'trending_up', roles: R_ADMIN },
@@ -89,6 +90,7 @@ const adminNavGroups = [
       { href: 'admin-actividad.html',            label: 'Mi actividad',   icon: 'clock',  roles: R_CRM },
       { href: 'admin-promociones.html',          label: 'Promociones',    icon: 'tag',    roles: R_CRM },
       { href: 'admin-monedero.html',             label: 'Monedero',       icon: 'wallet', roles: R_CRM },
+      { href: 'admin-carritos.html',             label: 'Carritos',       icon: 'package', roles: R_CRM },
     ],
   },
   {
