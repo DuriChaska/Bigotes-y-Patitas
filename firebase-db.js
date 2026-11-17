@@ -31,6 +31,17 @@
 //                          motivo, fecha, usuario }
 //    scm_estado/madurez  { items: { <idDelPunto>: true|false }, actualizadoEn }
 //                          (todas las colecciones SCM: administradores y logística, ver firestore.rules)
+//    Etapa 4 · cuenta y monedero (integrante 2):
+//    monederos/{uid}     { clienteId, clienteNombre, saldo, totalRecargado, totalGastado,
+//                          ultimoMovimientoId, creadoEn, actualizadoEn }
+//    monedero_movimientos/{id} { clienteId, clienteNombre, tipo: "Recarga"|"Pago"|"Ajuste"|"Reembolso",
+//                          efecto: "abono"|"cargo", monto, saldoAnterior, saldoNuevo, metodo,
+//                          detalle, ventaId, folio, motivo, usuarioId, usuarioNombre, fecha, creadoEn }
+//    clientes/{uid}/direcciones/{id} { alias, nombre, apellido, pais, calle, ciudad, estado, cp,
+//                          telefono, referencias, predeterminada, creadoEn, actualizadoEn }
+//    carritos/{uid}      { clienteId, clienteNombre, estado, numProductos, totalPiezas, subtotal,
+//                          resumen, ultimaVentaId, actualizadoEn }
+//    carritos/{uid}/detalle/{productoId} { productoId, nombre, cantidad, precioUnitario, imagen, agregadoEn }
 // ============================================
 
 import { auth, db, firebaseConfig } from "./firebase-config.js";
@@ -46,6 +57,8 @@ import {
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  sendPasswordResetEmail,
+  verifyBeforeUpdateEmail,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   collection, doc,
@@ -655,6 +668,7 @@ export function escucharVentasDeCliente(uid, callback, onError) {
 export const IVA_POR_DEFECTO = Object.freeze({ id: "iva", nombre: "IVA", tasa: 16, activo: true, incluidoEnPrecio: false });
 
 const redondear2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const dineroTxt = (n) => `$${redondear2(n).toFixed(2)}`;
 
 /** Lee la configuración del IVA. Si no existe todavía (o no hay internet) usa 16% sumado al total. */
 export async function obtenerImpuestoIva() {
@@ -813,12 +827,28 @@ export async function crearVenta(datosVenta, productosActuales) { // eslint-disa
   const quien = datosVenta.clienteNombre || datosVenta.clienteCorreo || "Cliente";
   const ventaRef = doc(ventasRef);
 
+  // Etapa 4 (integrante 2): pago con Monedero. El saldo se lee y se descuenta DENTRO de la
+  // misma transacción que la venta y el stock: o se cobra todo junto, o no pasa nada.
+  const pagaConMonedero = datosVenta.metodoPagoClave === "monedero";
+  const monederoRef = pagaConMonedero ? doc(db, "monederos", datosVenta.clienteId) : null;
+  const movMonederoRef = pagaConMonedero ? doc(collection(db, "monedero_movimientos")) : null;
+  let saldoMonedero = null;   // { anterior, nuevo } si se pagó con monedero
+
   await runTransaction(db, async (tx) => {
     // 1) Todas las lecturas primero (Firestore exige leer antes de escribir).
     const lecturas = [];
     for (const [productoId, item] of porProducto) {
       const ref = doc(db, "scm_productos", productoId);
       lecturas.push({ ref, item, snap: await tx.get(ref) });
+    }
+    let monederoSnap = null;
+    if (pagaConMonedero) {
+      monederoSnap = await tx.get(monederoRef);
+      const saldo = monederoSnap.exists() ? Number(monederoSnap.data().saldo) || 0 : 0;
+      if (saldo + 0.001 < ivaCalc.totalConIva) {
+        throw new Error(`Saldo insuficiente en tu monedero: tienes ${dineroTxt(saldo)} y el total es ${dineroTxt(ivaCalc.totalConIva)}. Recarga ${dineroTxt(ivaCalc.totalConIva - saldo)} o elige otro método de pago.`);
+      }
+      saldoMonedero = { anterior: redondear2(saldo), nuevo: redondear2(saldo - ivaCalc.totalConIva) };
     }
 
     // 2) Validar con el stock y el precio de este instante.
@@ -851,9 +881,39 @@ export async function crearVenta(datosVenta, productosActuales) { // eslint-disa
       estado: "Confirmada",
       estadoPago,
       referenciaPago: referenciaPago || null,
+      ...(saldoMonedero ? { pagoDetalle: { ...(datosVenta.pagoDetalle || {}), saldoAnterior: saldoMonedero.anterior, saldoNuevo: saldoMonedero.nuevo, movimientoId: movMonederoRef.id } } : {}),
       historial: [{ estado: "Confirmada", usuario: quien, fecha: ahora.toISOString() }],
       creadoEn: serverTimestamp(),
     });
+
+    // 3b) Monedero: descuenta el saldo y deja el movimiento "Pago" ligado a esta venta.
+    if (saldoMonedero) {
+      const m = monederoSnap.data();
+      tx.update(monederoRef, {
+        saldo: saldoMonedero.nuevo,
+        totalGastado: redondear2((Number(m.totalGastado) || 0) + ivaCalc.totalConIva),
+        ultimoMovimientoId: movMonederoRef.id,
+        actualizadoEn: serverTimestamp(),
+      });
+      tx.set(movMonederoRef, {
+        clienteId: datosVenta.clienteId,
+        clienteNombre: quien,
+        tipo: "Pago",
+        efecto: "cargo",
+        monto: ivaCalc.totalConIva,
+        saldoAnterior: saldoMonedero.anterior,
+        saldoNuevo: saldoMonedero.nuevo,
+        metodo: "Monedero",
+        detalle: `Compra ${folio}`,
+        ventaId: ventaRef.id,
+        folio,
+        motivo: "",
+        usuarioId: datosVenta.clienteId,
+        usuarioNombre: quien,
+        fecha: hoy,
+        creadoEn: serverTimestamp(),
+      });
+    }
 
     // 4) Descontar stock + registrar la salida de inventario de cada producto.
     for (const { ref, item, snap } of lecturas) {
@@ -888,7 +948,7 @@ export async function crearVenta(datosVenta, productosActuales) { // eslint-disa
   } catch (err) {
     console.error("[Etapa 4] La compra se guardó, pero no se pudo sincronizar con pagos/CRM/ERP:", err);
   }
-  return { id: ventaRef.id, folio, referenciaPago, estadoPago, total: ivaCalc.totalConIva, iva: ivaCalc.iva, tasaIva: ivaCalc.tasa, ivaIncluido: ivaCalc.incluido };
+  return { id: ventaRef.id, folio, referenciaPago, estadoPago, total: ivaCalc.totalConIva, iva: ivaCalc.iva, tasaIva: ivaCalc.tasa, ivaIncluido: ivaCalc.incluido, saldoMonedero };
 }
 
 // ---------- ERP: órdenes empresariales (Etapa 3) ----------
@@ -1110,9 +1170,12 @@ export async function cambiarEstadoOrdenErp(orden, estadoNuevo, usuario) {
   if (estadoNuevo === "Cancelada") {
     // Etapa 4: si la orden tiene su pago en "pagos", se marca como Cancelado.
     const pagoRef = doc(db, "pagos", orden.id);
+    // Pagada con monedero: el dinero regresa al saldo del cliente (y el pago queda "Reembolsado").
+    const reembolsar = orden.metodoPagoClave === "monedero" && !!orden.clienteId && orden.estadoPago !== "Pendiente";
     if ((await getDoc(pagoRef)).exists()) {
-      lote.update(pagoRef, { estado: "Cancelado", actualizadoEn: serverTimestamp() });
+      lote.update(pagoRef, { estado: reembolsar ? "Reembolsado" : "Cancelado", actualizadoEn: serverTimestamp() });
     }
+    if (reembolsar) await agregarReembolsoMonedero(lote, orden, usuario);
     for (const item of (orden.items || [])) {
       const cantidad = Math.floor(Number(item.cantidad)) || 0;
       if (!item.productoId || cantidad < 1) continue;
@@ -1667,4 +1730,478 @@ export async function registrarIntegracionCompra({ ventaId, folio, clienteId, cl
   });
 
   await lote.commit();
+}
+
+// =====================================================================
+// ---------- Etapa 4 · Cuenta del cliente y Monedero (integrante 2) ----------
+// =====================================================================
+// Todo lo de "Mi cuenta" que faltaba: monedero (saldo, recargas, historial, pago),
+// direcciones guardadas, edición de datos y recuperación de contraseña.
+//
+//   monederos/{uid}               ← el id es el mismo uid del cliente (un monedero por cliente)
+//   monedero_movimientos/{id}     ← historial: nunca se edita ni se borra, solo se agregan
+//   clientes/{uid}/direcciones/{id}
+//
+// Cada cambio de saldo se hace en UNA transacción que (1) lee el saldo actual, (2) lo cambia
+// y (3) crea su movimiento. El monedero guarda el id de ese movimiento en
+// "ultimoMovimientoId": las reglas lo usan para comprobar que el saldo cambió exactamente lo
+// que dice el movimiento (nadie puede subirse el saldo "a mano").
+
+export const MONEDERO = Object.freeze({
+  recargaMinima: 50,
+  recargaMaxima: 10000,
+  saldoBajo: 100,                       // debajo de esto se muestra la alerta "recarga tu monedero"
+  montosRapidos: [100, 200, 500, 1000],
+  metodosRecarga: ["Tarjeta de crédito/débito", "PayPal", "Transferencia bancaria"],
+});
+
+const monederosRef = collection(db, "monederos");
+const movMonederoRef = collection(db, "monedero_movimientos");
+
+/** Fecha/hora de un documento (Timestamp de Firestore, ISO o Date) en milisegundos. */
+function milisDe(valor) {
+  if (!valor) return Date.now();
+  if (typeof valor.toMillis === "function") return valor.toMillis();
+  const t = new Date(valor).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** Escucha el monedero de un cliente (null si todavía no tiene). */
+export function escucharMonedero(uid, callback, onError) {
+  return onSnapshot(doc(db, "monederos", uid), (snap) => {
+    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  }, onError);
+}
+
+/** Lee el monedero una sola vez (checkout). */
+export async function obtenerMonedero(uid) {
+  const snap = await getDoc(doc(db, "monederos", uid));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/** Crea el monedero en $0 la primera vez que el cliente entra a "Mi monedero". */
+export async function asegurarMonedero(cliente) {
+  const ref = doc(db, "monederos", cliente.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return { id: snap.id, ...snap.data() };
+  const nuevo = {
+    clienteId: cliente.uid,
+    clienteNombre: String(cliente.nombre || cliente.correo || "Cliente").slice(0, 120),
+    saldo: 0,
+    totalRecargado: 0,
+    totalGastado: 0,
+    creadoEn: serverTimestamp(),
+    actualizadoEn: serverTimestamp(),
+  };
+  await setDoc(ref, nuevo);
+  return { id: cliente.uid, ...nuevo };
+}
+
+/** Historial de movimientos de UN cliente (más recientes primero; se ordena aquí para no exigir índice). */
+export function escucharMovimientosMonedero(uid, callback, onError) {
+  return onSnapshot(query(movMonederoRef, where("clienteId", "==", uid)), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.creadoEn) - milisDe(a.creadoEn));
+    callback(lista);
+  }, onError);
+}
+
+/** Panel: todos los monederos (ventas y administrador). */
+export function escucharMonederos(callback, onError) {
+  return onSnapshot(monederosRef, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/** Panel: los movimientos más recientes de todos los monederos. */
+export function escucharMovimientosMonederoTodos(callback, onError, maximo = 200) {
+  return onSnapshot(query(movMonederoRef, orderBy("creadoEn", "desc"), limit(maximo)), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * El cliente recarga su monedero. No hay pasarela real: el formulario del método (tarjeta,
+ * PayPal o transferencia) se valida en la pantalla y aquí solo se guarda un resumen seguro
+ * (marca y últimos 4 dígitos, correo de PayPal o clave de rastreo de la transferencia).
+ * cliente = { uid, nombre }. Devuelve { saldoAnterior, saldoNuevo, movimientoId }.
+ */
+export async function recargarMonedero({ cliente, monto, metodo, detalle }) {
+  const cantidad = redondear2(monto);
+  if (!Number.isFinite(cantidad) || cantidad < MONEDERO.recargaMinima || cantidad > MONEDERO.recargaMaxima) {
+    throw new Error(`La recarga debe ser de ${dineroTxt(MONEDERO.recargaMinima)} a ${dineroTxt(MONEDERO.recargaMaxima)}.`);
+  }
+  if (!Number.isInteger(cantidad)) throw new Error("La recarga debe ser en pesos completos (sin centavos).");
+  if (!MONEDERO.metodosRecarga.includes(metodo)) throw new Error("Elige un método de pago para la recarga.");
+
+  await asegurarMonedero(cliente);
+  const ref = doc(db, "monederos", cliente.uid);
+  const movRef = doc(movMonederoRef);
+  const nombre = String(cliente.nombre || "Cliente").slice(0, 120);
+
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const m = snap.data();
+    const anterior = redondear2(m.saldo);
+    const nuevo = redondear2(anterior + cantidad);
+    tx.update(ref, {
+      saldo: nuevo,
+      totalRecargado: redondear2((Number(m.totalRecargado) || 0) + cantidad),
+      ultimoMovimientoId: movRef.id,
+      actualizadoEn: serverTimestamp(),
+    });
+    tx.set(movRef, {
+      clienteId: cliente.uid,
+      clienteNombre: nombre,
+      tipo: "Recarga",
+      efecto: "abono",
+      monto: cantidad,
+      saldoAnterior: anterior,
+      saldoNuevo: nuevo,
+      metodo,
+      detalle: String(detalle || "").slice(0, 120),
+      ventaId: "",
+      folio: "",
+      motivo: "",
+      usuarioId: cliente.uid,
+      usuarioNombre: nombre,
+      fecha: hoyISO(),
+      creadoEn: serverTimestamp(),
+    });
+    return { saldoAnterior: anterior, saldoNuevo: nuevo, movimientoId: movRef.id };
+  });
+}
+
+/**
+ * Administrador: recarga manual (abono) o ajuste (abono / cargo) del saldo de un cliente,
+ * siempre con un motivo. Si el cliente aún no tiene monedero, se le crea aquí.
+ * datos = { clienteId, clienteNombre, efecto: "abono"|"cargo", monto, motivo, tipo: "Recarga"|"Ajuste" }
+ * usuario = window.BP_SESION (quién hizo el ajuste).
+ */
+export async function ajustarMonedero({ clienteId, clienteNombre, efecto, monto, motivo, tipo = "Ajuste" }, usuario) {
+  const cantidad = redondear2(monto);
+  if (!clienteId) throw new Error("Elige un cliente.");
+  if (!Number.isFinite(cantidad) || cantidad <= 0 || cantidad > 50000) throw new Error("Escribe un monto válido (mayor a $0).");
+  if (!["abono", "cargo"].includes(efecto)) throw new Error("Indica si se suma o se resta saldo.");
+  if (!["Ajuste", "Recarga"].includes(tipo)) throw new Error("Tipo de movimiento no válido.");
+  if (tipo === "Recarga" && efecto !== "abono") throw new Error("Una recarga siempre suma saldo.");
+  const textoMotivo = String(motivo || "").trim();
+  if (textoMotivo.length < 5) throw new Error("Escribe el motivo del ajuste (mínimo 5 letras).");
+
+  const ref = doc(db, "monederos", clienteId);
+  const movRef = doc(movMonederoRef);
+  const quien = usuario?.nombre || usuario?.correo || "Administrador";
+
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const m = snap.exists() ? snap.data() : { saldo: 0, totalRecargado: 0, totalGastado: 0 };
+    const anterior = redondear2(m.saldo);
+    const nuevo = redondear2(efecto === "abono" ? anterior + cantidad : anterior - cantidad);
+    if (nuevo < 0) throw new Error(`No se puede restar ${dineroTxt(cantidad)}: el cliente solo tiene ${dineroTxt(anterior)}.`);
+
+    const cambios = {
+      saldo: nuevo,
+      totalRecargado: redondear2((Number(m.totalRecargado) || 0) + (tipo === "Recarga" ? cantidad : 0)),
+      ultimoMovimientoId: movRef.id,
+      actualizadoEn: serverTimestamp(),
+    };
+    if (snap.exists()) {
+      tx.update(ref, cambios);
+    } else {
+      tx.set(ref, {
+        ...cambios,
+        clienteId,
+        clienteNombre: String(clienteNombre || "Cliente").slice(0, 120),
+        totalGastado: 0,
+        creadoEn: serverTimestamp(),
+      });
+    }
+    tx.set(movRef, {
+      clienteId,
+      clienteNombre: String(clienteNombre || m.clienteNombre || "Cliente").slice(0, 120),
+      tipo,
+      efecto,
+      monto: cantidad,
+      saldoAnterior: anterior,
+      saldoNuevo: nuevo,
+      metodo: "Panel de administración",
+      detalle: "",
+      ventaId: "",
+      folio: "",
+      motivo: textoMotivo.slice(0, 300),
+      usuarioId: usuario?.uid || "",
+      usuarioNombre: quien,
+      fecha: hoyISO(),
+      creadoEn: serverTimestamp(),
+    });
+    return { saldoAnterior: anterior, saldoNuevo: nuevo };
+  });
+}
+
+/**
+ * Cancelar una orden pagada con monedero devuelve el dinero al saldo del cliente.
+ * Lo usa cambiarEstadoOrdenErp() dentro de su mismo lote (writeBatch).
+ */
+async function agregarReembolsoMonedero(lote, orden, usuario) {
+  const ref = doc(db, "monederos", orden.clienteId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;               // no debería pasar: sin monedero no pudo pagar con él
+  const m = snap.data();
+  const monto = redondear2(orden.total);
+  const anterior = redondear2(m.saldo);
+  const nuevo = redondear2(anterior + monto);
+  const movRef = doc(movMonederoRef);
+  const quien = usuario?.nombre || usuario?.correo || "";
+  lote.update(ref, {
+    saldo: nuevo,
+    totalGastado: redondear2(Math.max(0, (Number(m.totalGastado) || 0) - monto)),
+    ultimoMovimientoId: movRef.id,
+    actualizadoEn: serverTimestamp(),
+  });
+  lote.set(movRef, {
+    clienteId: orden.clienteId,
+    clienteNombre: orden.clienteNombre || m.clienteNombre || "",
+    tipo: "Reembolso",
+    efecto: "abono",
+    monto,
+    saldoAnterior: anterior,
+    saldoNuevo: nuevo,
+    metodo: "Monedero",
+    detalle: `Cancelación de ${orden.folio || orden.id}`,
+    ventaId: orden.id,
+    folio: orden.folio || "",
+    motivo: "Orden cancelada",
+    usuarioId: usuario?.uid || "",
+    usuarioNombre: quien,
+    fecha: hoyISO(),
+    creadoEn: serverTimestamp(),
+  });
+}
+
+// ---------- Direcciones guardadas del cliente ----------
+
+/** Revisa una dirección; devuelve el texto del primer error o "" si está bien. */
+export function errorDeDireccion(d) {
+  const RE_NOMBRE = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/;
+  if (!d.nombre || !RE_NOMBRE.test(d.nombre)) return "Escribe el nombre de quien recibe (solo letras).";
+  if (!d.apellido || !RE_NOMBRE.test(d.apellido)) return "Escribe el apellido de quien recibe (solo letras).";
+  if (!d.calle || d.calle.trim().length < 5) return "Escribe la calle y el número.";
+  if (!d.ciudad) return "Escribe la ciudad.";
+  if (!d.estado) return "Escribe el estado.";
+  if (!/^\d{5}$/.test(d.cp || "")) return "El código postal debe tener 5 números.";
+  if (!/^\d{10}$/.test(d.telefono || "")) return "El teléfono debe tener 10 dígitos.";
+  return "";
+}
+
+function limpiarDireccion(d) {
+  const t = (v, max) => String(v ?? "").trim().slice(0, max);
+  return {
+    alias: t(d.alias, 40) || "Mi dirección",
+    nombre: t(d.nombre, 60),
+    apellido: t(d.apellido, 60),
+    pais: t(d.pais, 60) || "México",
+    calle: t(d.calle, 200),
+    ciudad: t(d.ciudad, 80),
+    estado: t(d.estado, 80),
+    cp: t(d.cp, 5),
+    telefono: String(d.telefono ?? "").replace(/\D/g, "").slice(0, 10),
+    referencias: t(d.referencias, 300),
+    predeterminada: !!d.predeterminada,
+  };
+}
+
+/** Escucha las direcciones del cliente (la predeterminada primero). */
+export function escucharDirecciones(uid, callback, onError) {
+  return onSnapshot(collection(db, "clientes", uid, "direcciones"), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => (b.predeterminada === true) - (a.predeterminada === true) || milisDe(a.creadoEn) - milisDe(b.creadoEn));
+    callback(lista);
+  }, onError);
+}
+
+/** Lee las direcciones una sola vez (checkout). */
+export async function obtenerDirecciones(uid) {
+  const snap = await getDocs(collection(db, "clientes", uid, "direcciones"));
+  const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  lista.sort((a, b) => (b.predeterminada === true) - (a.predeterminada === true) || milisDe(a.creadoEn) - milisDe(b.creadoEn));
+  return lista;
+}
+
+/**
+ * Crea (id vacío) o edita una dirección. Solo puede haber UNA predeterminada: si esta lo es,
+ * a las demás se les quita en la misma operación. La primera dirección siempre es predeterminada.
+ * todas = lista actual de direcciones (para saber cuál era la predeterminada).
+ */
+export async function guardarDireccion(uid, datos, id, todas = []) {
+  const limpia = limpiarDireccion(datos);
+  const error = errorDeDireccion(limpia);
+  if (error) throw new Error(error);
+  const otras = todas.filter(d => d.id !== id);
+  if (otras.length === 0) limpia.predeterminada = true;
+  if (todas.length >= 10 && !id) throw new Error("Puedes guardar hasta 10 direcciones. Elimina una para agregar otra.");
+
+  const lote = writeBatch(db);
+  const ref = id ? doc(db, "clientes", uid, "direcciones", id) : doc(collection(db, "clientes", uid, "direcciones"));
+  if (id) lote.update(ref, { ...limpia, actualizadoEn: serverTimestamp() });
+  else lote.set(ref, { ...limpia, creadoEn: serverTimestamp(), actualizadoEn: serverTimestamp() });
+  if (limpia.predeterminada) {
+    otras.filter(d => d.predeterminada).forEach(d =>
+      lote.update(doc(db, "clientes", uid, "direcciones", d.id), { predeterminada: false, actualizadoEn: serverTimestamp() }));
+  }
+  await lote.commit();
+  return ref.id;
+}
+
+/** Marca una dirección como la predeterminada (la que se usa sola en el checkout). */
+export async function marcarDireccionPredeterminada(uid, id, todas = []) {
+  const lote = writeBatch(db);
+  todas.forEach(d => {
+    const debe = d.id === id;
+    if (!!d.predeterminada !== debe) {
+      lote.update(doc(db, "clientes", uid, "direcciones", d.id), { predeterminada: debe, actualizadoEn: serverTimestamp() });
+    }
+  });
+  await lote.commit();
+}
+
+/** Elimina una dirección; si era la predeterminada, la siguiente pasa a serlo. */
+export async function eliminarDireccion(uid, id, todas = []) {
+  const lote = writeBatch(db);
+  const borrada = todas.find(d => d.id === id);
+  lote.delete(doc(db, "clientes", uid, "direcciones", id));
+  const siguiente = todas.find(d => d.id !== id);
+  if (borrada && borrada.predeterminada && siguiente) {
+    lote.update(doc(db, "clientes", uid, "direcciones", siguiente.id), { predeterminada: true, actualizadoEn: serverTimestamp() });
+  }
+  await lote.commit();
+}
+
+// ---------- Mis datos y contraseña del cliente ----------
+
+/** El cliente cambia sus datos de contacto (y su nombre también en Authentication). */
+export async function actualizarDatosCliente(uid, { nombre, telefono, mascota }) {
+  const n = String(nombre || "").trim();
+  const tel = String(telefono || "").replace(/\D/g, "");
+  if (n.length < 3 || !/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/.test(n)) throw new Error("Escribe tu nombre completo (solo letras).");
+  if (tel && tel.length !== 10) throw new Error("El teléfono debe tener 10 dígitos.");
+  await updateDoc(doc(db, "clientes", uid), {
+    nombre: n.slice(0, 120),
+    telefono: tel,
+    mascota: String(mascota || "").trim().slice(0, 60) || "Sin especificar",
+    actualizadoEn: serverTimestamp(),
+  });
+  if (auth.currentUser && auth.currentUser.uid === uid) {
+    await updateProfile(auth.currentUser, { displayName: n.slice(0, 120) });
+  }
+}
+
+/**
+ * Cambio de correo del cliente: Firebase manda un enlace al correo NUEVO y el cambio se hace
+ * cuando la persona lo abre (así nadie puede poner un correo ajeno). Requiere su contraseña.
+ */
+export async function solicitarCambioCorreoCliente(correoNuevo, contrasenaActual) {
+  await reautenticar(contrasenaActual);
+  await verifyBeforeUpdateEmail(auth.currentUser, String(correoNuevo).trim());
+}
+
+/** Si el correo de la cuenta ya cambió (enlace confirmado), lo copia al perfil del CRM. */
+export async function sincronizarCorreoCliente(uid, perfil) {
+  const user = auth.currentUser;
+  if (!user || user.uid !== uid || !user.email || !perfil || perfil.correo === user.email) return false;
+  await user.getIdToken(true);    // token fresco: las reglas comparan contra el correo verificado
+  await updateDoc(doc(db, "clientes", uid), { correo: user.email, actualizadoEn: serverTimestamp() });
+  return true;
+}
+
+/** Cambio de contraseña estando dentro de la cuenta (pide la contraseña actual). */
+export function cambiarContrasenaCliente(contrasenaNueva, contrasenaActual) {
+  if (String(contrasenaNueva || "").length < 6) throw new Error("La nueva contraseña debe tener al menos 6 caracteres.");
+  return cambiarContrasenaPropia(contrasenaNueva, contrasenaActual);
+}
+
+/** "¿Olvidaste tu contraseña?": Firebase manda un correo con el enlace para crear una nueva. */
+export function enviarCorreoRecuperacion(correo) {
+  auth.languageCode = "es";
+  return sendPasswordResetEmail(auth, String(correo || "").trim());
+}
+
+// =====================================================================
+// ---------- Etapa 4 · Carrito persistente (modelos Carrito y CarritoDetalle del PDF) ----------
+// =====================================================================
+//   carritos/{uid}                     ← un cliente tiene UN carrito (id = uid)
+//     { clienteId, clienteNombre, estado: "Activo"|"Vacío"|"Comprado"|"Expirado",
+//       numProductos, totalPiezas, subtotal, resumen: [{ nombre, cantidad }],
+//       ultimaVentaId, actualizadoEn }
+//   carritos/{uid}/detalle/{productoId} ← cada producto del carrito
+//     { productoId, nombre, cantidad, precioUnitario, imagen, agregadoEn (ms) }
+// En el navegador el carrito se sigue leyendo de localStorage (así funciona igual sin sesión);
+// carrito-sync.js lo copia a Firebase cuando hay un cliente con sesión y lo trae de vuelta
+// desde cualquier dispositivo.
+
+export const CARRITO = Object.freeze({
+  horasCaducidad: 72,       // un producto se quita solo del carrito 72 h después de agregarlo
+  maxPiezasPorProducto: 99,
+});
+
+/** Lee el carrito guardado de un cliente: { estado, items: [...] } o null. */
+export async function obtenerCarritoRemoto(uid) {
+  const [cab, det] = await Promise.all([
+    getDoc(doc(db, "carritos", uid)),
+    getDocs(collection(db, "carritos", uid, "detalle")),
+  ]);
+  if (!cab.exists() && det.empty) return null;
+  return { ...(cab.exists() ? cab.data() : {}), items: det.docs.map(d => ({ id: d.id, ...d.data() })) };
+}
+
+/** Escucha los productos del carrito guardado (para ver en vivo cambios hechos en otro dispositivo). */
+export function escucharCarritoRemoto(uid, callback, onError) {
+  return onSnapshot(collection(db, "carritos", uid, "detalle"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+/**
+ * Guarda el carrito completo del cliente: actualiza la cabecera, escribe cada producto en
+ * "detalle" y borra los que ya no están. items = [{ id, nombre, precio, cantidad, imagen, agregadoEn }].
+ * extra = { estado, ultimaVentaId, clienteNombre }.
+ */
+export async function guardarCarritoRemoto(uid, items, extra = {}) {
+  const limpios = (items || [])
+    .map(i => ({
+      productoId: String(i.id || i.productoId || ""),
+      nombre: String(i.nombre || "Producto").slice(0, 200),
+      cantidad: Math.min(CARRITO.maxPiezasPorProducto, Math.max(1, Math.floor(Number(i.cantidad) || 1))),
+      precioUnitario: redondear2(i.precio ?? i.precioUnitario),
+      imagen: String(i.imagen || "").slice(0, 500),
+      agregadoEn: Number(i.agregadoEn) || Date.now(),
+    }))
+    .filter(i => i.productoId && !i.productoId.includes("/"));
+
+  const actuales = await getDocs(collection(db, "carritos", uid, "detalle"));
+  const lote = writeBatch(db);
+  const ids = new Set(limpios.map(i => i.productoId));
+  actuales.docs.forEach(d => { if (!ids.has(d.id)) lote.delete(d.ref); });
+  limpios.forEach(i => lote.set(doc(db, "carritos", uid, "detalle", i.productoId), i));
+
+  const totalPiezas = limpios.reduce((s, i) => s + i.cantidad, 0);
+  const estado = extra.estado || (limpios.length ? "Activo" : "Vacío");
+  lote.set(doc(db, "carritos", uid), {
+    clienteId: uid,
+    clienteNombre: String(extra.clienteNombre || "").slice(0, 120),
+    estado,
+    numProductos: limpios.length,
+    totalPiezas,
+    subtotal: redondear2(limpios.reduce((s, i) => s + i.cantidad * i.precioUnitario, 0)),
+    resumen: limpios.slice(0, 30).map(i => ({ nombre: i.nombre, cantidad: i.cantidad })),
+    ultimaVentaId: String(extra.ultimaVentaId || ""),
+    actualizadoEn: serverTimestamp(),
+  }, { merge: true });
+  await lote.commit();
+}
+
+/** Panel: todos los carritos (activos, abandonados, comprados, expirados). */
+export function escucharCarritos(callback, onError) {
+  return onSnapshot(collection(db, "carritos"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
 }

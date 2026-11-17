@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis pedidos - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="cta-wrap">
+    <aside class="cta-menu" id="cuenta-menu"></aside>
+
+    <div>
+      <div class="cta-head">
+        <h2>Mis pedidos</h2>
+        <p>Historial de todo lo que has comprado y en qué va cada pedido (se actualiza solo).
+           Sesión: <strong id="sesion-nombre">…</strong></p>
+      </div>
+
+      <div class="cta-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <h3 style="margin:0;">Historial de compras <small id="resumen" style="color:var(--gray); font-weight:500;"></small></h3>
+          <div class="mc-filtros" id="filtros">
+            <button type="button" class="sel" data-f="">Todos</button>
+            <button type="button" data-f="activos">En camino</button>
+            <button type="button" data-f="Entregada">Entregados</button>
+            <button type="button" data-f="Cancelada">Cancelados</button>
+          </div>
+        </div>
+        <div class="pd-top" style="cursor:default; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:var(--gray); padding-top:0; padding-bottom:6px;">
+          <span>Orden</span><span>Fecha</span><span>Total</span><span>Estado</span>
+        </div>
+        <div id="lista"><p style="color:var(--gray); font-size:.88rem;">Cargando…</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+  <div class="cta-toast" id="toast"></div>
+
+  <script src="components.js"></script>
+  <script src="cuenta-menu.js"></script>
+  <script type="module">
+    import { escucharVentasDeCliente } from './firebase-db.js';
+    import { iniciarCuenta, esc, dinero, fechaCorta, fechaHora } from './cuenta-comun.js';
+
+    const $ = (id) => document.getElementById(id);
+    const PASOS = ['Confirmada', 'En proceso', 'Enviada', 'Entregada'];
+    const TEXTO_PASO = { Confirmada: 'Confirmada', 'En proceso': 'Preparando', Enviada: 'Enviada', Entregada: 'Entregada' };
+    let ventas = [];
+    let filtro = '';
+    let primeraCarga = true;
+    const abiertos = new Set(new URLSearchParams(window.location.search).getAll('id'));
+
+    // Fecha en que el pedido llegó a cada estado (sale del historial que guardan ventas/logística).
+    function fechasPorEstado(v) {
+      const f = {};
+      (Array.isArray(v.historial) ? v.historial : []).forEach(h => { if (h && h.estado) f[h.estado] = h; });
+      if (!f.Confirmada) f.Confirmada = { fecha: v.creadoEn };
+      return f;
+    }
+
+    function lineaDeTiempo(v) {
+      const estado = v.estado || 'Confirmada';
+      const fechas = fechasPorEstado(v);
+      if (estado === 'Cancelada') {
+        const c = fechas.Cancelada || {};
+        return `<div class="pd-cancelada">✕ Este pedido fue <strong>cancelado</strong>${c.fecha ? ' (' + esc(fechaHora(c.fecha)) + ')' : ''}.
+          ${v.metodoPagoClave === 'monedero' ? 'El dinero regresó a tu <a href="mi-monedero.html" style="font-weight:700;text-decoration:underline;">monedero</a>.' : 'Si ya habías pagado, el reembolso se hace por el mismo método.'}</div>`;
+      }
+      const idx = Math.max(0, PASOS.indexOf(estado));
+      const ancho = `calc(${(idx / (PASOS.length - 1)) * 100}% - ${idx === 0 ? 0 : 24 * idx / (PASOS.length - 1)}px)`;
+      return `<div class="pd-linea">
+        <div class="pd-progreso" style="width:${ancho};"></div>
+        ${PASOS.map((p, i) => `
+          <div class="pd-paso ${i <= idx ? 'hecho' : ''} ${i === idx ? 'actual' : ''}">
+            <div class="pd-punto">${i <= idx ? '✓' : i + 1}</div>
+            <b>${TEXTO_PASO[p]}</b>
+            <small>${fechas[p] ? esc(fechaCorta(fechas[p].fecha)) : ''}</small>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    function detalle(v) {
+      const items = (v.items || []).map(i => `<tr><td>${esc(i.nombre)} × ${Number(i.cantidad)}</td><td>${dinero(Number(i.precio) * Number(i.cantidad))}</td></tr>`).join('');
+      const d = v.direccionEnvio || {};
+      const ultimo = (v.historial || []).slice(-1)[0];
+      return `
+        ${lineaDeTiempo(v)}
+        ${v.estadoPago === 'Pendiente' && v.estado !== 'Cancelada' ? `<div class="mc-alerta" style="display:flex;">⏳ Tu pago está pendiente (${esc(v.metodoPago)}). Consulta la referencia en el recibo.</div>` : ''}
+        <table class="pd-items">${items}
+          <tr><td>Envío</td><td>${dinero(v.envio)}</td></tr>
+          ${Number(v.descuento) > 0 ? `<tr><td>Descuento${v.cupon ? ' (' + esc(v.cupon) + ')' : ''}</td><td>−${dinero(v.descuento)}</td></tr>` : ''}
+          ${Number(v.iva) > 0 ? `<tr><td>${v.ivaIncluido ? 'IVA incluido' : 'IVA'} (${Number(v.tasaIva) || 0}%)</td><td>${dinero(v.iva)}</td></tr>` : ''}
+          <tr><td><strong>Total</strong></td><td><strong>${dinero(v.total)}</strong></td></tr>
+        </table>
+        <div class="pd-meta">
+          <div>Método de pago: <b>${esc(v.metodoPago || '—')}</b></div>
+          <div>Estado del pago: <b>${esc(v.estadoPago || 'Pagado')}</b></div>
+          <div>Envío a: <b>${esc([d.calle, d.ciudad, d.estado].filter(Boolean).join(', ') || '—')}</b></div>
+          <div>Última actualización: <b>${ultimo ? esc(fechaHora(ultimo.fecha)) : '—'}</b></div>
+        </div>
+        <div class="pd-acciones">
+          <a class="cta-btn" href="factura.html?id=${encodeURIComponent(v.id)}">🧾 Ver recibo</a>
+          <a class="cta-btn sec" href="atencion-clientes.html">🎧 Ayuda con este pedido</a>
+        </div>`;
+    }
+
+    function pasaFiltro(v) {
+      if (!filtro) return true;
+      if (filtro === 'activos') return !['Entregada', 'Cancelada'].includes(v.estado || 'Confirmada');
+      return (v.estado || 'Confirmada') === filtro;
+    }
+
+    function pintar() {
+      const total = ventas.filter(v => v.estado !== 'Cancelada').reduce((s, v) => s + (Number(v.total) || 0), 0);
+      $('resumen').textContent = `· ${ventas.length} pedido${ventas.length === 1 ? '' : 's'} · ${dinero(total)} en compras`;
+      const lista = ventas.filter(pasaFiltro);
+      const cont = $('lista');
+      if (ventas.length === 0) {
+        cont.innerHTML = '<p style="color:var(--gray); font-size:.88rem;">Aún no tienes pedidos. <a href="shop.html" style="color:var(--pink-fuerte); font-weight:700;">Ir al catálogo</a></p>';
+        return;
+      }
+      if (lista.length === 0) {
+        cont.innerHTML = '<p style="color:var(--gray); font-size:.88rem;">No hay pedidos con este filtro.</p>';
+        return;
+      }
+      cont.innerHTML = lista.map(v => {
+        const estado = v.estado || 'Confirmada';
+        const n = (v.items || []).reduce((s, i) => s + (Number(i.cantidad) || 0), 0);
+        return `<div class="pd-item ${abiertos.has(v.id) ? 'abierto' : ''}" data-id="${esc(v.id)}">
+          <div class="pd-top">
+            <span><strong>${esc(v.folio || v.id)}</strong><br><small style="color:var(--gray);">${n} producto${n === 1 ? '' : 's'}</small></span>
+            <span>${esc(fechaCorta(v.creadoEn))}</span>
+            <span><b>${dinero(v.total)}</b></span>
+            <span class="pd-estado ${estado.replace(' ', '-')}">${esc(estado === 'En proceso' ? 'Preparando' : estado)}</span>
+          </div>
+          <div class="pd-cuerpo">${detalle(v)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    $('lista').addEventListener('click', (e) => {
+      const top = e.target.closest('.pd-top');
+      if (!top) return;
+      const item = top.closest('.pd-item');
+      const id = item.dataset.id;
+      if (abiertos.has(id)) abiertos.delete(id); else abiertos.add(id);
+      item.classList.toggle('abierto');
+    });
+
+    $('filtros').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-f]');
+      if (!b) return;
+      filtro = b.dataset.f;
+      document.querySelectorAll('#filtros button').forEach(x => x.classList.toggle('sel', x === b));
+      pintar();
+    });
+
+    (async function iniciar() {
+      const sesion = await iniciarCuenta('mis-pedidos.html', 'pedidos');
+      if (!sesion) return;
+      escucharVentasDeCliente(sesion.usuario.uid, (lista) => {
+        ventas = lista;
+        if (primeraCarga && ventas.length && abiertos.size === 0) abiertos.add(ventas[0].id);   // el más reciente, abierto
+        primeraCarga = false;
+        pintar();
+      }, (err) => {
+        console.error(err);
+        $('lista').innerHTML = '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus pedidos.</p>';
+      });
+    })();
+  </script>
+</body>
+</html>

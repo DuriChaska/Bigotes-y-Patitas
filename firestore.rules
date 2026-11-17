@@ -68,9 +68,13 @@ service cloud.firestore {
         && d.correo is string && d.correo.size() > 0
         && d.etapa == 'Prospecto';
     }
+    // Etapa 4: "correo" solo puede cambiar al correo YA VERIFICADO de su propia cuenta
+    // (después de que la persona abrió el enlace que Firebase le mandó al correo nuevo).
     function soloCamposDeContacto() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['nombre', 'telefono', 'mascota', 'direccion', 'actualizadoEn']);
+        .hasOnly(['nombre', 'telefono', 'mascota', 'direccion', 'correo', 'actualizadoEn'])
+        && (request.resource.data.get('correo', '') == resource.data.get('correo', '')
+            || request.resource.data.correo == request.auth.token.email);
     }
 
     // Sincronización CRM de una compra hecha en la tienda (Etapa 4). El cliente solo puede
@@ -105,6 +109,31 @@ service cloud.firestore {
       allow delete: if esStaff();
       allow create: if (esStaff() && clienteValido(request.resource.data))
                     || (request.auth != null && request.auth.uid == clienteId && clienteValido(request.resource.data));
+
+      // Etapa 4: direcciones guardadas del cliente (Mi cuenta → Direcciones y el checkout).
+      // Solo el dueño las crea, edita y borra; el personal de ventas puede consultarlas.
+      match /direcciones/{direccionId} {
+        allow read: if (request.auth != null && request.auth.uid == clienteId) || esStaff();
+        allow create, update: if request.auth != null && request.auth.uid == clienteId
+                              && direccionValida(request.resource.data);
+        allow delete: if request.auth != null && request.auth.uid == clienteId;
+      }
+    }
+
+    function direccionValida(d) {
+      return d.keys().hasOnly(['alias', 'nombre', 'apellido', 'pais', 'calle', 'ciudad', 'estado', 'cp',
+                               'telefono', 'referencias', 'predeterminada', 'creadoEn', 'actualizadoEn'])
+        && d.alias is string && d.alias.size() <= 40
+        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 60
+        && d.apellido is string && d.apellido.size() > 0 && d.apellido.size() <= 60
+        && d.pais is string && d.pais.size() <= 60
+        && d.calle is string && d.calle.size() >= 5 && d.calle.size() <= 200
+        && d.ciudad is string && d.ciudad.size() > 0 && d.ciudad.size() <= 80
+        && d.estado is string && d.estado.size() > 0 && d.estado.size() <= 80
+        && d.cp is string && d.cp.matches('[0-9]{5}')
+        && d.telefono is string && d.telefono.matches('[0-9]{10}')
+        && d.referencias is string && d.referencias.size() <= 300
+        && d.predeterminada is bool;
     }
 
     // ---- Interacciones (CRM): solo personal ----
@@ -228,11 +257,21 @@ service cloud.firestore {
         && (request.resource.data.estado != 'Cancelada' || esScm());
     }
 
+    // Etapa 4: una venta "pagada con monedero" solo puede crearse si en la MISMA transacción
+    // se descontó el saldo del monedero con un movimiento "Pago" que apunta a esta venta.
+    function pagoConMonederoHecho(ventaId) {
+      return request.resource.data.get('metodoPagoClave', '') != 'monedero'
+        || getAfter(/databases/$(database)/documents/monedero_movimientos/$(
+             getAfter(/databases/$(database)/documents/monederos/$(request.auth.uid)).data.ultimoMovimientoId
+           )).data.ventaId == ventaId;
+    }
+
     match /ventas/{ventaId} {
       allow read: if esStaff() || esScm() || (request.auth != null && resource.data.clienteId == request.auth.uid);
       allow create: if (request.auth != null
           && request.resource.data.clienteId == request.auth.uid
-          && ventaValida(request.resource.data))
+          && ventaValida(request.resource.data)
+          && pagoConMonederoHecho(ventaId))
         || (esStaff()
           && ventaValida(request.resource.data)
           && request.resource.data.usuarioId == request.auth.uid);
@@ -407,6 +446,148 @@ service cloud.firestore {
       allow create: if request.auth != null && ticketNuevoValido(request.resource.data, ticketId);
       allow update: if (esSoporte() && ticketRespondidoValido()) || ticketLeidoPorCliente() || ticketRespondidoPorCliente();
       allow delete: if false;
+    }
+
+    // ---- Monedero (Etapa 4, integrante 2) ----
+    // monederos/{uid}: un monedero por cliente (id = uid). El saldo NUNCA se cambia solo:
+    // cada cambio trae en "ultimoMovimientoId" el id del movimiento que se crea en la misma
+    // operación, y las reglas comprueban que el saldo cambió exactamente ese monto.
+    //   - Cliente: crea su monedero en $0, recarga (de $50 a $10,000) y paga compras.
+    //   - Logística/administrador: al cancelar una orden pagada con monedero, se reembolsa.
+    //   - Administrador: recargas manuales y ajustes (con motivo). Nunca saldo negativo.
+    //   - Ventas (vendedor) y administrador: consultan saldos y movimientos (reportes).
+    function casi(a, b) {
+      return math.abs(a - b) < 0.01;
+    }
+    function movMonedero(id) {
+      return getAfter(/databases/$(database)/documents/monedero_movimientos/$(id)).data;
+    }
+    function monederoNuevoValido(d, uid) {
+      return d.keys().hasOnly(['clienteId', 'clienteNombre', 'saldo', 'totalRecargado', 'totalGastado', 'creadoEn', 'actualizadoEn'])
+        && d.clienteId == uid
+        && d.clienteNombre is string && d.clienteNombre.size() <= 120
+        && d.saldo == 0 && d.totalRecargado == 0 && d.totalGastado == 0;
+    }
+    function recargaPorCliente(uid) {
+      let n = request.resource.data;
+      let o = resource.data;
+      let m = movMonedero(n.ultimoMovimientoId);
+      return n.diff(o).affectedKeys().hasOnly(['saldo', 'totalRecargado', 'ultimoMovimientoId', 'actualizadoEn'])
+        && n.ultimoMovimientoId is string
+        && m.tipo == 'Recarga' && m.clienteId == uid && m.usuarioId == uid
+        && m.monto >= 50 && m.monto <= 10000
+        && casi(n.saldo, o.saldo + m.monto)
+        && casi(m.saldoNuevo, n.saldo)
+        && casi(n.totalRecargado, o.get('totalRecargado', 0) + m.monto);
+    }
+    function pagoConMonedero(uid) {
+      let n = request.resource.data;
+      let o = resource.data;
+      let m = movMonedero(n.ultimoMovimientoId);
+      let venta = getAfter(/databases/$(database)/documents/ventas/$(m.ventaId)).data;
+      return n.diff(o).affectedKeys().hasOnly(['saldo', 'totalGastado', 'ultimoMovimientoId', 'actualizadoEn'])
+        && n.ultimoMovimientoId is string
+        && m.tipo == 'Pago' && m.clienteId == uid && m.monto > 0
+        && n.saldo >= 0
+        && casi(n.saldo, o.saldo - m.monto)
+        && casi(n.totalGastado, o.get('totalGastado', 0) + m.monto)
+        && m.ventaId is string && m.ventaId.size() > 0
+        && !exists(/databases/$(database)/documents/ventas/$(m.ventaId))   // la venta nace en esta misma transacción
+        && venta.clienteId == uid
+        && venta.metodoPagoClave == 'monedero'
+        && casi(venta.total, m.monto);
+    }
+    function reembolsoPorCancelacion(uid) {
+      let n = request.resource.data;
+      let o = resource.data;
+      let m = movMonedero(n.ultimoMovimientoId);
+      let antes = get(/databases/$(database)/documents/ventas/$(m.ventaId)).data;
+      return esScm()
+        && n.diff(o).affectedKeys().hasOnly(['saldo', 'totalGastado', 'ultimoMovimientoId', 'actualizadoEn'])
+        && m.tipo == 'Reembolso' && m.clienteId == uid
+        && casi(n.saldo, o.saldo + m.monto)
+        && antes.clienteId == uid
+        && antes.metodoPagoClave == 'monedero'
+        && antes.estado != 'Cancelada'
+        && getAfter(/databases/$(database)/documents/ventas/$(m.ventaId)).data.estado == 'Cancelada'
+        && casi(antes.total, m.monto);
+    }
+    function ajusteDeMonederoValido(uid) {
+      let n = request.resource.data;
+      let m = movMonedero(n.ultimoMovimientoId);
+      let saldoAntes = resource == null ? 0 : resource.data.saldo;
+      return n.saldo is number && n.saldo >= 0
+        && m.clienteId == uid && m.tipo in ['Ajuste', 'Recarga'] && m.usuarioId == request.auth.uid
+        && casi(m.saldoNuevo, n.saldo)
+        && casi(math.abs(n.saldo - saldoAntes), m.monto);
+    }
+
+    match /monederos/{uid} {
+      allow read: if (request.auth != null && request.auth.uid == uid) || esStaff();
+      allow create: if (request.auth != null && request.auth.uid == uid && monederoNuevoValido(request.resource.data, uid))
+                    || (esAdmin() && ajusteDeMonederoValido(uid));
+      allow update: if (request.auth != null && request.auth.uid == uid && (recargaPorCliente(uid) || pagoConMonedero(uid)))
+                    || reembolsoPorCancelacion(uid)
+                    || (esAdmin() && ajusteDeMonederoValido(uid));
+      allow delete: if false;
+    }
+
+    // Historial del monedero: solo se agregan movimientos (ni se editan ni se borran) y cada uno
+    // debe ser el "ultimoMovimientoId" del monedero que cambia en la misma operación.
+    function movimientoMonederoValido(d, movId) {
+      return d.clienteId is string && d.clienteId.size() > 0
+        && d.tipo in ['Recarga', 'Pago', 'Ajuste', 'Reembolso']
+        && d.efecto in ['abono', 'cargo']
+        && d.monto is number && d.monto > 0
+        && d.saldoNuevo is number && d.saldoNuevo >= 0
+        && d.usuarioId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/monederos/$(d.clienteId)).data.ultimoMovimientoId == movId;
+    }
+
+    match /monedero_movimientos/{movId} {
+      allow read: if (request.auth != null && resource.data.clienteId == request.auth.uid) || esStaff();
+      allow create: if request.auth != null && movimientoMonederoValido(request.resource.data, movId)
+                    && ((request.resource.data.clienteId == request.auth.uid && request.resource.data.tipo in ['Recarga', 'Pago'])
+                        || (esScm() && request.resource.data.tipo == 'Reembolso')
+                        || (esAdmin() && request.resource.data.tipo in ['Ajuste', 'Recarga']));
+      allow update, delete: if false;
+    }
+
+    // ---- Carrito persistente (Etapa 4): modelos Carrito y CarritoDetalle del PDF ----
+    // carritos/{uid}: un carrito por cliente (id = uid). Solo el dueño lo escribe; el personal
+    // de ventas lo consulta (carritos activos / abandonados). El stock se vuelve a validar al pagar
+    // dentro de la transacción de crearVenta(), así que aquí solo se revisa la forma de los datos.
+    function carritoValido(d, uid) {
+      return d.clienteId == uid
+        && d.estado in ['Activo', 'Vacío', 'Comprado', 'Expirado']
+        && d.numProductos is int && d.numProductos >= 0 && d.numProductos <= 100
+        && d.totalPiezas is int && d.totalPiezas >= 0
+        && d.subtotal is number && d.subtotal >= 0
+        && d.resumen is list && d.resumen.size() <= 30
+        && d.clienteNombre is string && d.clienteNombre.size() <= 120
+        && d.ultimaVentaId is string && d.ultimaVentaId.size() <= 60;
+    }
+    function detalleCarritoValido(d, productoId) {
+      return d.keys().hasOnly(['productoId', 'nombre', 'cantidad', 'precioUnitario', 'imagen', 'agregadoEn'])
+        && d.productoId == productoId
+        && d.nombre is string && d.nombre.size() <= 200
+        && d.cantidad is int && d.cantidad >= 1 && d.cantidad <= 99
+        && d.precioUnitario is number && d.precioUnitario >= 0
+        && d.imagen is string && d.imagen.size() <= 500
+        && d.agregadoEn is number;
+    }
+
+    match /carritos/{uid} {
+      allow read: if (request.auth != null && request.auth.uid == uid) || esStaff();
+      allow create, update: if request.auth != null && request.auth.uid == uid && carritoValido(request.resource.data, uid);
+      allow delete: if request.auth != null && request.auth.uid == uid;
+
+      match /detalle/{productoId} {
+        allow read: if (request.auth != null && request.auth.uid == uid) || esStaff();
+        allow create, update: if request.auth != null && request.auth.uid == uid
+                              && detalleCarritoValido(request.resource.data, productoId);
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // Cualquier otra colección queda bloqueada por defecto.

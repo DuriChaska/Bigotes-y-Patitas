@@ -18,6 +18,15 @@
       <p id="loginError" style="color:#c0392b; font-size:.85rem; display:none; margin:.4rem 0 0;"></p>
       <button type="submit">Entrar</button>
     </form>
+    <p style="margin-top:.8rem; font-size:.9rem;">
+      <a href="#" id="linkOlvide" style="color:var(--pink-medio); font-weight:600;">¿Olvidaste tu contraseña?</a>
+    </p>
+    <form class="login-form" id="olvideForm" style="display:none; margin-top:.6rem;" novalidate>
+      <p style="font-size:.85rem; margin:0 0 .4rem;">Escribe el correo de tu cuenta y te mandaremos un enlace para crear una contraseña nueva.</p>
+      <input type="email" id="olvide-correo" placeholder="Correo electrónico" autocomplete="email" />
+      <p id="olvideMsg" style="font-size:.85rem; display:none; margin:.4rem 0 0;"></p>
+      <button type="submit">Enviar enlace</button>
+    </form>
     <p style="margin-top:1rem; font-size:.9rem;">
       ¿No tienes cuenta?
       <a href="#" id="linkRegistro" style="color:var(--pink-medio); font-weight:600;">Regístrate aquí</a>
@@ -28,7 +37,7 @@
 
   <script src="components.js"></script>
   <script type="module">
-    import { loginCliente } from './firebase-db.js';
+    import { loginCliente, enviarCorreoRecuperacion } from './firebase-db.js';
 
     const form = document.getElementById('loginForm');
     const error = document.getElementById('loginError');
@@ -44,6 +53,44 @@
       'auth/wrong-password': 'Correo o contraseña incorrectos.',
       'auth/too-many-requests': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
     };
+
+    // ---- ¿Olvidaste tu contraseña? (Firebase manda el enlace para crear una nueva) ----
+    const olvideForm = document.getElementById('olvideForm');
+    const olvideMsg = document.getElementById('olvideMsg');
+    document.getElementById('linkOlvide').addEventListener('click', (e) => {
+      e.preventDefault();
+      const visible = olvideForm.style.display !== 'none';
+      olvideForm.style.display = visible ? 'none' : 'flex';
+      if (!visible) {
+        document.getElementById('olvide-correo').value = document.getElementById('login-correo').value.trim();
+        document.getElementById('olvide-correo').focus();
+      }
+    });
+    olvideForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const correo = document.getElementById('olvide-correo').value.trim();
+      const boton = olvideForm.querySelector('button[type=submit]');
+      olvideMsg.style.display = 'block';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) {
+        olvideMsg.style.color = '#c0392b';
+        olvideMsg.textContent = 'Escribe un correo válido.';
+        return;
+      }
+      boton.disabled = true;
+      try {
+        await enviarCorreoRecuperacion(correo);
+        olvideMsg.style.color = '#2f6b3a';
+        // Por seguridad no se dice si el correo existe o no.
+        olvideMsg.textContent = `Si ${correo} tiene una cuenta, te llegará un enlace en unos minutos (revisa también spam).`;
+      } catch (err) {
+        console.error(err);
+        olvideMsg.style.color = '#c0392b';
+        olvideMsg.textContent = err.code === 'auth/too-many-requests'
+          ? 'Demasiados intentos. Espera un momento.'
+          : err.code === 'auth/invalid-email' ? 'El correo no es válido.' : 'No se pudo enviar el enlace. Revisa tu conexión.';
+      }
+      boton.disabled = false;
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

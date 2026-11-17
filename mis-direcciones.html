@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis direcciones - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="cta-wrap">
+    <aside class="cta-menu" id="cuenta-menu"></aside>
+
+    <div>
+      <div class="cta-head">
+        <h2>Direcciones</h2>
+        <p>Guarda tus direcciones de envío y elige cuál se usa por defecto en el checkout.
+           Sesión: <strong id="sesion-nombre">…</strong></p>
+      </div>
+
+      <div class="cta-main">
+        <!-- Formulario -->
+        <div class="cta-card" id="caja-form">
+          <h3 id="form-titulo">Nueva dirección</h3>
+          <form id="form-dir" novalidate>
+            <label for="f-alias">Nombre para identificarla</label>
+            <input type="text" id="f-alias" maxlength="40" placeholder="Casa, Trabajo, Casa de mamá…" />
+            <div class="cta-fila">
+              <div><label for="f-nombre">Nombre de quien recibe</label><input type="text" id="f-nombre" maxlength="60" /></div>
+              <div><label for="f-apellido">Apellido</label><input type="text" id="f-apellido" maxlength="60" /></div>
+            </div>
+            <label for="f-calle">Calle y número</label>
+            <input type="text" id="f-calle" maxlength="200" placeholder="Av. Tecnológico #123, Col. Centro" />
+            <div class="cta-fila">
+              <div><label for="f-ciudad">Ciudad</label><input type="text" id="f-ciudad" maxlength="80" /></div>
+              <div><label for="f-estado">Estado</label><input type="text" id="f-estado" maxlength="80" /></div>
+            </div>
+            <div class="cta-fila">
+              <div><label for="f-cp">Código postal</label><input type="text" id="f-cp" maxlength="5" inputmode="numeric" /></div>
+              <div><label for="f-telefono">Teléfono</label><input type="tel" id="f-telefono" maxlength="10" inputmode="numeric" /></div>
+            </div>
+            <label for="f-pais">País</label>
+            <input type="text" id="f-pais" maxlength="60" value="México" />
+            <label for="f-referencias">Referencias</label>
+            <textarea id="f-referencias" maxlength="300" style="min-height:70px;" placeholder="Entre calles, color de la casa…"></textarea>
+            <label class="mc-metodo" style="margin-top:12px !important;"><input type="checkbox" id="f-pred" /> Usar como dirección predeterminada</label>
+
+            <p class="cta-aviso" id="dir-error"></p>
+            <button type="submit" class="cta-btn" id="btn-guardar">Guardar dirección</button>
+            <button type="button" class="cta-btn sec" id="btn-cancelar" style="display:none;">Cancelar edición</button>
+          </form>
+        </div>
+
+        <!-- Lista -->
+        <div class="cta-card">
+          <h3>Mis direcciones guardadas <small id="contador" style="color:var(--gray); font-weight:500;"></small></h3>
+          <div class="dir-lista" id="lista"><p style="color:var(--gray); font-size:.88rem;">Cargando…</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+  <div class="cta-toast" id="toast"></div>
+
+  <script src="components.js"></script>
+  <script src="cuenta-menu.js"></script>
+  <script type="module">
+    import {
+      escucharDirecciones, guardarDireccion, eliminarDireccion, marcarDireccionPredeterminada, errorDeDireccion,
+    } from './firebase-db.js';
+    import { iniciarCuenta, esc, toast, avisoError, mensajeError } from './cuenta-comun.js';
+
+    const $ = (id) => document.getElementById(id);
+    const CAMPOS = ['alias', 'nombre', 'apellido', 'calle', 'ciudad', 'estado', 'cp', 'telefono', 'pais', 'referencias'];
+    let sesion = null;
+    let direcciones = [];
+    let editando = null;     // id de la dirección que se está editando (null = nueva)
+
+    ['f-cp', 'f-telefono'].forEach(id => $(id).addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '');
+    }));
+
+    function leerFormulario() {
+      const d = {};
+      CAMPOS.forEach(c => { d[c] = $('f-' + c).value.trim(); });
+      d.predeterminada = $('f-pred').checked;
+      return d;
+    }
+
+    function limpiarFormulario() {
+      editando = null;
+      CAMPOS.forEach(c => { $('f-' + c).value = ''; });
+      $('f-pais').value = 'México';
+      $('f-pred').checked = direcciones.length === 0;
+      $('form-titulo').textContent = 'Nueva dirección';
+      $('btn-guardar').textContent = 'Guardar dirección';
+      $('btn-cancelar').style.display = 'none';
+      avisoError('dir-error', '');
+    }
+
+    function editar(id) {
+      const d = direcciones.find(x => x.id === id);
+      if (!d) return;
+      editando = id;
+      CAMPOS.forEach(c => { $('f-' + c).value = d[c] || ''; });
+      $('f-pred').checked = !!d.predeterminada;
+      $('form-titulo').textContent = `Editar "${d.alias || 'dirección'}"`;
+      $('btn-guardar').textContent = 'Guardar cambios';
+      $('btn-cancelar').style.display = 'block';
+      $('caja-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function pintar() {
+      $('contador').textContent = `(${direcciones.length} de 10)`;
+      const cont = $('lista');
+      if (direcciones.length === 0) {
+        cont.innerHTML = '<p style="color:var(--gray); font-size:.88rem;">Aún no tienes direcciones guardadas. Agrega la primera con el formulario.</p>';
+        return;
+      }
+      cont.innerHTML = direcciones.map(d => `
+        <div class="dir-item ${d.predeterminada ? 'pred' : ''}">
+          <h4>📍 ${esc(d.alias || 'Mi dirección')} ${d.predeterminada ? '<span class="dir-pred">Predeterminada</span>' : ''}</h4>
+          <p><strong style="color:var(--text);">${esc(d.nombre)} ${esc(d.apellido)}</strong><br>
+             ${esc(d.calle)}<br>
+             ${esc(d.ciudad)}, ${esc(d.estado)}, CP ${esc(d.cp)} · ${esc(d.pais)}<br>
+             Tel. ${esc(d.telefono)}${d.referencias ? '<br>Ref.: ' + esc(d.referencias) : ''}</p>
+          <div class="dir-acciones">
+            <button type="button" data-accion="editar" data-id="${esc(d.id)}">✏️ Editar</button>
+            ${d.predeterminada ? '' : `<button type="button" data-accion="pred" data-id="${esc(d.id)}">⭐ Hacer predeterminada</button>`}
+            <button type="button" class="borrar" data-accion="borrar" data-id="${esc(d.id)}">🗑 Eliminar</button>
+          </div>
+        </div>`).join('');
+    }
+
+    $('lista').addEventListener('click', async (e) => {
+      const b = e.target.closest('button[data-accion]');
+      if (!b) return;
+      const id = b.dataset.id;
+      const d = direcciones.find(x => x.id === id);
+      try {
+        if (b.dataset.accion === 'editar') editar(id);
+        else if (b.dataset.accion === 'pred') {
+          await marcarDireccionPredeterminada(sesion.usuario.uid, id, direcciones);
+          toast(`"${d.alias}" es ahora tu dirección predeterminada.`);
+        } else if (b.dataset.accion === 'borrar') {
+          if (!confirm(`¿Eliminar la dirección "${d.alias || d.calle}"? Esta acción no se puede deshacer.`)) return;
+          await eliminarDireccion(sesion.usuario.uid, id, direcciones);
+          if (editando === id) limpiarFormulario();
+          toast('Dirección eliminada.');
+        }
+      } catch (err) {
+        console.error(err);
+        toast(mensajeError(err));
+      }
+    });
+
+    $('btn-cancelar').addEventListener('click', limpiarFormulario);
+
+    $('form-dir').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const datos = leerFormulario();
+      const error = errorDeDireccion(datos);
+      if (error) return avisoError('dir-error', error);
+      avisoError('dir-error', '');
+      const boton = $('btn-guardar');
+      boton.disabled = true;
+      try {
+        await guardarDireccion(sesion.usuario.uid, datos, editando, direcciones);
+        toast(editando ? 'Dirección actualizada.' : 'Dirección guardada.');
+        limpiarFormulario();
+      } catch (err) {
+        console.error(err);
+        avisoError('dir-error', mensajeError(err));
+      }
+      boton.disabled = false;
+    });
+
+    (async function iniciar() {
+      sesion = await iniciarCuenta('mis-direcciones.html', 'direcciones');
+      if (!sesion) return;
+      // Sugerencia: nombre y teléfono del perfil para la primera dirección.
+      const [primero, ...resto] = (sesion.perfil?.nombre || '').split(' ');
+      $('f-nombre').value = primero || '';
+      $('f-apellido').value = resto.join(' ');
+      $('f-telefono').value = (sesion.perfil?.telefono || '').replace(/\D/g, '');
+      $('f-pred').checked = true;
+
+      escucharDirecciones(sesion.usuario.uid, (lista) => {
+        direcciones = lista;
+        pintar();
+      }, (err) => {
+        console.error(err);
+        $('lista').innerHTML = '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus direcciones.</p>';
+      });
+    })();
+  </script>
+</body>
+</html>

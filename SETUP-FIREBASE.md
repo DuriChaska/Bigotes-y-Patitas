@@ -321,3 +321,19 @@ lateral muestre solo lo que le toca (ver la tabla de la sección 10.5 de
 ```
 tickets/{folio}  contadores/tickets  promociones/{CODIGO}  pagos/{ventaId}
 ```
+
+### Etapa 4 — Cuenta del cliente y monedero (integrante 2)
+
+1. **Vuelve a publicar `firestore.rules`** (Firestore → Reglas → Publicar). Sin esto el monedero, las
+   direcciones y el pago con monedero darán `permission-denied`.
+2. No hay índices nuevos: el historial de cada cliente filtra por un solo campo y se ordena en el navegador.
+3. (Opcional) En **Authentication → Plantillas** pon en español los correos de "Restablecimiento de
+   contraseña" y "Cambio de dirección de correo electrónico".
+4. Colecciones que se crean solas la primera vez: `monederos`, `monedero_movimientos` y la subcolección
+   `clientes/{uid}/direcciones`. Su estructura está en `DOCUMENTACION-TECNICA.md` §12.2.
+
+```
+monederos/{uid}  monedero_movimientos/{id}  clientes/{uid}/direcciones/{id}
+carritos/{uid}  carritos/{uid}/detalle/{productoId}   (carrito guardado en la cuenta, §13)
+```
+

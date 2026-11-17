@@ -176,6 +176,9 @@ import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, 
   });
 }).catch((err) => console.error('No se pudo cargar la sesión del cliente:', err));
 
+// Etapa 4: carrito guardado en la cuenta (Firebase), caducidad de 72 h y aviso de stock en vivo.
+import('./carrito-sync.js').catch((err) => console.error('No se pudo cargar la sincronización del carrito:', err));
+
 // ── LÓGICA DEL BADGE DEL CARRITO ──
 
 /**
