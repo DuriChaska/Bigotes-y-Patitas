@@ -37,7 +37,7 @@ const R_SOPORTE = ['administrador', 'soporte'];               // Atención a cli
 //     (clientes, productos, inventario) sin salirse a esos módulos.
 // El modo se recuerda en el navegador y las páginas admin-erp-* lo encienden solas.
 const adminEsPaginaErp = /^admin-erp/.test(adminPaginaActual);
-const adminEsPaginaCompartida = ['admin-usuarios.html', 'admin-configuracion.html'].includes(adminPaginaActual);
+const adminEsPaginaCompartida = ['admin-usuarios.html', 'admin-configuracion.html', 'admin-impuestos.html'].includes(adminPaginaActual);
 
 function leerModoErp() {
   try { return localStorage.getItem('bpModoErp') === '1'; } catch { return false; }
@@ -71,6 +71,7 @@ const adminErpItems = [
   { href: 'admin-erp-reportes.html',   label: 'Reportes ERP',            icon: 'chart',       roles: R_TODOS },
   { href: 'admin-promociones.html',    label: 'Promociones y sincronía', icon: 'tag',         roles: R_CRM },
   { href: 'admin-soporte.html',        label: 'Atención a clientes',     icon: 'headset',     roles: R_SOPORTE },
+  { href: 'admin-impuestos.html',      label: 'Impuestos (IVA)',         icon: 'tag',         roles: R_ADMIN },
   { href: 'admin-erp-madurez.html',    label: 'Nivel de implementación', icon: 'trending_up', roles: R_ADMIN },
   { href: 'admin-usuarios.html',       label: 'Usuarios',                icon: 'shield',      roles: R_ADMIN },
   { href: 'admin-configuracion.html',  label: 'Configuración',           icon: 'settings',    roles: R_TODOS },
@@ -107,6 +108,7 @@ const adminNavGroups = [
 // (Usuarios solo para administradores).
 const adminStandaloneLinks = [
   { href: 'admin-soporte.html',       label: 'Atención a clientes', icon: 'headset', roles: R_SOPORTE },
+  { href: 'admin-impuestos.html',     label: 'Impuestos (IVA)', icon: 'tag',    roles: R_ADMIN },
   { href: 'admin-usuarios.html',      label: 'Usuarios',      icon: 'shield',   roles: R_ADMIN },
   { href: 'admin-configuracion.html', label: 'Configuración', icon: 'settings', roles: R_TODOS },
 ];

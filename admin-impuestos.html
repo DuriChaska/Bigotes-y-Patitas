@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Impuestos (IVA) - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+  <style>
+    .iva-switch { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: .9rem; cursor: pointer; }
+    .iva-switch input { width: 18px; height: 18px; accent-color: #b34a8e; }
+    .iva-ejemplo { width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 12px; }
+    .iva-ejemplo td { padding: 8px 4px; border-bottom: 1px solid #eee; }
+    .iva-ejemplo td:last-child { text-align: right; }
+    .iva-ejemplo tr.total td { font-weight: bold; color: #b34a8e; border-bottom: none; }
+    .iva-meta { font-size: .8rem; color: var(--gray, #777); margin-top: 10px; }
+  </style>
+</head>
+<body data-solo-admin>
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Impuestos (IVA)</h1>
+          <p class="admin-breadcrumb">Panel de administración · Configuración del IVA que se cobra en la tienda</p>
+        </div>
+      </div>
+
+      <div class="admin-panels" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+
+        <div class="admin-panel">
+          <h2>Configuración</h2>
+          <p class="panel-sub">Se aplica a todas las compras nuevas de la tienda en línea</p>
+
+          <form id="form-iva" style="margin-top:16px;">
+            <div class="admin-form-group">
+              <label for="iva-tasa">Tasa de IVA (%)</label>
+              <input type="number" id="iva-tasa" min="0" max="30" step="0.01" required>
+            </div>
+
+            <label class="iva-switch">
+              <input type="checkbox" id="iva-activo">
+              Cobrar / mostrar IVA en el checkout
+            </label>
+
+            <label class="iva-switch">
+              <input type="checkbox" id="iva-incluido">
+              Los precios del catálogo YA incluyen IVA (solo se desglosa, no se suma)
+            </label>
+
+            <div class="admin-quick" style="margin-top:14px;">
+              <button type="submit" class="admin-quick-btn primary" style="border:none; cursor:pointer;">Guardar configuración</button>
+            </div>
+            <p class="iva-meta" id="iva-meta">Cargando…</p>
+          </form>
+        </div>
+
+        <div class="admin-panel">
+          <h2>Vista previa</h2>
+          <p class="panel-sub">Así se verá el desglose para una compra de ejemplo</p>
+          <table class="iva-ejemplo" id="iva-ejemplo"></table>
+          <p class="iva-meta">El IVA se calcula sobre: subtotal − descuento + envío.</p>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import { escucharImpuestoIva, guardarImpuestoIva, calcularIva, IVA_POR_DEFECTO } from './firebase-db.js';
+
+    const $ = (id) => document.getElementById(id);
+    const dinero = (n) => `$${(Number(n) || 0).toFixed(2)}`;
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2800);
+    }
+
+    function leerFormulario() {
+      return { tasa: Number($('iva-tasa').value), activo: $('iva-activo').checked, incluidoEnPrecio: $('iva-incluido').checked };
+    }
+
+    function pintarEjemplo() {
+      const cfg = leerFormulario();
+      const subtotal = 1000, descuento = 100, envio = 120;
+      const r = calcularIva(subtotal - descuento + envio, cfg);
+      const etiqueta = !cfg.activo ? 'IVA (desactivado)' : `${r.incluido ? 'IVA incluido' : 'IVA'} (${r.tasa}%)`;
+      $('iva-ejemplo').innerHTML = `
+        <tr><td>Subtotal</td><td>${dinero(subtotal)}</td></tr>
+        <tr><td>Descuento</td><td>-${dinero(descuento)}</td></tr>
+        <tr><td>Envío</td><td>${dinero(envio)}</td></tr>
+        <tr><td>${etiqueta}</td><td>${dinero(r.iva)}</td></tr>
+        <tr class="total"><td>Total</td><td>${dinero(r.totalConIva)}</td></tr>`;
+    }
+
+    function pintarConfig(cfg) {
+      const c = cfg || IVA_POR_DEFECTO;
+      $('iva-tasa').value = c.tasa;
+      $('iva-activo').checked = c.activo !== false;
+      $('iva-incluido').checked = !!c.incluidoEnPrecio;
+      $('iva-meta').textContent = cfg
+        ? `Última modificación: ${cfg.actualizadoPor || '—'}${cfg.actualizadoEn?.toDate ? ' · ' + cfg.actualizadoEn.toDate().toLocaleString('es-MX') : ''}`
+        : 'Aún no se ha guardado: la tienda usa 16% sumado al total. Guarda para crear la configuración en Firebase.';
+      pintarEjemplo();
+    }
+
+    ['iva-tasa', 'iva-activo', 'iva-incluido'].forEach(id => $(id).addEventListener('input', pintarEjemplo));
+
+    $('form-iva').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await guardarImpuestoIva(leerFormulario(), window.BP_SESION);
+        mostrarToast('Configuración de IVA guardada');
+      } catch (err) {
+        console.error(err);
+        mostrarToast(err.code === 'permission-denied'
+          ? 'Sin permiso: publica firestore.rules actualizadas en Firebase.'
+          : (err.message || 'No se pudo guardar.'));
+      }
+    });
+
+    document.addEventListener('bp-sesion-lista', () => {
+      escucharImpuestoIva(pintarConfig, (err) => {
+        console.error(err);
+        $('iva-meta').textContent = 'No se pudo leer la configuración (revisa las reglas de Firestore).';
+      });
+    });
+  </script>
+</body>
+</html>
