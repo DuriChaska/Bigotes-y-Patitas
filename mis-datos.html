@@ -27,12 +27,20 @@
         <!-- Datos de contacto -->
         <div class="cta-card">
           <h3>Perfil del usuario</h3>
+          <div class="foto-perfil-wrap compacta">
+            <img id="fotoPerfil" alt="Foto de perfil" class="foto-perfil sin-foto" title="Cambiar foto de perfil" />
+            <div class="foto-perfil-acciones">
+              <button type="button" id="btnCambiarFoto" class="foto-perfil-btn">📷 Agregar foto</button>
+              <button type="button" id="btnQuitarFoto" class="foto-perfil-btn quitar" style="display:none;">Quitar foto</button>
+              <small>JPG o PNG. Se recorta en cuadro automáticamente.</small>
+            </div>
+          </div>
           <form id="form-datos" novalidate>
             <label for="d-nombre">Nombre completo</label>
             <input type="text" id="d-nombre" maxlength="120" autocomplete="name" />
 
             <label for="d-telefono">Teléfono (10 dígitos)</label>
-            <input type="tel" id="d-telefono" maxlength="14" inputmode="numeric" autocomplete="tel" />
+            <input type="tel" id="d-telefono" inputmode="numeric" autocomplete="tel" />
 
             <label for="d-mascota">Nombre de tu mascota</label>
             <input type="text" id="d-mascota" maxlength="60" placeholder="Opcional" />
@@ -95,6 +103,7 @@
       sincronizarCorreoCliente, enviarCorreoRecuperacion, obtenerPerfilCliente,
     } from './firebase-db.js';
     import { iniciarCuenta, toast, avisoError, mensajeError, RE_CORREO, esc } from './cuenta-comun.js';
+    import { montarFotoPerfil } from './foto-perfil.js';
 
     const $ = (id) => document.getElementById(id);
     let sesion = null;
@@ -192,6 +201,7 @@
       sesion = await iniciarCuenta('mis-datos.html', 'datos');
       if (!sesion) return;
       pintar(sesion.perfil);
+      montarFotoPerfil({ img: $('fotoPerfil'), btnCambiar: $('btnCambiarFoto'), btnQuitar: $('btnQuitarFoto'), uid: sesion.usuario.uid });
       // Si ya confirmó el enlace de cambio de correo, el perfil del CRM se pone al día solo.
       try {
         if (await sincronizarCorreoCliente(sesion.usuario.uid, sesion.perfil)) {

@@ -902,3 +902,30 @@ Para los errores:
 - si no le afectan (por ejemplo, el contador de tickets), se ignoran en silencio con un comentario.
 
 Los errores de conexión del carrito se avisan una sola vez hasta que vuelva a funcionar.
+
+### 13.7 Foto de perfil del cliente
+
+Antes, el perfil mostraba la misma foto fija (`Imagenes/Kim.jpg`) a **todos** los clientes. Ahora:
+
+- **Sin foto se ve el ícono genérico de perfil** (silueta), en el Perfil, en "Mis datos" y en el ícono del
+  menú de arriba.
+- El cliente puede **agregar, cambiar o quitar** su foto. Puede hacerlo con el botón "📷 Agregar foto" o
+  haciendo clic en el círculo, en el Perfil o en "Mis datos".
+- La imagen se recorta al centro en cuadro y se reduce a **256×256 JPEG** en el navegador (pesa entre 3 y
+  60 KB). Acepta JPG, PNG, WEBP o GIF de hasta 8 MB.
+- Ya con foto, el ícono del menú superior muestra la foto del cliente.
+
+```
+fotos_perfil/{uid}        ← una foto por cliente (id = uid)
+  foto: "data:image/jpeg;base64,..."   (máx. ~200 KB de texto, revisado en las reglas)
+  actualizadoEn
+```
+
+- Está en una colección **aparte** de `clientes` para que las listas del CRM no carguen fotos.
+- No se usa Firebase Storage porque en proyectos nuevos exige el plan de pago (Blaze).
+- Reglas: solo el dueño la crea, cambia o borra; el personal (ventas/admin) puede verla.
+- Archivos:
+  - `foto-perfil.js` (nuevo): ícono genérico, `reducirFoto()` y `montarFotoPerfil()`.
+  - `firebase-db.js`: `escucharFotoPerfil`, `guardarFotoPerfil`, `quitarFotoPerfil`.
+  - `Interfaz Cliente - Perfil.html`, `mis-datos.html`, `components.js` (ícono del menú), `styles.css`
+    y `firestore.rules`.

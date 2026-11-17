@@ -2217,3 +2217,31 @@ export function escucharCarritos(callback, onError) {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, onError);
 }
+
+// =====================================================================
+// ---------- Etapa 4 · Foto de perfil del cliente ----------
+// =====================================================================
+//   fotos_perfil/{uid}  { foto: "data:image/jpeg;base64,...", actualizadoEn }
+// La foto se reduce en el navegador a 256×256 (JPEG, ~20-60 KB) y se guarda como texto en
+// Firestore, en una colección APARTE de "clientes" para que las listas del CRM no carguen
+// fotos. No se usa Firebase Storage porque en proyectos nuevos exige el plan de pago (Blaze).
+// Sin foto, las pantallas muestran el ícono genérico de perfil.
+
+/** Escucha la foto de perfil del cliente (callback recibe el texto de la imagen o "" si no tiene). */
+export function escucharFotoPerfil(uid, callback, onError) {
+  return onSnapshot(doc(db, "fotos_perfil", uid), (snap) => {
+    callback(snap.exists() ? (snap.data().foto || "") : "");
+  }, onError);
+}
+
+/** Guarda (o reemplaza) la foto. dataUrl debe venir de reducirFoto() (foto-perfil.js). */
+export async function guardarFotoPerfil(uid, dataUrl) {
+  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(dataUrl || "")) throw new Error("La imagen no es válida.");
+  if (dataUrl.length > 200000) throw new Error("La imagen es demasiado pesada.");
+  await setDoc(doc(db, "fotos_perfil", uid), { foto: dataUrl, actualizadoEn: serverTimestamp() });
+}
+
+/** Quita la foto: vuelve a verse el ícono genérico. */
+export function quitarFotoPerfil(uid) {
+  return deleteDoc(doc(db, "fotos_perfil", uid));
+}

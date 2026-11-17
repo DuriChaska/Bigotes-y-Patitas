@@ -21,8 +21,28 @@ Basado en **Develop** de GitHub con tu PR #24 ya incluido (commit f7a0d3e, 17-no
    navegador, así que ya no necesita índice. Se arregló igual el historial de interacciones del CRM.
    Si algo vuelve a fallar, la pantalla dice el motivo (permiso, índice o conexión).
 
-## Archivo NUEVO
+4. **El registro de usuarios nuevos no funcionaba.** El commit `a57777a` del equipo regresó
+   `Interfaz Usuario - Registro .html` a una versión vieja:
+   - sus campos no tenían `id`;
+   - `registro.js` se cargaba sin `type="module"`, así que el navegador no lo ejecutaba y el botón solo
+     recargaba la página;
+   - faltaban el teléfono, la mascota y el lugar del mensaje de error.
+
+   Se restauró y se mejoró: revisa nombre, correo, teléfono (10 dígitos, acepta guiones) y contraseñas,
+   explica cada error en español y, al registrarse, guarda el cliente en el CRM, inicia sesión y te manda
+   a la tienda.
+
+5. **Foto de perfil.** El perfil ya no muestra a todos la foto fija `Kim.jpg`.
+   - Sin foto se ve el **ícono genérico de perfil**.
+   - Cada cliente puede **agregar, cambiar o quitar** su foto desde el Perfil o desde "Mis datos". Se
+     recorta en cuadro y se reduce sola.
+   - Con foto, también aparece en el ícono del menú de arriba.
+   - Se guarda en la colección nueva `fotos_perfil` (no hace falta Firebase Storage).
+   - **Hay que volver a publicar `firestore.rules`.**
+
+## Archivos NUEVOS
 - `dialogos.js`: las ventanas `bpAlerta`, `bpConfirmar`, `bpPedirTexto` y el aviso `bpNotificar`.
+- `foto-perfil.js`: foto de perfil (ícono genérico, recorte y subida).
 
 ## Cómo aplicarlo
 
@@ -48,6 +68,8 @@ git push origin rama-Kim-ventanas
 Y abre el Pull Request hacia Develop. Tu rama `Rama-Kim` con el commit viejo la puedes dejar así;
 ya no hace falta subirla.
 
+Después publica `firestore.rules` en la consola de Firebase (Firestore → Reglas → Publicar).
+
 ## Lo que se probó (Chrome, con Firebase simulado)
 - El simulador ahora exige índices igual que Firebase real (así se reprodujo el error de "Mis pedidos").
 - Las 70 revisiones de antes (monedero, carrito, compra, panel): 0 fallas, sin ninguna alerta del navegador.
@@ -58,3 +80,5 @@ ya no hace falta subirla.
   - correo del recibo (campo prellenado);
   - eliminar producto en el panel (Cancelar no borra).
 - Se provocaron errores a propósito: aparece el aviso en pantalla y la consola queda vacía.
+- Registro de usuario nuevo y foto de perfil: agregar, archivo inválido, recorte 256×256, quitar, y el
+  ícono del menú. 0 fallas.

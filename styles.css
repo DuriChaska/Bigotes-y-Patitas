@@ -1834,3 +1834,21 @@ html.rol-logistica .oculto-logistica { display: none !important; }
   .cta-fila, .mc-stats, .pd-meta { grid-template-columns: 1fr; }
   .pd-top { grid-template-columns: 1fr 1fr; }
 }
+
+/* Etapa 4 · Foto de perfil (Perfil y Mis datos). Sin foto se ve el ícono genérico. */
+.foto-perfil-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.foto-perfil-wrap.compacta { flex-direction: row; align-items: center; gap: 14px; margin-bottom: 14px; }
+.foto-perfil { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; cursor: pointer;
+  border: 3px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.12); background: #efe4d6; }
+.foto-perfil-wrap.compacta .foto-perfil { width: 76px; height: 76px; }
+.foto-perfil:hover { filter: brightness(.95); }
+.foto-perfil-acciones { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.foto-perfil-wrap.compacta .foto-perfil-acciones { align-items: flex-start; }
+.foto-perfil-acciones small { font-size: .72rem; color: var(--gray); }
+.foto-perfil-btn { font-size: .78rem; font-weight: 700; color: var(--pink-fuerte, #b34a8e); background: #fff;
+  border: 1px solid #e6c9b4; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.foto-perfil-btn:hover { background: #fbefe6; }
+.foto-perfil-btn.quitar { color: #b3261e; border-color: #f2c4bd; }
+.foto-perfil-btn:disabled { opacity: .6; cursor: wait; }
+/* Ícono de perfil del menú superior cuando el cliente tiene foto */
+.icon.icon-foto-perfil { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; }

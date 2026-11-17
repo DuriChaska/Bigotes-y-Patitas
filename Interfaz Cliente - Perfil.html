@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Perfil Cliente</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
   <style>
     /* ── MODAL COMPRAS ──────────────────────── */
     .modal-overlay {
@@ -110,7 +111,14 @@
 
     <!-- HEADER PERFIL -->
     <div class="profile-header">
-      <img src="Imagenes/Kim.jpg" alt="Foto de perfil" class="profile-pic" />
+      <!-- Etapa 4: cada cliente pone su propia foto; sin foto se ve el ícono genérico de perfil -->
+      <div class="foto-perfil-wrap">
+        <img id="fotoPerfil" alt="Foto de perfil" class="profile-pic foto-perfil sin-foto" title="Cambiar foto de perfil" />
+        <div class="foto-perfil-acciones">
+          <button type="button" id="btnCambiarFoto" class="foto-perfil-btn">📷 Agregar foto</button>
+          <button type="button" id="btnQuitarFoto" class="foto-perfil-btn quitar" style="display:none;">Quitar foto</button>
+        </div>
+      </div>
       <div class="profile-info">
         <h2 id="nombreCliente">Cargando…</h2>
         <p id="arrobaCliente"></p>
@@ -210,6 +218,10 @@
 
   <script type="module">
     import { obtenerUsuarioActual, obtenerPerfilCliente, escucharVentasDeCliente, logoutCliente, escucharMonedero } from './firebase-db.js';
+    import { montarFotoPerfil, ICONO_PERFIL } from './foto-perfil.js';
+
+    // Mientras carga la sesión se ve el ícono genérico (nunca una foto fija de otra persona).
+    document.getElementById("fotoPerfil").src = ICONO_PERFIL;
 
     /* ── Historial de compras REAL (Firestore: colección "ventas") ── */
     let ventasCliente = [];
@@ -379,6 +391,13 @@
         window.location.href = "login.html?next=" + encodeURIComponent("Interfaz Cliente - Perfil.html");
         return;
       }
+
+      montarFotoPerfil({
+        img: document.getElementById("fotoPerfil"),
+        btnCambiar: document.getElementById("btnCambiarFoto"),
+        btnQuitar: document.getElementById("btnQuitarFoto"),
+        uid: usuario.uid,
+      });
 
       let perfil = null;
       try {

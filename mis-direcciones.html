@@ -39,8 +39,8 @@
               <div><label for="f-estado">Estado</label><input type="text" id="f-estado" maxlength="80" /></div>
             </div>
             <div class="cta-fila">
-              <div><label for="f-cp">Código postal</label><input type="text" id="f-cp" maxlength="5" inputmode="numeric" /></div>
-              <div><label for="f-telefono">Teléfono</label><input type="tel" id="f-telefono" maxlength="10" inputmode="numeric" /></div>
+              <div><label for="f-cp">Código postal</label><input type="text" id="f-cp" inputmode="numeric" /></div>
+              <div><label for="f-telefono">Teléfono</label><input type="tel" id="f-telefono" inputmode="numeric" placeholder="10 dígitos" /></div>
             </div>
             <label for="f-pais">País</label>
             <input type="text" id="f-pais" maxlength="60" value="México" />
@@ -80,8 +80,9 @@
     let direcciones = [];
     let editando = null;     // id de la dirección que se está editando (null = nueva)
 
-    ['f-cp', 'f-telefono'].forEach(id => $(id).addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '');
+    // Solo números (se quitan guiones y espacios ANTES de recortar al largo permitido).
+    [['f-cp', 5], ['f-telefono', 10]].forEach(([id, largo]) => $(id).addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, largo);
     }));
 
     function leerFormulario() {

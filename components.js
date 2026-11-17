@@ -77,7 +77,9 @@ function pintarHeaderFooter(cliente) {
         <ul>${navHTML(cliente)}</ul>
       </nav>
       <div class="icons">
-        <img src="Imagenes/Iconos/Avatar.png" alt="Perfil" class="icon"
+        <img src="${cliente && cliente.foto ? cliente.foto : 'Imagenes/Iconos/Avatar.png'}" alt="Perfil"
+          class="icon${cliente && cliente.foto ? ' icon-foto-perfil' : ''}" style="cursor:pointer;"
+          title="${cliente ? 'Mi perfil' : 'Iniciar sesión'}"
           onclick="window.location.href='${cliente ? 'Interfaz Cliente - Perfil.html' : 'login.html'}'" />
 
         <span class="admin-access-icon" title="Panel de administración"
@@ -152,10 +154,12 @@ window.cerrarSesionClientePublico = function (e) {
 // En cuanto Firebase responda, si hay un cliente con sesión real, se vuelve a
 // pintar el header con su nombre. import() dinámico porque este archivo NO es
 // un módulo (se usa con <script src="components.js">, no type="module").
-import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, escucharTicketsDeCliente }) => {
+import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, escucharTicketsDeCliente, escucharFotoPerfil }) => {
   let cancelarTickets = null;
+  let cancelarFoto = null;
   observarSesionCliente(async (user) => {
     if (cancelarTickets) { cancelarTickets(); cancelarTickets = null; }
+    if (cancelarFoto) { cancelarFoto(); cancelarFoto = null; }
     ticketsSinLeer = 0;
     if (!user) { pintarHeaderFooter(null); return; }
     let clienteHeader;
@@ -172,6 +176,11 @@ import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, 
       const n = lista.filter(t => t.leidoCliente === false).length;
       if (n !== ticketsSinLeer) { ticketsSinLeer = n; pintarHeaderFooter(clienteHeader); }
     }, () => { /* sin tickets: solo no se muestra la alerta junto al nombre */ });
+
+    // Etapa 4: foto de perfil en el ícono del menú (sin foto queda el ícono genérico).
+    cancelarFoto = escucharFotoPerfil(user.uid, (foto) => {
+      if ((clienteHeader.foto || '') !== foto) { clienteHeader.foto = foto; pintarHeaderFooter(clienteHeader); }
+    }, () => { /* sin foto: se queda el ícono genérico */ });
   });
 }).catch(() => {
   window.bpNotificar('No se pudo conectar con tu cuenta. Revisa tu conexión y recarga la página.', 'error');
