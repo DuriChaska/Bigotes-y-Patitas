@@ -18,6 +18,7 @@
 // ============================================
 
 import { observarSesion, obtenerPerfilUsuario, logoutAdmin } from "./firebase-db.js";
+import "./dialogos.js";   // ventanas emergentes propias (bpAlerta / bpConfirmar) en todo el panel
 
 // Secciones a las que puede entrar cada rol ("general" = páginas sin sección).
 const SECCIONES_POR_ROL = {
@@ -44,7 +45,6 @@ window.BP_SESION = null;
 // Si algo falla al cargar la sesión (sin internet, reglas de Firestore sin publicar,
 // etc.) se avisa en pantalla en vez de dejar la página en blanco.
 function mostrarErrorDeSesion(err) {
-  console.error("[admin-auth-guard] No se pudo cargar la sesión:", err);
   const aviso = document.createElement("div");
   aviso.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;padding:14px 18px;background:#fdecea;color:#7a1c14;font:14px/1.4 sans-serif;border-bottom:2px solid #d93025;";
   const codigo = (err && (err.code || err.message)) || "error desconocido";
@@ -67,11 +67,12 @@ async function entrarAlPanel(user) {
   if (!perfil) {
     // Se pudo iniciar sesión en Authentication, pero no existe su perfil
     // (nombre + rol) en Firestore, así que el panel no sabe qué mostrarle.
-    alert(
+    await bpAlerta(
       "Tu cuenta existe pero no tiene un perfil con rol asignado en Firestore " +
       "(colección \"usuarios\"). Pide a un administrador que te dé de alta desde " +
       "Configuración → Usuarios, o revisa SETUP-FIREBASE.md si eres el primer " +
-      "administrador del proyecto."
+      "administrador del proyecto.",
+      { tipo: 'error', titulo: 'Sin rol asignado' }
     );
     await logoutAdmin();
     window.location.href = "admin-login.html";
@@ -82,9 +83,10 @@ async function entrarAlPanel(user) {
   if (!permitidas) {
     // Rol que el panel no conoce (p. ej. mal escrito en Firestore): se corta aquí
     // en vez de dejarlo entrar o caer en un ciclo de redirecciones.
-    alert(
+    await bpAlerta(
       "Tu perfil tiene un rol que el panel no reconoce (\"" + perfil.rol + "\"). " +
-      "Pide a un administrador que lo corrija en Usuarios."
+      "Pide a un administrador que lo corrija en Usuarios.",
+      { tipo: 'error', titulo: 'Rol no reconocido' }
     );
     await logoutAdmin();
     window.location.href = "admin-login.html";

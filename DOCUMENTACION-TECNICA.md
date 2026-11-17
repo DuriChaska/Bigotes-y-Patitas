@@ -873,15 +873,32 @@ Equivalencia con los endpoints del PDF:
 - Las reglas no comparan la cantidad del carrito contra el stock: eso se avisa en la pantalla y se garantiza
   al pagar, dentro de la transacción de `crearVenta()`.
 
-### 13.6 Errores: notificación en pantalla, no mensajes en consola
+### 13.6 Ventanas emergentes propias y cero mensajes en consola
 
-En las pantallas de la Etapa 4 (y en los archivos de la tienda que esta entrega modifica) **no se usa
-`console.log` ni `console.error`**. Cuando algo falla:
+**Ningún archivo del proyecto usa ya `alert()`, `confirm()`, `prompt()` ni `console.*`.** Esas ventanas
+del navegador decían "localhost:5500 dice", no se podían adaptar al diseño y se veían distintas en cada
+navegador.
 
-- si el error le importa a la persona, se le avisa **en pantalla**: con `bpNotificar(texto, 'error' | 'info' | 'ok')`
-  en la tienda, `toast()` / el aviso del formulario en "Mi cuenta", y la tabla o `mostrarToast()` en el panel;
-- si no le afecta (por ejemplo, el contador de tickets sin leer), se ignora en silencio con un comentario
-  que explica por qué.
+`dialogos.js` (nuevo) define tres ventanas con el diseño de la tienda. Todas devuelven una promesa, así que
+se usan con `await`:
 
-Los errores de conexión del carrito se avisan **una sola vez** (no en cada intento) hasta que vuelva a funcionar.
+| Función | Reemplaza a | Devuelve |
+|---|---|---|
+| `bpAlerta(texto, { tipo, titulo })` | `alert()` | nada; se cumple al cerrar |
+| `bpConfirmar(texto, { titulo, aceptar, cancelar, peligro })` | `confirm()` | `true` (Aceptar) o `false` (Cancelar, Esc o clic fuera) |
+| `bpPedirTexto(texto, { valor, tipoCampo })` | `prompt()` | lo escrito, o `null` si se canceló |
+| `bpNotificar(texto, 'error' \| 'info' \| 'ok')` | `console.error` en errores de fondo | aviso pequeño abajo que se quita solo |
 
+- `tipo`: `info`, `exito`, `error`, `aviso`, `pregunta` (cambia el ícono y el color de la franja de arriba).
+- `peligro: true` pinta el botón en rojo y deja el foco en **Cancelar**, para que un Enter sin querer no borre nada.
+- Teclado: **Enter** acepta, **Esc** cancela, y **Tab** se queda dentro de la ventana. Al cerrar, el foco
+  regresa a donde estaba.
+- Si se piden dos ventanas al mismo tiempo, salen una después de otra.
+- En la tienda se carga con `<script src="dialogos.js"></script>` en el `<head>` de cada página que lo usa.
+  En el panel lo carga solo `admin-auth-guard.js`, así que cualquier página nueva del panel ya lo tiene.
+
+Para los errores:
+- si le importan a la persona, se avisan en pantalla (en el formulario, con `bpAlerta` o con `bpNotificar`);
+- si no le afectan (por ejemplo, el contador de tickets), se ignoran en silencio con un comentario.
+
+Los errores de conexión del carrito se avisan una sola vez hasta que vuelva a funcionar.

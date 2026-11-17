@@ -173,7 +173,6 @@
     escucharProductosScm(
       (lista) => { productos = lista; pintarGrid(); },
       (err) => {
-        console.error(err);
         estado.style.display = '';
         estado.textContent = 'No se pudo cargar el catálogo. Revisa tu conexión.';
         grid.innerHTML = '';

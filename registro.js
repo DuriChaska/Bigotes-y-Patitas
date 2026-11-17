@@ -70,7 +70,6 @@ form.addEventListener("submit", async function (e) {
       window.location.href = nextParam || "index.html";
     }, 1500);
   } catch (err) {
-    console.error(err);
     mostrarError(ERRORES_FIREBASE[err.code] || ("No se pudo completar el registro: " + (err.message || "revisa tu conexión.")));
     boton.disabled = false;
     boton.textContent = "REGISTRARSE";

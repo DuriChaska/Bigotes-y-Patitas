@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Checkout - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
   <style>
     .hidden { display: none !important; }
 
@@ -720,7 +721,7 @@
         ajustado.push({ id: item.id, nombre: real.nombre, precio, imagen: real.img || item.imagen, cantidad });
       });
 
-      if (avisos.length) alert(avisos.join('\n'));
+      if (avisos.length) bpAlerta(avisos.join('\n'), { tipo: 'aviso', titulo: 'Ajustamos tu pedido' });
       guardarCarrito(ajustado);
       return ajustado;
     }
@@ -900,7 +901,7 @@
 
     function validateAndShowPayment() {
       if (obtenerCarrito().length === 0) {
-        alert("Tu carrito está vacío.");
+        bpAlerta("Tu carrito está vacío.", { tipo: 'aviso' });
         return;
       }
       if (!validarEnvio()) return;
@@ -1013,7 +1014,7 @@
 
       const resumen = obtenerResumenCompra();
       if (!resumen || resumen.carrito.length === 0) {
-        alert("Tu carrito está vacío.");
+        bpAlerta("Tu carrito está vacío.", { tipo: 'aviso' });
         return;
       }
       if (!usuarioActual) {
@@ -1043,7 +1044,7 @@
         const saldo = Number(monedero?.saldo) || 0;
         pintarMonedero(resumen.total);
         if (saldo + 0.001 < resumen.total) {
-          alert(`Saldo insuficiente en tu monedero (${formatearMoneda(saldo)}). Recarga o elige otro método de pago.`);
+          bpAlerta(`Saldo insuficiente en tu monedero (${formatearMoneda(saldo)}). Recarga o elige otro método de pago.`, { tipo: 'error', titulo: 'Saldo insuficiente' });
           return;
         }
         pagoDetalle = { saldoAntes: saldo };
@@ -1055,7 +1056,12 @@
         : clave === 'monedero'
           ? `Se descontarán ${formatearMoneda(resumen.total)} de tu monedero. Te quedarán ${formatearMoneda((Number(monedero?.saldo) || 0) - resumen.total)}. ¿Confirmar compra?`
           : `Se cobrarán ${formatearMoneda(resumen.total)} con ${metodoPago}. ¿Confirmar compra?`;
-      if (!confirm(mensajeConfirmar)) return;
+      const confirmado = await bpConfirmar(mensajeConfirmar, {
+        titulo: 'Confirmar compra',
+        aceptar: (clave === 'oxxo' || clave === 'spei') ? 'Generar referencia' : 'Confirmar compra',
+        cancelar: 'Revisar de nuevo',
+      });
+      if (!confirmado || enviando) return;
 
       enviando = true;
       const botones = document.querySelectorAll('.payment-option-body button, .btn-paypal');
@@ -1139,7 +1145,7 @@
         mostrarConfirmacion(recibo, venta.saldoMonedero);
         enviarCorreo(recibo, direccionEnvio.correo || usuarioActual.email);
       } catch (err) {
-        alert(err.message || "No se pudo completar tu pedido. Intenta de nuevo.");
+        bpAlerta(err.message || "No se pudo completar tu pedido. Intenta de nuevo.", { tipo: 'error', titulo: 'No se completó tu compra' });
         // Si el problema fue de stock o precio, se refresca el carrito con los datos reales.
         if (/stock|agot|quedan|precio/i.test(err.message || '')) {
           await sincronizarConStockReal();
@@ -1286,7 +1292,7 @@
           const r = await validarCupon(guardado.codigo);
           if (!r.ok) {
             localStorage.removeItem("cuponAplicado");
-            alert(`El cupón ${guardado.codigo} ya no está vigente y se quitó de tu pedido.`);
+            bpAlerta(`El cupón ${guardado.codigo} ya no está vigente y se quitó de tu pedido.`, { tipo: 'aviso', titulo: 'Cupón vencido' });
           } else {
             localStorage.setItem("cuponAplicado", JSON.stringify(r.cupon));
           }

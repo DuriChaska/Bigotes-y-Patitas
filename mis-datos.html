@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mis datos - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -159,7 +160,7 @@
 
     $('btn-olvide').addEventListener('click', async () => {
       const correo = sesion.usuario.email;
-      if (!confirm(`Te enviaremos un enlace a ${correo} para crear una contraseña nueva. ¿Continuar?`)) return;
+      if (!(await bpConfirmar(`Te enviaremos un enlace a ${correo} para crear una contraseña nueva. ¿Continuar?`, { titulo: 'Restablecer contraseña', aceptar: 'Enviar enlace' }))) return;
       try {
         await enviarCorreoRecuperacion(correo);
         toast(`Enlace enviado a ${correo}. Revisa también tu carpeta de spam.`);

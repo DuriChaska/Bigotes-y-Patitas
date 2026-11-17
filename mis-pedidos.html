@@ -45,7 +45,7 @@
   <script src="cuenta-menu.js"></script>
   <script type="module">
     import { escucharVentasDeCliente } from './firebase-db.js';
-    import { iniciarCuenta, esc, dinero, fechaCorta, fechaHora } from './cuenta-comun.js';
+    import { iniciarCuenta, esc, dinero, fechaCorta, fechaHora, motivoError } from './cuenta-comun.js';
 
     const $ = (id) => document.getElementById(id);
     const PASOS = ['Confirmada', 'En proceso', 'Enviada', 'Entregada'];
@@ -169,7 +169,7 @@
         primeraCarga = false;
         pintar();
       }, (err) => {
-        $('lista').innerHTML = '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus pedidos.</p>';
+        $('lista').innerHTML = `<p style="color:#b3261e; font-size:.88rem;">${esc(motivoError(err, 'tus pedidos'))}</p>`;
       });
     })();
   </script>

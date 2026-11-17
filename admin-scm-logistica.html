@@ -165,7 +165,6 @@
         await actualizarProductoScm(id, { ...prod, estrategia: tipo });
         mostrarToast(`Estrategia ${tipo} guardada para ${prod.nombre}`);
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
       }
       boton.disabled = false;
@@ -219,7 +218,7 @@
           pintarTablaEstrategia();
           if (!$('tabComparativa').classList.contains('hidden')) pintarComparativa();
         },
-        (err) => console.error(err)
+        () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error')
       );
     }
 

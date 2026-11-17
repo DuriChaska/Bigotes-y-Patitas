@@ -184,7 +184,6 @@
       try {
         await setDoc(refManual, { items: { [id]: nuevo }, actualizadoEn: serverTimestamp() }, { merge: true });
       } catch (err) {
-        console.error(err);
         manual = { ...manual, [id]: !nuevo };
         toast('No se pudo guardar el cambio. Revisa tu conexión.');
       } finally {
@@ -201,21 +200,20 @@
 
       escucharClientes(lista => { datosAuto.clientes = lista.length > 0; pintar(); });
       escucharProductosScm(lista => { datosAuto.productos = lista.length > 0; pintar(); },
-        err => console.error(err));
+        () => bpNotificar('No se pudo revisar si ya hay productos registrados.', 'error'));
 
       getDocs(query(collection(db, 'ventas'), limit(1)))
         .then(snap => { datosAuto.ordenes = !snap.empty; pintar(); })
-        .catch(err => console.error(err));
+        .catch(() => bpNotificar('No se pudo revisar si ya hay órdenes registradas.', 'error'));
 
       // Si ya hay operaciones en el historial ERP, las órdenes sí están moviendo el inventario solas.
       getDocs(query(collection(db, 'erp_operaciones'), limit(1)))
         .then(snap => { datosAuto.movimientos = !snap.empty; pintar(); })
-        .catch(err => console.error(err));
+        .catch(() => bpNotificar('No se pudo revisar el historial de operaciones del ERP.', 'error'));
       onSnapshot(refManual, snap => {
         manual = snap.exists() ? (snap.data().items || {}) : {};
         pintar();
       }, err => {
-        console.error(err);
         toast('No se pudo cargar el checklist manual.');
       });
     }

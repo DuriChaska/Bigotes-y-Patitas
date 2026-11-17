@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clientes - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -107,7 +108,7 @@
     btnGuardar.addEventListener('click', () => {
       const nuevaEtapa = selectStage.value;
       estadoOriginal = nuevaEtapa; // Actualizamos el estado original para futuros canceles
-      alert(`¡Éxito! La etapa de ${clientName} ha sido guardada como: ${nuevaEtapa}`);
+      bpAlerta(`La etapa de ${clientName} ha sido guardada como: ${nuevaEtapa}`, { tipo: 'exito' });
     });
 
     // Evento 4: Acción del botón "Cancelar"

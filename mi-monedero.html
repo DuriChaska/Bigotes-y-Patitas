@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mi monedero - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -236,7 +237,8 @@
       const detalle = detalleDelMetodo();
       if (!detalle) return;
       const metodo = metodoElegido();
-      if (!confirm(`¿Recargar ${dinero(monto)} a tu monedero con ${metodo}?`)) return;
+      if (!(await bpConfirmar(`¿Recargar ${dinero(monto)} a tu monedero con ${metodo}?\n${detalle}`, { titulo: 'Confirmar recarga', aceptar: `Recargar ${dinero(monto)}` }))) return;
+      if (enviando) return;
 
       enviando = true;
       $('btn-recargar').disabled = true;

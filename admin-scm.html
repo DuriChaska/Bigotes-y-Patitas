@@ -127,7 +127,7 @@
           mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
         }
       } catch (err) {
-        console.error('No se pudo generar la reposición automática:', err);
+        bpNotificar('No se pudo generar el pedido de reposición automática. Revisa los permisos en Firebase.', 'error');
       } finally {
         revisandoReposicion = false;
       }
@@ -139,11 +139,11 @@
       iniciado = true;
       escucharProductosScm(
         (lista) => { productos = lista; pintarBannerStockBajo(productos, 'panelIntroScm'); revisarReposicionAutomatica(); },
-        (err) => console.error(err)
+        () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error')
       );
       escucharPedidosScm(
         (lista) => { pedidos = lista; pedidosCargados = true; revisarReposicionAutomatica(); },
-        (err) => console.error(err)
+        () => bpNotificar('No se pudieron cargar los pedidos a proveedores. Revisa tu conexión y los permisos en Firebase.', 'error')
       );
     }
 

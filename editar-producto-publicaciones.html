@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Editar producto</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -80,7 +81,7 @@ document.getElementById("fotoFile").addEventListener("change", function(){
 });
 
 // guardar cambios
-document.getElementById("formEditar").addEventListener("submit", function(e){
+document.getElementById("formEditar").addEventListener("submit", async function(e){
   e.preventDefault();
 
   producto.nombre = nombre.value;
@@ -92,7 +93,7 @@ document.getElementById("formEditar").addEventListener("submit", function(e){
 
   localStorage.setItem("misProductos", JSON.stringify(productos));
 
-  alert("✨ Producto actualizado");
+  await bpAlerta("✨ Producto actualizado", { tipo: 'exito' });
 
   window.location.href = "mis-publicaciones.html";
 });

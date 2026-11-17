@@ -125,15 +125,10 @@ Si algo no conecta, abran la consola del navegador (F12 → pestaña
 "Console"): Firebase muestra ahí el motivo exacto del error (llaves mal
 copiadas, reglas que bloquean el acceso, etc.).
 
-> **Nota sobre índices:** la primera vez que abran el historial de
-> interacciones de un cliente (`admin-interacciones.html`), o la primera vez
-> que un cliente real abra su perfil (`Interfaz Cliente - Perfil.html`) y se
-> pida su historial de compras, es posible que Firestore muestre en la
-> consola un error como *"The query requires an index"* con un enlace azul.
-> Es normal — Firestore necesita crear un índice para poder filtrar por
-> cliente y ordenar por fecha al mismo tiempo (pasa con `interacciones` y con
-> `ventas`). Solo hagan clic en ese enlace, esperen 1-2 minutos a que se
-> construya el índice, y recarguen la página.
+> **Nota sobre índices:** ya **no hace falta crear ningún índice**. Antes, el historial de compras
+> (`ventas`) y el de interacciones (`interacciones`) filtraban por cliente y ordenaban por fecha al mismo
+> tiempo, y eso exigía un índice compuesto (el enlace azul de "The query requires an index"). Ahora solo
+> filtran por cliente y el orden se hace en el navegador. Si ya habían creado esos índices, no estorban.
 
 ## 7. Cargar el catálogo de ejemplo (SCM / tienda)
 

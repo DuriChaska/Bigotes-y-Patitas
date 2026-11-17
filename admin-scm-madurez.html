@@ -156,7 +156,6 @@
       try {
         await marcarItemMadurezScm(id, nuevoValor);
       } catch (err) {
-        console.error(err);
         estadoActual = { ...estadoActual, [id]: !nuevoValor };
         mostrarToast('No se pudo guardar el cambio. Revisa tu conexión.');
       } finally {
@@ -173,7 +172,6 @@
         estadoActual = items || {};
         pintar();
       }, (err) => {
-        console.error(err);
         $('madurezDescripcion').textContent = 'No se pudo cargar el checklist. Revisa tu conexión y los permisos en Firebase.';
       });
     }

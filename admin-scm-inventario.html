@@ -231,7 +231,7 @@
           mostrarToast(`PUSH: se generó${generados === 1 ? '' : 'ron'} ${generados} pedido${generados === 1 ? '' : 's'} de reposición (Pendiente) por stock mínimo`);
         }
       } catch (err) {
-        console.error('No se pudo generar la reposición automática:', err);
+        bpNotificar('No se pudo generar el pedido de reposición automática. Revisa los permisos en Firebase.', 'error');
       } finally {
         revisandoReposicion = false;
       }
@@ -251,7 +251,6 @@
       escucharProductosScm(
         (lista) => { productos = lista; cargado = true; errorCarga = null; pintarInventario(); revisarReposicionAutomatica(); },
         (err) => {
-          console.error(err);
           cargado = true;
           errorCarga = err && err.code === 'permission-denied'
             ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'
@@ -261,7 +260,7 @@
       );
       if (sesion.rol !== 'vendedor') escucharPedidosScm(
         (lista) => { pedidos = lista; pedidosCargados = true; pintarInventario(); revisarReposicionAutomatica(); },
-        (err) => console.error(err)
+        () => bpNotificar('No se pudieron cargar los pedidos a proveedores. Revisa tu conexión y los permisos en Firebase.', 'error')
       );
     }
 

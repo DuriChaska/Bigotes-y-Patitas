@@ -442,7 +442,6 @@
         }
         cerrarModal();
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudo guardar. Revisa tu conexión y los permisos en Firebase.');
       }
       boton.disabled = false;
@@ -461,12 +460,11 @@
       if (boton.dataset.accion === 'editar') {
         abrirModal(producto);
       } else if (boton.dataset.accion === 'eliminar') {
-        if (!confirm(`¿Eliminar "${producto.nombre}" del catálogo? Esta acción no se puede deshacer.`)) return;
+        if (!(await bpConfirmar(`¿Eliminar "${producto.nombre}" del catálogo? Esta acción no se puede deshacer.`, { titulo: 'Eliminar producto', aceptar: 'Eliminar', peligro: true }))) return;
         try {
           await eliminarProductoScm(id);
           mostrarToast(`Producto "${producto.nombre}" eliminado`);
         } catch (err) {
-          console.error(err);
           mostrarToast('No se pudo eliminar. Revisa tu conexión y los permisos en Firebase.');
         }
       }
@@ -486,7 +484,6 @@
         })));
         mostrarToast(creoProveedores ? 'Productos y proveedores de ejemplo cargados' : 'Productos de ejemplo cargados');
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudieron cargar los ejemplos. Revisa los permisos en Firebase.');
         if (boton) boton.disabled = false;
       }
@@ -508,12 +505,11 @@
           // Si el modal está abierto, refresca el select sin perder la selección actual
           if (!$('modal').classList.contains('hidden')) pintarOpcionesProveedor($('f-proveedor').value);
         },
-        (err) => console.error(err)
+        () => bpNotificar('No se pudieron cargar los proveedores. Revisa tu conexión y los permisos en Firebase.', 'error')
       );
       escucharProductosScm(
         (lista) => { productos = lista; cargado = true; errorCarga = null; pintar(); },
         (err) => {
-          console.error(err);
           cargado = true;
           errorCarga = err && err.code === 'permission-denied'
             ? 'Permiso denegado. Publica firestore.rules en Firebase y entra con una cuenta de administrador.'

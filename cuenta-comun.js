@@ -74,6 +74,14 @@ export function mensajeError(err, porDefecto = 'No se pudo completar. Revisa tu 
   return codigos[err?.code] || err?.message || porDefecto;
 }
 
+/** Explica en pocas palabras por qué no cargó una lista (sin depender de la consola). */
+export function motivoError(err, que) {
+  if (err?.code === 'permission-denied') return `No se pudieron cargar ${que}: Firebase no dio permiso (hay que publicar firestore.rules actualizadas).`;
+  if (err?.code === 'failed-precondition') return `No se pudieron cargar ${que}: Firebase pide un índice que no existe.`;
+  if (err?.code === 'unavailable') return `No se pudieron cargar ${que}: sin conexión a internet.`;
+  return `No se pudieron cargar ${que}. Revisa tu conexión e intenta de nuevo.`;
+}
+
 /**
  * Exige sesión de cliente y pinta el menú de "Mi cuenta".
  * pagina = archivo actual (para regresar después del login); idMenu = opción activa del menú.

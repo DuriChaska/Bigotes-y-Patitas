@@ -218,7 +218,7 @@
     async function eliminarCliente(id) {
       const c = clientes.find(x => x.id === id);
       if (!c) return;
-      if (!confirm(`¿Eliminar a ${c.nombre} del listado de clientes? Esta acción no se puede deshacer.`)) return;
+      if (!(await bpConfirmar(`¿Eliminar a ${c.nombre} del listado de clientes? Esta acción no se puede deshacer.`, { titulo: 'Eliminar cliente', aceptar: 'Eliminar', peligro: true }))) return;
       try {
         await eliminarClienteDB(id);
         mostrarToast(`Cliente ${c.nombre} eliminado`);

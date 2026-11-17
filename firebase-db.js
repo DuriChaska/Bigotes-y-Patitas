@@ -268,11 +268,14 @@ export function escucharTodasInteracciones(callback) {
 }
 
 /** Escucha únicamente las interacciones de un cliente. */
-export function escucharInteraccionesDeCliente(clienteId, callback) {
-  const q = query(interaccionesRef, where("clienteId", "==", clienteId), orderBy("creadoEn", "desc"));
+// Igual que las ventas: se ordena aquí para no necesitar un índice compuesto en Firebase.
+export function escucharInteraccionesDeCliente(clienteId, callback, onError) {
+  const q = query(interaccionesRef, where("clienteId", "==", clienteId));
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.creadoEn) - milisDe(a.creadoEn));
+    callback(lista);
+  }, onError);
 }
 
 export function crearInteraccion(datos) {
@@ -651,10 +654,14 @@ export async function crearMovimientoScm(datos, stockActual) {
 const ventasRef = collection(db, "ventas");
 
 /** Escucha en tiempo real las ventas de UN cliente (para su historial de compras). */
+// Solo filtra por cliente y ordena aquí (más nueva primero): where + orderBy en campos distintos
+// obligaba a crear un índice compuesto en Firebase y, sin él, "Mis pedidos" no cargaba.
 export function escucharVentasDeCliente(uid, callback, onError) {
-  const q = query(ventasRef, where("clienteId", "==", uid), orderBy("creadoEn", "desc"));
+  const q = query(ventasRef, where("clienteId", "==", uid));
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.creadoEn) - milisDe(a.creadoEn));
+    callback(lista);
   }, onError);
 }
 

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Promociones - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -70,21 +71,20 @@
       const codigo = document.getElementById("codigoPromo").value.trim().toUpperCase();
 
       if (!codigo) {
-        alert("Ingresa un código.");
+        await bpAlerta("Ingresa un código.", { tipo: 'aviso' });
         return;
       }
 
       try {
         const r = await validarCupon(codigo);
         if (!r.ok) {
-          alert(r.motivo);
+          await bpAlerta(r.motivo, { tipo: 'error', titulo: 'Cupón no válido' });
           return;
         }
         localStorage.setItem("cuponAplicado", JSON.stringify(r.cupon));
-        alert("Cupón aplicado correctamente.");
+        bpAlerta("Cupón aplicado correctamente.", { tipo: 'exito' });
       } catch (err) {
-        console.error(err);
-        alert("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.");
+        bpAlerta("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.", { tipo: 'error' });
       }
     }
     window.aplicarCodigo = aplicarCodigo;

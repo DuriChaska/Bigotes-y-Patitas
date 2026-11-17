@@ -205,7 +205,6 @@
         mostrarToast(editando ? `Cupón ${codigo} actualizado` : `Cupón ${codigo} guardado en promociones`);
         limpiarFormulario();
       } catch (err) {
-        console.error(err);
         mostrarError('No se pudo guardar: ' + (err.code === 'permission-denied' ? 'sin permiso (publica firestore.rules).' : (err.message || 'revisa tu conexión.')));
       }
       boton.disabled = false;
@@ -245,13 +244,12 @@
           await cambiarActivaPromocion(p.id, p.activa !== true);
           mostrarToast(`Cupón ${p.codigo} ${p.activa === true ? 'desactivado' : 'activado'}`);
         } else if (btn.dataset.accion === 'eliminar') {
-          if (!confirm(`¿Eliminar el cupón ${p.codigo}? Los clientes ya no podrán usarlo.`)) return;
+          if (!(await bpConfirmar(`¿Eliminar el cupón ${p.codigo}? Los clientes ya no podrán usarlo.`, { titulo: 'Eliminar cupón', aceptar: 'Eliminar', peligro: true }))) return;
           await eliminarPromocion(p.id);
           if (editando === p.id) limpiarFormulario();
           mostrarToast(`Cupón ${p.codigo} eliminado`);
         }
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudo completar: ' + (err.message || 'revisa tu conexión.'));
       }
     });
@@ -262,7 +260,6 @@
         const n = await cargarPromocionesEjemplo(window.BP_SESION);
         mostrarToast(`${n} cupones de ejemplo cargados (vigentes por un año)`);
       } catch (err) {
-        console.error(err);
         mostrarToast('No se pudieron cargar: ' + (err.message || 'revisa tu conexión.'));
       }
       $('btn-ejemplos').disabled = false;
@@ -300,10 +297,10 @@
       iniciado = true;
       limpiarFormulario();
       escucharPromociones((lista) => { promos = lista; pintarPromos(); },
-        (err) => { console.error(err); mostrarToast('No se pudieron leer las promociones: ' + (err.code || err.message)); });
-      escucharPagos((l) => { pagos = l; pintarSync(); }, (err) => console.error('pagos:', err));
+        (err) => { mostrarToast('No se pudieron leer las promociones: ' + (err.code || err.message)); });
+      escucharPagos((l) => { pagos = l; pintarSync(); }, () => bpNotificar('No se pudieron leer los pagos para la sincronía.', 'error'));
       escucharClientes((l) => { clientes = l; pintarSync(); });
-      escucharOperacionesErp((l) => { operaciones = l; pintarSync(); }, (err) => console.error('erp_operaciones:', err), 60);
+      escucharOperacionesErp((l) => { operaciones = l; pintarSync(); }, () => bpNotificar('No se pudieron leer las operaciones del ERP.', 'error'), 60);
     }
     if (window.BP_SESION) iniciar(window.BP_SESION);
     else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });

@@ -232,7 +232,6 @@
         delete borradores[t.id];
         toast('Respuesta enviada a soporte.');
       } catch (err) {
-        console.error(err);
         error.textContent = err && err.code === 'permission-denied'
           ? 'Este ticket ya no admite respuestas (soporte lo marcó como solucionado o cerrado). Crea uno nuevo si lo necesitas.'
           : (err.message || 'No se pudo enviar la respuesta. Revisa tu conexión.');
@@ -247,7 +246,7 @@
       const t = tickets.find(x => x.id === id);
       // Al abrirlo se apaga la alerta de "respuesta sin leer".
       if (t && t.leidoCliente === false) {
-        marcarTicketLeido(id).catch(err => console.error('No se pudo marcar como leído:', err));
+        marcarTicketLeido(id).catch(() => { /* solo la alerta de "sin leer" seguirá encendida */ });
       }
       pintarLista();
       pintarDetalle();
@@ -282,7 +281,6 @@
         seleccionado = folio;
         toast(`Ticket ${folio} enviado. Te avisaremos aquí cuando respondamos.`);
       } catch (err) {
-        console.error(err);
         error.textContent = err && err.code === 'permission-denied'
           ? 'No tienes permiso para enviar tickets. Avisa a la tienda para que revise la configuración.'
           : (err.message || 'No se pudo enviar el ticket. Revisa tu conexión.');
@@ -299,12 +297,11 @@
         window.location.href = 'login.html?next=' + encodeURIComponent('atencion-clientes.html');
         return;
       }
-      try { perfil = await obtenerPerfilCliente(usuario.uid); } catch (err) { console.error(err); }
+      try { perfil = await obtenerPerfilCliente(usuario.uid); } catch { /* sin perfil: se muestra el nombre de la cuenta */ }
       document.getElementById('sesion-nombre').textContent = (perfil?.nombre || usuario.displayName || usuario.email);
 
       escucharVentasDeCliente(usuario.uid, (lista) => { ventasCliente = lista; pintarProductos(); },
         (err) => {
-          console.error('No se pudieron cargar las compras:', err);
           document.getElementById('ticket-producto').innerHTML = '<option value="">— No se pudieron cargar tus compras —</option>';
         });
 
@@ -318,7 +315,6 @@
         pintarLista();
         pintarDetalle();
       }, (err) => {
-        console.error(err);
         document.getElementById('lista-tickets').innerHTML =
           '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus tickets. Revisa tu conexión.</p>';
       });

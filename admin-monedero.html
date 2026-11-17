@@ -333,7 +333,7 @@
       if (!clienteId) return mostrarError('Elige un cliente.');
       if (!(monto > 0)) return mostrarError('Escribe un monto mayor a $0.');
       if (motivo.length < 5) return mostrarError('Escribe el motivo (mínimo 5 letras).');
-      if (!confirm(`${efecto === 'abono' ? 'Sumar' : 'Restar'} ${dinero(monto)} ${efecto === 'abono' ? 'al' : 'del'} monedero de ${nombre}?`)) return;
+      if (!(await bpConfirmar(`¿${efecto === 'abono' ? 'Sumar' : 'Restar'} ${dinero(monto)} ${efecto === 'abono' ? 'al' : 'del'} monedero de ${nombre}?\nMotivo: ${motivo}`, { titulo: tipo === 'Recarga' ? 'Recarga manual' : 'Ajuste de saldo', aceptar: efecto === 'abono' ? 'Sumar saldo' : 'Restar saldo', peligro: efecto === 'cargo' }))) return;
 
       const boton = $('btn-ajuste');
       boton.disabled = true;

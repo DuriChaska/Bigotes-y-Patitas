@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mis direcciones - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -146,7 +147,7 @@
           await marcarDireccionPredeterminada(sesion.usuario.uid, id, direcciones);
           toast(`"${d.alias}" es ahora tu dirección predeterminada.`);
         } else if (b.dataset.accion === 'borrar') {
-          if (!confirm(`¿Eliminar la dirección "${d.alias || d.calle}"? Esta acción no se puede deshacer.`)) return;
+          if (!(await bpConfirmar(`¿Eliminar la dirección "${d.alias || d.calle}"? Esta acción no se puede deshacer.`, { titulo: 'Eliminar dirección', aceptar: 'Eliminar', peligro: true }))) return;
           await eliminarDireccion(sesion.usuario.uid, id, direcciones);
           if (editando === id) limpiarFormulario();
           toast('Dirección eliminada.');

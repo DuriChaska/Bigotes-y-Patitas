@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Mis publicaciones</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="dialogos.js"></script>
 </head>
 <body>
 
@@ -67,8 +68,8 @@ function cargarProductos(){
   });
 }
 
-function eliminar(id){
-  if(confirm("¿Seguro que quieres eliminar este producto? 🗑️")){
+async function eliminar(id){
+  if (await bpConfirmar("¿Seguro que quieres eliminar este producto? 🗑️", { titulo: 'Eliminar publicación', aceptar: 'Eliminar', peligro: true })) {
     let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
     productos = productos.filter(p => p.id !== id);
     localStorage.setItem("misProductos", JSON.stringify(productos));

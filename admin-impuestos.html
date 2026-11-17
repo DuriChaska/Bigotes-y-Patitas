@@ -122,7 +122,6 @@
         await guardarImpuestoIva(leerFormulario(), window.BP_SESION);
         mostrarToast('Configuración de IVA guardada');
       } catch (err) {
-        console.error(err);
         mostrarToast(err.code === 'permission-denied'
           ? 'Sin permiso: publica firestore.rules actualizadas en Firebase.'
           : (err.message || 'No se pudo guardar.'));
@@ -131,7 +130,6 @@
 
     document.addEventListener('bp-sesion-lista', () => {
       escucharImpuestoIva(pintarConfig, (err) => {
-        console.error(err);
         $('iva-meta').textContent = 'No se pudo leer la configuración (revisa las reglas de Firestore).';
       });
     });

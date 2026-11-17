@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Subasta - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
   <style>
     .auction-box {
       background: #fff;
@@ -196,13 +197,13 @@
 
       // Validar si es mayor al precio actual
       if (!valor || valor <= precioActual) {
-        alert("Ingresa una oferta mayor al precio actual.");
+        bpAlerta("Ingresa una oferta mayor al precio actual.", { tipo: 'aviso', titulo: 'Oferta muy baja' });
         return;
       }
 
       // 🚫 Validar duplicados
       if (ofertasRealizadas.includes(valor)) {
-        alert("Esa cantidad ya fue ofertada. Ingresa un valor diferente.");
+        bpAlerta("Esa cantidad ya fue ofertada. Ingresa un valor diferente.", { tipo: 'aviso', titulo: 'Oferta repetida' });
         return;
       }
 

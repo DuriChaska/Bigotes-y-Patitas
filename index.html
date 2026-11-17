@@ -214,7 +214,6 @@
         pintarSeccion('gridNuevos', 'estadoNuevos', lista.slice(8, 12));
       },
       (err) => {
-        console.error(err);
         document.getElementById('estadoPopulares').textContent = 'No se pudo cargar el catálogo.';
         document.getElementById('estadoNuevos').textContent = 'No se pudo cargar el catálogo.';
       }
