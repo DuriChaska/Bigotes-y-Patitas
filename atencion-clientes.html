@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atención a clientes - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="cta-wrap">
+    <aside class="cta-menu" id="cuenta-menu"></aside>
+
+    <div>
+      <div class="cta-head">
+        <h2>Atención a clientes (Tickets)</h2>
+        <p>Cuéntanos tu duda o problema y nuestro equipo de soporte te responderá aquí mismo.
+           Sesión: <strong id="sesion-nombre">…</strong></p>
+      </div>
+
+      <div class="cta-main">
+        <!-- Izquierda: nuevo ticket -->
+        <div class="cta-card">
+          <h3>Nuevo ticket</h3>
+          <form id="form-ticket" novalidate>
+            <label for="ticket-asunto">Asunto</label>
+            <select id="ticket-asunto">
+              <option>Duda sobre mi pedido</option>
+              <option>Cambio de producto</option>
+              <option>Facturación</option>
+              <option>Problema con monedero</option>
+            </select>
+
+            <label for="ticket-producto">Producto de tu compra (opcional)</label>
+            <select id="ticket-producto">
+              <option value="">— Sin producto en particular —</option>
+            </select>
+
+            <label for="ticket-mensaje">Mensaje</label>
+            <textarea id="ticket-mensaje" maxlength="2000"
+              placeholder="Describe tu problema con el mayor detalle posible (por ejemplo, el folio de tu pedido)…"></textarea>
+
+            <p class="cta-aviso" id="ticket-error"></p>
+            <button type="submit" class="cta-btn" id="btn-enviar">Enviar ticket</button>
+          </form>
+        </div>
+
+        <!-- Derecha: mis tickets + hilo -->
+        <div>
+          <div class="cta-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
+              <h3 style="margin:0;">Mis tickets</h3>
+              <span class="cta-banner" id="banner-sin-leer" style="display:none;"></span>
+            </div>
+            <div id="lista-tickets"><p style="color:var(--gray); font-size:.88rem;">Cargando…</p></div>
+          </div>
+
+          <div class="cta-card" id="detalle-ticket" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+  <div class="cta-toast" id="toast"></div>
+
+  <script src="components.js"></script>
+  <script src="cuenta-menu.js"></script>
+  <script type="module">
+    import {
+      obtenerUsuarioActual, obtenerPerfilCliente,
+      crearTicket, escucharTicketsDeCliente, marcarTicketLeido, responderTicketCliente,
+      escucharVentasDeCliente,
+    } from './firebase-db.js';
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    let usuario = null;
+    let perfil = null;
+    let tickets = [];
+    let ventasCliente = [];
+    let compras = [];                 // productos comprados: { clave, ventaId, folio, productoId, producto, cantidad, fecha }
+    const borradores = {};            // texto a medio escribir de cada respuesta (no se pierde al llegar una actualización)
+    let seleccionado = new URLSearchParams(window.location.search).get('ticket');
+
+    // Colores: En proceso = amarillo, Solucionado (se muestra "Respondido") = verde, Cerrado = gris.
+    const claseEstado = (e) => e === 'Cerrado' ? 'cerrado' : (e === 'Solucionado' ? 'respondido' : 'proceso');
+    const etiquetaEstado = (e) => e === 'Solucionado' ? 'Respondido' : (e || 'En proceso');
+
+    function fechaTicket(valor) {
+      if (!valor) return '';
+      const f = typeof valor.toDate === 'function' ? valor.toDate() : new Date(valor);
+      return isNaN(f.getTime()) ? '' : f.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+
+    function fechaCorta(valor) {
+      if (!valor) return '';
+      const f = typeof valor.toDate === 'function' ? valor.toDate() : new Date(valor);
+      return isNaN(f.getTime()) ? '' : f.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // Llena el selector con cada producto de las compras del cliente (las canceladas no cuentan).
+    function pintarProductos() {
+      const sel = document.getElementById('ticket-producto');
+      const actual = sel.value;
+      compras = [];
+      ventasCliente.filter(v => v.estado !== 'Cancelada').forEach(v => {
+        (v.items || []).forEach((it, i) => compras.push({
+          clave: v.id + '#' + i, ventaId: v.id, folio: v.folio || v.id,
+          productoId: it.productoId || '', producto: it.nombre || 'Producto',
+          cantidad: Number(it.cantidad) || 1, fecha: fechaCorta(v.creadoEn),
+        }));
+      });
+      sel.innerHTML = '<option value="">— Sin producto en particular —</option>' + compras.map(c =>
+        `<option value="${esc(c.clave)}">${esc(c.producto)}${c.cantidad > 1 ? ' ×' + c.cantidad : ''} — pedido ${esc(c.folio)}${c.fecha ? ' (' + esc(c.fecha) + ')' : ''}</option>`).join('');
+      if (compras.some(c => c.clave === actual)) sel.value = actual;
+    }
+
+    function sinLeer() { return tickets.filter(t => t.leidoCliente === false).length; }
+
+    function pintarLista() {
+      const cont = document.getElementById('lista-tickets');
+      const n = sinLeer();
+
+      const banner = document.getElementById('banner-sin-leer');
+      banner.style.display = n > 0 ? '' : 'none';
+      banner.innerHTML = `<span class="tk-dot"></span> ${n} respuesta${n === 1 ? '' : 's'} sin leer`;
+      pintarMenuCuenta('atencion', n);
+
+      if (tickets.length === 0) {
+        cont.innerHTML = '<p style="color:var(--gray); font-size:.88rem;">Aún no tienes tickets. Escribe el primero en el formulario de la izquierda.</p>';
+        return;
+      }
+      cont.innerHTML = tickets.map(t => `
+        <div class="tk-item ${t.id === seleccionado ? 'sel' : ''}" data-id="${esc(t.id)}">
+          <div class="tk-item-main">
+            <span class="tk-folio">${esc(t.folio || t.id)}</span>
+            <span class="tk-asunto">${esc(t.asunto)}</span>
+            ${t.leidoCliente === false ? '<span class="tk-dot" title="Respuesta nueva"></span>' : ''}
+          </div>
+          <span class="tk-badge ${claseEstado(t.estado)}">${esc(etiquetaEstado(t.estado))}</span>
+        </div>`).join('');
+      cont.querySelectorAll('.tk-item').forEach(el => el.addEventListener('click', () => abrirTicket(el.dataset.id)));
+    }
+
+    // Hilo de la conversación: mensaje del cliente + respuestas del agente.
+    function hiloDe(t) {
+      if (Array.isArray(t.hilo) && t.hilo.length) return t.hilo;
+      const h = [{ de: 'cliente', nombre: t.clienteNombre, texto: t.mensaje, fecha: '' }];
+      if (t.respuesta) h.push({ de: 'soporte', nombre: t.agente || 'Soporte', texto: t.respuesta, fecha: '' });
+      return h;
+    }
+
+    function pintarDetalle() {
+      const caja = document.getElementById('detalle-ticket');
+      const t = tickets.find(x => x.id === seleccionado);
+      if (!t) { caja.style.display = 'none'; return; }
+      const teniaFoco = document.activeElement && document.activeElement.id === 'resp-texto';
+      caja.style.display = '';
+      caja.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; border-bottom:1px solid #f1ece1; padding-bottom:10px;">
+          <div>
+            <small style="font-weight:700; color:var(--pink-fuerte);">${esc(t.folio || t.id)} · ${esc(fechaTicket(t.creadoEn))}</small>
+            <h3 style="margin:2px 0 0;">${esc(t.asunto)}</h3>
+          </div>
+          <span class="tk-badge ${claseEstado(t.estado)}">${esc(etiquetaEstado(t.estado))}</span>
+        </div>
+        ${t.pedido && t.pedido.producto ? `<div class="tk-pedido">📦 Producto: <strong>${esc(t.pedido.producto)}</strong>${t.pedido.cantidad > 1 ? ' ×' + Number(t.pedido.cantidad) : ''} · Pedido <strong>${esc(t.pedido.folio || t.pedido.ventaId)}</strong></div>` : ''}
+        <div class="tk-hilo">
+          ${hiloDe(t).map(m => `
+            <div class="tk-msg ${m.de === 'soporte' ? 'soporte' : ''}">
+              <div class="tk-msg-top">
+                <strong>${m.de === 'soporte' ? '🎧 Soporte · ' + esc(m.nombre || 'Agente') : 'Tú'}</strong>
+                <span>${esc(m.fecha ? fechaTicket(m.fecha) : '')}</span>
+              </div>
+              <p>${esc(m.texto)}</p>
+            </div>`).join('')}
+          ${t.esperaSoporte ? `<div class="tk-msg" style="text-align:center; background:#fcefd0; border-color:#f0d68a; color:#7a5a10;">
+             ⏳ Tu solicitud está en espera de atención de nuestro equipo.</div>` : ''}
+          ${t.estado === 'Cerrado' || t.estado === 'Solucionado' ? `<div class="tk-msg" style="text-align:center; color:var(--gray);">
+             Este ticket está ${t.estado === 'Cerrado' ? 'cerrado' : 'marcado como solucionado'} y ya no admite respuestas. Si necesitas algo más, crea uno nuevo.</div>` : ''}
+        </div>
+        ${puedeResponder(t) ? `
+        <form class="cta-reply" id="form-respuesta" novalidate>
+          <label for="resp-texto">Tu respuesta</label>
+          <textarea id="resp-texto" maxlength="2000"
+            placeholder="Contesta a soporte o agrega la evidencia que te pidan. Puedes pegar el enlace de tus fotos o video (Google Drive, Dropbox, etc.)."></textarea>
+          <p class="cta-hint">Soporte puede seguir contestándote aquí mientras el ticket esté "En proceso".</p>
+          <p class="cta-aviso" id="resp-error"></p>
+          <button type="submit" class="cta-btn" id="btn-responder">Enviar respuesta</button>
+        </form>` : ''}`;
+
+      const ta = document.getElementById('resp-texto');
+      if (ta) {
+        ta.value = borradores[t.id] || '';
+        ta.addEventListener('input', () => { borradores[t.id] = ta.value; });
+        if (teniaFoco) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+      }
+      const fr = document.getElementById('form-respuesta');
+      if (fr) fr.addEventListener('submit', (e) => enviarRespuesta(e, t));
+    }
+
+    // Se puede contestar solo mientras soporte no lo haya marcado Solucionado ni Cerrado.
+    function puedeResponder(t) { return (t.estado || 'En proceso') === 'En proceso'; }
+
+    async function enviarRespuesta(e, t) {
+      e.preventDefault();
+      const error = document.getElementById('resp-error');
+      const boton = document.getElementById('btn-responder');
+      const texto = document.getElementById('resp-texto').value;
+      error.style.display = 'none';
+      if (!texto.trim()) {
+        error.textContent = 'Escribe tu respuesta antes de enviarla.';
+        error.style.display = 'block';
+        return;
+      }
+      boton.disabled = true;
+      boton.textContent = 'Enviando…';
+      try {
+        await responderTicketCliente(t, texto, { uid: usuario.uid, nombre: perfil?.nombre || usuario.displayName || usuario.email });
+        delete borradores[t.id];
+        toast('Respuesta enviada a soporte.');
+      } catch (err) {
+        console.error(err);
+        error.textContent = err && err.code === 'permission-denied'
+          ? 'Este ticket ya no admite respuestas (soporte lo marcó como solucionado o cerrado). Crea uno nuevo si lo necesitas.'
+          : (err.message || 'No se pudo enviar la respuesta. Revisa tu conexión.');
+        error.style.display = 'block';
+        boton.disabled = false;
+        boton.textContent = 'Enviar respuesta';
+      }
+    }
+
+    function abrirTicket(id) {
+      seleccionado = id;
+      const t = tickets.find(x => x.id === id);
+      // Al abrirlo se apaga la alerta de "respuesta sin leer".
+      if (t && t.leidoCliente === false) {
+        marcarTicketLeido(id).catch(err => console.error('No se pudo marcar como leído:', err));
+      }
+      pintarLista();
+      pintarDetalle();
+      document.getElementById('detalle-ticket').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.getElementById('form-ticket').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('ticket-error');
+      const boton = document.getElementById('btn-enviar');
+      error.style.display = 'none';
+
+      const asunto = document.getElementById('ticket-asunto').value;
+      const mensaje = document.getElementById('ticket-mensaje').value;
+      const elegido = compras.find(c => c.clave === document.getElementById('ticket-producto').value);
+      if (!mensaje.trim()) {
+        error.textContent = 'Escribe el mensaje para que podamos ayudarte.';
+        error.style.display = 'block';
+        return;
+      }
+
+      boton.disabled = true;
+      boton.textContent = 'Enviando…';
+      try {
+        const folio = await crearTicket({
+          asunto, mensaje,
+          pedido: elegido || null,
+          cliente: { uid: usuario.uid, nombre: perfil?.nombre || usuario.displayName || usuario.email, correo: usuario.email },
+        });
+        document.getElementById('ticket-mensaje').value = '';
+        document.getElementById('ticket-producto').value = '';
+        seleccionado = folio;
+        toast(`Ticket ${folio} enviado. Te avisaremos aquí cuando respondamos.`);
+      } catch (err) {
+        console.error(err);
+        error.textContent = err && err.code === 'permission-denied'
+          ? 'No tienes permiso para enviar tickets. Avisa a la tienda para que revise la configuración.'
+          : (err.message || 'No se pudo enviar el ticket. Revisa tu conexión.');
+        error.style.display = 'block';
+      }
+      boton.disabled = false;
+      boton.textContent = 'Enviar ticket';
+    });
+
+    (async function iniciar() {
+      pintarMenuCuenta('atencion', 0);
+      usuario = await obtenerUsuarioActual();
+      if (!usuario) {
+        window.location.href = 'login.html?next=' + encodeURIComponent('atencion-clientes.html');
+        return;
+      }
+      try { perfil = await obtenerPerfilCliente(usuario.uid); } catch (err) { console.error(err); }
+      document.getElementById('sesion-nombre').textContent = (perfil?.nombre || usuario.displayName || usuario.email);
+
+      escucharVentasDeCliente(usuario.uid, (lista) => { ventasCliente = lista; pintarProductos(); },
+        (err) => {
+          console.error('No se pudieron cargar las compras:', err);
+          document.getElementById('ticket-producto').innerHTML = '<option value="">— No se pudieron cargar tus compras —</option>';
+        });
+
+      escucharTicketsDeCliente(usuario.uid, (lista) => {
+        tickets = lista;
+        // Si el ticket abierto recibe respuesta mientras se mira, se marca como leído de inmediato.
+        const abierto = tickets.find(t => t.id === seleccionado);
+        if (abierto && abierto.leidoCliente === false) {
+          marcarTicketLeido(abierto.id).catch(() => {});
+        }
+        pintarLista();
+        pintarDetalle();
+      }, (err) => {
+        console.error(err);
+        document.getElementById('lista-tickets').innerHTML =
+          '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus tickets. Revisa tu conexión.</p>';
+      });
+    })();
+  </script>
+</body>
+</html>

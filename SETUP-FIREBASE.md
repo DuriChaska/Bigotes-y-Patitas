@@ -51,7 +51,7 @@ Guarden el archivo. Con eso todas las páginas del panel (que importan de
 
 ## 4.1 Crear el primer perfil de administrador (paso obligatorio)
 
-El panel maneja tres roles (**administrador**, **vendedor** y **logistica**) guardados
+El panel maneja cuatro roles (**administrador**, **vendedor**, **logistica** y **soporte**) guardados
 en una colección de Firestore llamada `usuarios`. El propio panel permite
 crear usuarios nuevos desde **Configuración → Usuarios**, pero esa pantalla
 solo la puede usar alguien que YA sea administrador — para el primer
@@ -80,6 +80,7 @@ crear ahí, desde la interfaz, a los siguientes administradores y vendedores
 > | `administrador` | Sí | Sí | Sí |
 > | `vendedor` | Sí | No | No |
 > | `logistica` | No | Sí | No |
+> | `soporte` | No (solo lee la ficha del cliente) | No | No — solo **Atención a clientes** (tickets) |
 >
 > Configuración (cambiar nombre, correo o contraseña propios) la ven los tres.
 > Quien entra a una sección que no le toca es regresado a su página de inicio
@@ -156,7 +157,7 @@ de cliente reales). Ambas viven en el mismo proyecto de Firebase.
 usuarios/{uid}          (uid = el mismo ID que le da Firebase Authentication)
   nombre: string
   correo: string
-  rol: "administrador" | "vendedor" | "logistica"
+  rol: "administrador" | "vendedor" | "logistica" | "soporte"
 
 clientes/{id}
   # Esta colección tiene DOS orígenes posibles para el mismo documento:
@@ -307,3 +308,16 @@ vendedor y logística; se crean en `admin-usuarios.html`) y revisa que el menú
 lateral muestre solo lo que le toca (ver la tabla de la sección 10.5 de
 `DOCUMENTACION-TECNICA.md`).
 
+## Etapa 4 — Soporte, promociones y pagos (pasos al actualizar el proyecto)
+
+1. **Vuelve a publicar `firestore.rules`** (Firestore → Reglas → Publicar). Sin esto los tickets, los
+   cupones y la sincronización de compras darán `permission-denied`.
+2. No hay índices nuevos que crear: las consultas de tickets filtran por un solo campo y se ordenan en el navegador.
+3. En **Usuarios**, crea una cuenta con rol **Soporte** para el equipo de atención.
+4. En **Promociones**, pulsa **"Cargar los 3 cupones de ejemplo"** (los cupones ya no viven en el código).
+5. Colecciones que se crean solas la primera vez que se usan: `tickets`, `contadores`, `promociones`, `pagos`.
+   Su estructura está en `DOCUMENTACION-TECNICA.md` §11.2.
+
+```
+tickets/{folio}  contadores/tickets  promociones/{CODIGO}  pagos/{ventaId}
+```

@@ -121,7 +121,7 @@ tres cosas, en este orden:
    (clientes, interacciones, reportes CRM), `data-seccion="scm"` (todo lo de
    cadena de suministros), `data-solo-admin` (solo `admin-usuarios.html`) o
    nada (Configuración). El guard compara esa sección con lo que permite el
-   rol (`administrador`: todo; `vendedor`: solo CRM; `logistica`: solo SCM) y,
+   rol (`administrador`: todo; `vendedor`: solo CRM; `logistica`: solo SCM; `soporte`: solo atención a clientes, ver §11) y,
    si no le toca, la regresa a su página de inicio (Dashboard o SCM).
 
 Mientras esto se confirma, el panel completo está oculto con CSS
@@ -141,7 +141,7 @@ los datos de una sola cosa (un cliente, una interacción, un usuario).
 usuarios/{uid}
   nombre: string
   correo: string
-  rol: "administrador" | "vendedor" | "logistica"
+  rol: "administrador" | "vendedor" | "logistica" | "soporte"
 
 clientes/{idAutogenerado}
   nombre: string
@@ -485,3 +485,157 @@ Para comparar varias series (p. ej. PUSH y PULL) se usa `series` y
 `admin.html`, `admin-reportes.html`, `admin-scm-reportes.html`, `admin-erp.html`
 y `admin-erp-reportes.html`.
 
+---
+
+## 11. Etapa 4: soporte técnico, promociones e integración compra → pagos → CRM → ERP
+
+Esta etapa agrega tres cosas sin duplicar datos: **atención a clientes (tickets)** con un rol
+nuevo **`soporte`**, **promociones con vigencia** (los cupones dejan de estar escritos en el
+código) y la **sincronización automática** de cada compra de la tienda con `pagos`, el CRM y
+`erp_operaciones`.
+
+### 11.1 Archivos nuevos y modificados
+
+| Archivo | Qué hace |
+|---|---|
+| `atencion-clientes.html` (nuevo) | Pantalla del cliente dentro de "Mi cuenta": formulario **Nuevo ticket** (izquierda) y **Mis tickets** (derecha) con el hilo de respuestas. |
+| `cuenta-menu.js` (nuevo) | Menú lateral de "Mi cuenta" compartido (Mi cuenta, Mis pedidos, Mi monedero, Mis datos, Direcciones, Atención a clientes). Las opciones sin `href` aparecen como "Pronto" hasta que el integrante 2 entregue esas pantallas. |
+| `admin-soporte.html` (nuevo) | Panel del rol `soporte`: alerta de tickets en espera, bandeja con todo el historial, ficha del cliente en el CRM y formulario de respuesta + cambio de estado. |
+| `admin-promociones.html` (nuevo) | CRUD de cupones con vigencia + vista en vivo de la sincronización (pagos ↔ CRM ↔ erp_operaciones). Solo administrador y ventas. |
+| `firebase-db.js` | Funciones nuevas: `crearTicket`, `escucharTicketsDeCliente`, `escucharTodosLosTickets`, `responderTicket`, `marcarTicketLeido`, `escucharClienteUno`, `obtenerPromocion`, `validarCupon`, `guardarPromocion`, `escucharPromociones`, `cargarPromocionesEjemplo`, `escucharPagos`, `registrarIntegracionCompra`. `crearVenta` y `crearOrdenErp`/`cambiarEstadoOrdenErp` se ampliaron (ver 11.4). |
+| `firestore.rules` | Rol `soporte`; reglas de `tickets`, `contadores`, `promociones`, `pagos`; ventas puede cambiar estatus; la tienda puede sincronizar CRM y `erp_operaciones` (ver 11.5). |
+| `admin-auth-guard.js`, `admin-components.js`, `admin-usuarios.html`, `admin-icons.js`, `styles.css` | El rol `soporte` en el guard, el menú (con contador de tickets en espera), el alta de usuarios, íconos y estilos. |
+| `promos.html`, `Carrito.html`, `Checkout.html` | Validan el cupón contra Firebase (existe, activo y vigente) al aplicarlo, al abrir el carrito/checkout y otra vez dentro de `crearVenta()` antes de cobrar. |
+| `components.js` | Muestra junto a "Hola, Nombre" cuántas respuestas de soporte tiene el cliente sin leer. |
+| `Interfaz Cliente - Perfil.html` | Botón "Atención a clientes" y soporte para el enlace `#pedidos` del menú. |
+| `admin-erp-ordenes.html` | El rol ventas (vendedor) ya puede cambiar el estatus (no cancelar). |
+
+### 11.2 Colecciones nuevas y sus relaciones (punto 4.2)
+
+```
+tickets/{folio}                      ← el id del documento ES el folio ("T-105")
+  folio, clienteId ────────────────► clientes/{uid}      (ligado al CRM: soporte lee compras y total gastado)
+  clienteNombre, clienteCorreo
+  asunto: "Duda sobre mi pedido" | "Cambio de producto" | "Facturación" | "Problema con monedero"
+  mensaje, estado: "En proceso" | "Solucionado" | "Cerrado"
+  esperaSoporte: boolean           (true = nadie de soporte ha respondido; es el contador de "en espera")
+  respuesta, agente, agenteId      (última respuesta y quién la escribió = usuarios/{uid})
+  leidoCliente: boolean            (false = respuesta nueva; enciende la alerta del cliente)
+  hilo: [{ de: "cliente"|"soporte", nombre, texto, fecha }]
+  creadoEn, actualizadoEn
+
+contadores/tickets   { ultimo }      folio consecutivo T-101, T-102… dentro de una transacción
+
+promociones/{CODIGO}                 ← el código del cupón es el id del documento
+  codigo, descripcion, tipo: "porcentaje" | "tercera_prenda" | "envio_gratis"
+  valor (1-90), minimoCompra, vigenciaHasta "AAAA-MM-DD", activa
+  creadoPor, creadoPorId ──────────► usuarios/{uid}
+
+pagos/{ventaId}                      ← mismo id que la venta/orden: un pago por venta
+  pedidoId ────────────────────────► ventas/{ventaId}
+  folio, clienteId ────────────────► clientes/{uid}
+  monto, metodoPago, estado: "Pagado" | "Cancelado" | "Reembolsado"
+  origen: "Tienda web" | "ERP", usuarioId, usuarioNombre, fecha, creadoEn
+```
+
+Campos que la compra agrega al cliente en `clientes/{uid}`: `numCompras`, `totalComprado`,
+`ultimaCompra`, `ultimaVentaId` y `etapa`. `erp_operaciones` recibe además el tipo
+`"Compra en tienda"` (con `origen: "Tienda web"`).
+
+Relación completa de una compra de la tienda:
+
+```
+ventas/{id} ──► pagos/{id}  (mismo id)
+   │              └─ monto = ventas.total
+   ├────────────► clientes/{uid}  (numCompras +1, totalComprado +total, etapa)
+   └────────────► erp_operaciones  (ordenId = ventas.id, tipo "Compra en tienda")
+```
+
+### 11.3 Flujo de tickets
+
+1. El cliente abre **Mi cuenta → Atención a clientes**, elige el asunto, escribe el mensaje y envía.
+   `crearTicket()` toma el siguiente folio del contador **dentro de una transacción** (dos clientes
+   al mismo tiempo no pueden recibir el mismo folio) y guarda el ticket `En proceso` con
+   `esperaSoporte: true`.
+2. Soporte ve la alerta superior con el contador de tickets en espera (también aparece en el
+   menú lateral), abre el ticket y ve a la derecha la **ficha del cliente en el CRM** (compras,
+   total gastado, etapa), leída en vivo de `clientes/{clienteId}`.
+3. Soporte escribe la respuesta y elige el estado (**En proceso / Solucionado / Cerrado**).
+   `responderTicket()` guarda la respuesta con su nombre (`agente`/`agenteId`), agrega la entrada
+   al `hilo`, pone `esperaSoporte: false` y `leidoCliente: false`.
+4. El cliente ve una alerta verde (junto a "Hola, Nombre" y en el menú de Mi cuenta). Al abrir el
+   ticket se marca `leidoCliente: true`. Colores: amarillo = En proceso, verde = Respondido
+   (estado `Solucionado`), gris = Cerrado.
+5. **Los tickets nunca se borran** (`allow delete: if false`): lo resuelto queda en el historial.
+
+### 11.4 Flujo de una compra de la tienda (coordinado con el integrante 1)
+
+`crearVenta()` (compras) guarda la venta, descuenta stock y registra la salida. **Justo después**
+llama a `registrarIntegracionCompra()`, que en **una sola operación atómica** (`writeBatch`):
+
+1. crea `pagos/{ventaId}` (documento independiente: pedido, monto, método, estado, fecha);
+2. actualiza al cliente en el CRM: +1 compra, +total gastado, última compra y etapa
+   (Prospecto/Inactivo → Activo; 3 compras o más → Frecuente, igual que en el ERP);
+3. crea el registro en `erp_operaciones` (`"Compra en tienda"`).
+
+**Qué recibe el CRM y el ERP de cada compra** (para acordar con el integrante 1): `ventaId`,
+`folio`, `clienteId`, `clienteNombre`, `total` y `metodoPago` — todos ya existen en el objeto
+`datosVenta` que `Checkout.html` le pasa a `crearVenta()`. Si el integrante 1 reescribe
+`crearVenta`, solo debe conservar la llamada a `registrarIntegracionCompra()` después de guardar la venta.
+
+Si esa sincronización fallara (por ejemplo, se perdió la conexión en ese instante), la compra
+**no se pierde ni se cobra doble**: queda guardada y el error se registra en la consola.
+Las órdenes creadas desde el ERP (`crearOrdenErp`) también crean su documento en `pagos`, y
+cancelar una orden marca su pago como `Cancelado`.
+
+El cupón se revisa de nuevo dentro de `crearVenta()`: si venció o se desactivó mientras estaba
+en el carrito, la compra se rechaza con un mensaje claro.
+
+### 11.5 Reglas de Firestore nuevas (resumen)
+
+- **Rol `soporte`**: lee/responde `tickets`, **lee** `clientes` (solo para la ficha) y su propio
+  perfil en `usuarios`. No lee `ventas`, `pagos`, inventario ni `erp_operaciones`. El guard
+  (`admin-auth-guard.js`), el menú y el CSS tampoco le muestran nada de eso.
+- **`tickets`**: el cliente crea (siempre `En proceso`, a su nombre, asunto de la lista) y lee solo
+  los suyos; solo puede marcar como leído. Soporte/administrador leen todos y solo pueden tocar
+  estado, respuesta, agente, hilo y alertas. Nadie borra.
+- **`promociones`**: cualquiera puede leer **un** cupón si sabe su código (`get`); solo ventas y
+  administrador pueden listar, crear, editar y borrar.
+- **`pagos`**: el cliente crea el pago de **su** venta con el monto exacto de esa venta; ventas/admin
+  crean el de las órdenes ERP. Después solo se puede cambiar el `estado`.
+- **Sincronización con el CRM desde la tienda**: el cliente solo puede subir **una** compra, con el
+  total exacto de la venta, y solo si en la misma operación se crea `pagos/{ventaId}` (se comprueba
+  con `existsAfter`); como ese pago no puede existir antes, la misma compra no se puede repetir.
+- **`ventas`**: administrador, ventas y logística cambian el estatus; **cancelar** sigue siendo de
+  administrador y logística porque devuelve stock al inventario.
+
+### 11.6 Cómo probarlo (después de publicar `firestore.rules`)
+
+1. Panel → **Usuarios**: crear un usuario con rol **Soporte**.
+2. Panel → **Promociones**: "Cargar los 3 cupones de ejemplo".
+3. Como cliente: comprar algo (con cupón) → en el panel de promociones aparece la fila de
+   sincronización con los 3 pasos, y en el CRM suben compras y total gastado.
+4. Como cliente: **Mi cuenta → Atención a clientes** → enviar un ticket (folio T-101).
+5. Entrar con el usuario soporte → debe ir directo a **Atención a clientes**, ver la alerta, la
+   ficha del CRM y responder. El cliente ve la alerta verde y la respuesta.
+
+### 11.7 Limitaciones que hay que tener claras
+
+- **No hay servidor**: la sincronización la dispara el navegador del cliente justo después de pagar.
+  Las reglas validan monto y total gastado, pero el precio y el descuento de la tienda pública aún
+  se calculan en el navegador (el ERP sí toma el precio de Firestore).
+- Las compras hechas **antes** de la Etapa 4 no tienen documento en `pagos` ni cuentan en
+  `numCompras` / `totalComprado` del CRM.
+- Cancelar una orden marca su pago como `Cancelado`, pero **no** resta esa compra del CRM.
+- La alerta de soporte y la de respuestas son en pantalla (tiempo real); no se envían correos
+  (haría falta EmailJS o una Cloud Function).
+- Las pantallas **Mi monedero, Mis datos y Direcciones** son del integrante 2: en el menú de Mi
+  cuenta aparecen como "Pronto" hasta que existan (se activan poniéndoles su `href` en `cuenta-menu.js`).
+- Los tickets de clientes que el CRM dio de alta a mano (sin cuenta) no existen: para abrir un ticket
+  hace falta tener cuenta real en la tienda.
+
+#### Réplicas del cliente y producto de la queja (ampliación)
+
+- **Producto de la queja:** al crear el ticket el cliente puede elegir uno de los productos de sus compras (las canceladas no aparecen). Se guarda en `tickets.pedido = { ventaId, folio, productoId, producto, cantidad }`; la relación es `tickets.pedido.ventaId → ventas/{id}`. Las reglas exigen que esa venta pertenezca al mismo cliente. Soporte lo ve resaltado arriba de la conversación.
+- **Respuesta del cliente:** mientras el ticket esté **En proceso** el cliente puede seguir escribiendo (por ejemplo para dar la evidencia que soporte le pidió). Cada mensaje se agrega al final de `hilo` y el ticket vuelve a quedar `esperaSoporte: true`, así que reaparece en el contador de soporte. Con estado **Solucionado** o **Cerrado** ya no se puede responder (lo bloquean la pantalla y las reglas `ticketRespondidoPorCliente`).
+- **Evidencia:** el proyecto no usa Firebase Storage, por lo que la evidencia se entrega como texto o como enlace (Drive, Dropbox, etc.) dentro de la respuesta.

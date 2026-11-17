@@ -16,7 +16,7 @@
       <div class="admin-topbar">
         <div>
           <h1>Usuarios</h1>
-          <p class="admin-breadcrumb">Panel de administración · Administradores, vendedores y logística con acceso al panel</p>
+          <p class="admin-breadcrumb">Panel de administración · Administradores, vendedores, logística y soporte con acceso al panel</p>
         </div>
         <div class="admin-topbar-right">
           <button class="admin-quick-btn primary" onclick="abrirModalUsuario()">
@@ -84,6 +84,7 @@
           <select id="u-rol" class="admin-select" style="width:100%;">
             <option value="vendedor">Vendedor (solo CRM)</option>
             <option value="logistica">Logística (solo SCM)</option>
+            <option value="soporte">Soporte (solo atención a clientes)</option>
             <option value="administrador">Administrador (todo)</option>
           </select>
         </div>
@@ -121,6 +122,7 @@
               <select class="admin-select" style="min-width:150px;" onchange="cambiarRol('${u.uid}', this.value)" ${u.uid === window.BP_SESION?.uid ? 'disabled title="No puedes cambiar tu propio rol aquí"' : ''}>
                 <option value="vendedor" ${u.rol === 'vendedor' ? 'selected' : ''}>Vendedor</option>
                 <option value="logistica" ${u.rol === 'logistica' ? 'selected' : ''}>Logística</option>
+                <option value="soporte" ${u.rol === 'soporte' ? 'selected' : ''}>Soporte</option>
                 <option value="administrador" ${u.rol === 'administrador' ? 'selected' : ''}>Administrador</option>
               </select>
             </td>
@@ -168,7 +170,7 @@
       boton.textContent = 'Creando...';
       try {
         await crearUsuarioConRol({ nombre, correo, contrasena, rol });
-        mostrarToast(`Usuario ${nombre} creado como ${{ administrador: 'administrador', vendedor: 'vendedor', logistica: 'logística' }[rol] || rol}`);
+        mostrarToast(`Usuario ${nombre} creado como ${{ administrador: 'administrador', vendedor: 'vendedor', logistica: 'logística', soporte: 'soporte' }[rol] || rol}`);
         cerrarModalUsuario();
       } catch (err) {
         const mensajes = {

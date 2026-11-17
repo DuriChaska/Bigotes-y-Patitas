@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Promociones - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="admin-auth-guard.js"></script>
+</head>
+<!-- data-roles: administrador y ventas (vendedor) administran promociones y ven la sincronización -->
+<body data-roles="administrador,vendedor">
+
+  <div class="admin-shell">
+    <div id="admin-sidebar"></div>
+
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div>
+          <h1>Promociones e integración CRM / ERP</h1>
+          <p class="admin-breadcrumb">Panel de administración · Cupones con vigencia y sincronización automática de las compras de la tienda</p>
+        </div>
+      </div>
+
+      <div class="tk-layout" style="grid-template-columns: 7fr 5fr;">
+
+        <!-- ================= Promociones ================= -->
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <h2>Cupones (colección <code>promociones</code>)</h2>
+            <span class="admin-count-pill" id="conteo-promos">0</span>
+          </div>
+          <p class="panel-sub">La tienda valida el cupón contra esta lista al aplicarlo y otra vez justo antes de cobrar.</p>
+
+          <form id="form-promo" novalidate style="display:grid; grid-template-columns: repeat(6, 1fr); gap:12px; background:#fbf6ec; padding:14px; border-radius:12px; margin-bottom:18px;">
+            <div class="admin-form-group" style="grid-column: span 2;">
+              <label for="p-codigo">Código</label>
+              <input type="text" id="p-codigo" maxlength="30" placeholder="EJ. VERANO20" style="text-transform:uppercase;" />
+            </div>
+            <div class="admin-form-group" style="grid-column: span 4;">
+              <label for="p-desc">Descripción (opcional)</label>
+              <input type="text" id="p-desc" maxlength="120" placeholder="Qué incluye la promoción" />
+            </div>
+            <div class="admin-form-group" style="grid-column: span 2;">
+              <label for="p-tipo">Tipo</label>
+              <select id="p-tipo" class="admin-select" style="width:100%;">
+                <option value="porcentaje">% sobre el subtotal</option>
+                <option value="tercera_prenda">% en la tercera prenda</option>
+                <option value="envio_gratis">Envío gratis</option>
+              </select>
+            </div>
+            <div class="admin-form-group" id="g-valor" style="grid-column: span 1;">
+              <label for="p-valor">Descuento %</label>
+              <input type="number" id="p-valor" min="1" max="90" placeholder="15" />
+            </div>
+            <div class="admin-form-group" id="g-minimo" style="grid-column: span 1; display:none;">
+              <label for="p-minimo">Compra mínima $</label>
+              <input type="number" id="p-minimo" min="0" value="2000" />
+            </div>
+            <div class="admin-form-group" style="grid-column: span 2;">
+              <label for="p-vigencia">Vigente hasta</label>
+              <input type="date" id="p-vigencia" />
+            </div>
+            <div style="grid-column: span 6; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button type="submit" class="admin-btn-primary" id="btn-guardar-promo">+ Crear cupón</button>
+              <button type="button" class="admin-btn-secondary" id="btn-cancelar-edicion" style="display:none;">Cancelar edición</button>
+              <span id="p-error" style="color:var(--admin-danger,#dc2626); font-size:.82rem; display:none;"></span>
+            </div>
+          </form>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr><th>Código</th><th>Tipo</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th style="text-align:right;">Acciones</th></tr>
+              </thead>
+              <tbody id="tabla-promos"></tbody>
+            </table>
+          </div>
+          <div id="vacio-promos" style="display:none; text-align:center; padding:22px; color:var(--gray);">
+            Todavía no hay cupones en Firebase (los que estaban fijos en el código ya no funcionan).<br />
+            <button type="button" class="admin-quick-btn primary" id="btn-ejemplos" style="margin-top:10px;">Cargar los 3 cupones de ejemplo</button>
+          </div>
+        </div>
+
+        <!-- ================= Sincronización ================= -->
+        <div class="admin-panel">
+          <div class="admin-panel-head">
+            <h2>Sincronización automática</h2>
+            <span class="admin-count-pill" id="conteo-sync">0</span>
+          </div>
+          <p class="panel-sub">
+            Cuando un cliente cierra una compra en la tienda se hacen estas 3 operaciones juntas (todo o nada):
+            <b>1)</b> se crea el documento independiente en <code>pagos</code>,
+            <b>2)</b> se suman la compra y el total gastado en el CRM, y
+            <b>3)</b> se registra la operación en <code>erp_operaciones</code>.
+            Aquí se ve lo que ocurrió en las compras más recientes, en tiempo real.
+          </p>
+          <div id="sync" style="max-height: 640px; overflow:auto;"></div>
+          <p style="font-size:.76rem; color:var(--gray); margin-top:10px;">
+            El estatus de cada orden lo editan <b>ventas, logística y administrador</b> desde
+            <a href="admin-erp-ordenes.html" style="color:var(--pink-medio); font-weight:600;">Órdenes de clientes</a>.
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="admin-toast">
+    <span data-bp-icon="check"></span><span id="toastMsg">Acción realizada</span>
+  </div>
+
+  <script src="admin-icons.js"></script>
+  <script src="admin-components.js"></script>
+  <script type="module">
+    import {
+      escucharPromociones, guardarPromocion, cambiarActivaPromocion, eliminarPromocion,
+      cargarPromocionesEjemplo, promocionVigente, hoyISO, TIPOS_PROMOCION,
+      escucharPagos, escucharClientes, escucharOperacionesErp,
+    } from './firebase-db.js';
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const $ = (id) => document.getElementById(id);
+    const dinero = (n) => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let promos = [];
+    let editando = null;   // código del cupón que se está editando (null = creando uno nuevo)
+
+    function mostrarToast(msg) {
+      $('toastMsg').textContent = msg;
+      $('toast').classList.add('show');
+      setTimeout(() => $('toast').classList.remove('show'), 2800);
+    }
+    function mostrarError(msg) { const e = $('p-error'); e.textContent = msg; e.style.display = msg ? '' : 'none'; }
+
+    function estadoPromo(p) {
+      if (p.activa !== true) return { texto: 'Desactivada', clase: 'muted' };
+      return promocionVigente(p) ? { texto: 'Vigente', clase: 'ok' } : { texto: 'Expirada', clase: 'danger' };
+    }
+    function textoDescuento(p) {
+      if (p.tipo === 'envio_gratis') return `Envío gratis desde ${dinero(p.minimoCompra)}`;
+      return `${p.valor}%${p.tipo === 'tercera_prenda' ? ' en 3ª prenda' : ''}`;
+    }
+
+    // ---- Formulario ----
+    function ajustarCamposPorTipo() {
+      const envio = $('p-tipo').value === 'envio_gratis';
+      $('g-valor').style.display = envio ? 'none' : '';
+      $('g-minimo').style.display = envio ? '' : 'none';
+    }
+    $('p-tipo').addEventListener('change', ajustarCamposPorTipo);
+
+    function limpiarFormulario() {
+      editando = null;
+      $('form-promo').reset();
+      const en30 = new Date(); en30.setDate(en30.getDate() + 30);
+      $('p-vigencia').value = hoyISO(en30);
+      $('p-codigo').readOnly = false;
+      $('btn-guardar-promo').textContent = '+ Crear cupón';
+      $('btn-cancelar-edicion').style.display = 'none';
+      mostrarError('');
+      ajustarCamposPorTipo();
+    }
+    $('btn-cancelar-edicion').addEventListener('click', limpiarFormulario);
+
+    function editar(codigo) {
+      const p = promos.find(x => x.id === codigo);
+      if (!p) return;
+      editando = p.id;
+      $('p-codigo').value = p.codigo; $('p-codigo').readOnly = true;
+      $('p-desc').value = p.descripcion || '';
+      $('p-tipo').value = p.tipo;
+      $('p-valor').value = p.tipo === 'envio_gratis' ? '' : p.valor;
+      $('p-minimo').value = p.minimoCompra || 0;
+      $('p-vigencia').value = p.vigenciaHasta;
+      $('btn-guardar-promo').textContent = 'Guardar cambios';
+      $('btn-cancelar-edicion').style.display = '';
+      mostrarError('');
+      ajustarCamposPorTipo();
+      $('form-promo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    $('form-promo').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      mostrarError('');
+      const codigo = $('p-codigo').value.trim().toUpperCase();
+      const tipo = $('p-tipo').value;
+      const valor = tipo === 'envio_gratis' ? 0 : Number($('p-valor').value);
+      const minimo = tipo === 'envio_gratis' ? Number($('p-minimo').value) || 0 : 0;
+      const vigenciaHasta = $('p-vigencia').value;
+
+      if (!/^[A-Z0-9_-]{3,30}$/.test(codigo)) return mostrarError('El código debe tener de 3 a 30 letras, números, guion o guion bajo (sin espacios).');
+      if (tipo !== 'envio_gratis' && !(valor >= 1 && valor <= 90)) return mostrarError('El descuento debe ser un porcentaje entre 1 y 90.');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(vigenciaHasta)) return mostrarError('Elige la fecha hasta la que será válido.');
+      if (!editando && vigenciaHasta < hoyISO()) return mostrarError('La vigencia no puede ser una fecha pasada.');
+      if (!editando && promos.some(p => p.id === codigo)) return mostrarError('Ya existe un cupón con ese código. Edítalo desde la tabla.');
+
+      const boton = $('btn-guardar-promo');
+      boton.disabled = true;
+      try {
+        const actual = promos.find(p => p.id === codigo);
+        await guardarPromocion({
+          codigo, descripcion: $('p-desc').value, tipo, valor, minimoCompra: minimo, vigenciaHasta,
+          activa: actual ? actual.activa !== false : true,
+        }, window.BP_SESION, !editando);
+        mostrarToast(editando ? `Cupón ${codigo} actualizado` : `Cupón ${codigo} guardado en promociones`);
+        limpiarFormulario();
+      } catch (err) {
+        console.error(err);
+        mostrarError('No se pudo guardar: ' + (err.code === 'permission-denied' ? 'sin permiso (publica firestore.rules).' : (err.message || 'revisa tu conexión.')));
+      }
+      boton.disabled = false;
+    });
+
+    // ---- Tabla ----
+    function pintarPromos() {
+      $('conteo-promos').textContent = promos.length;
+      $('vacio-promos').style.display = promos.length === 0 ? '' : 'none';
+      $('tabla-promos').innerHTML = promos.map((p) => {
+        const est = estadoPromo(p);
+        return `
+          <tr>
+            <td><strong style="font-family:monospace;">${esc(p.codigo)}</strong>
+                ${p.descripcion ? `<br><small style="color:var(--gray);">${esc(p.descripcion)}</small>` : ''}</td>
+            <td>${esc(TIPOS_PROMOCION[p.tipo] || p.tipo)}</td>
+            <td>${esc(textoDescuento(p))}</td>
+            <td>${esc(p.vigenciaHasta)}</td>
+            <td><span class="admin-tag ${est.clase}">${est.texto}</span></td>
+            <td class="admin-table-actions" style="text-align:right;">
+              <button type="button" title="${p.activa === true ? 'Desactivar' : 'Activar'}" data-accion="alternar" data-id="${esc(p.id)}">${bpIcon(p.activa === true ? 'hourglass' : 'check')}</button>
+              <button type="button" title="Editar" data-accion="editar" data-id="${esc(p.id)}">${bpIcon('pencil')}</button>
+              <button type="button" title="Eliminar" class="danger" data-accion="eliminar" data-id="${esc(p.id)}">${bpIcon('trash')}</button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    $('tabla-promos').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-accion]');
+      if (!btn) return;
+      const p = promos.find(x => x.id === btn.dataset.id);
+      if (!p) return;
+      try {
+        if (btn.dataset.accion === 'editar') editar(p.id);
+        else if (btn.dataset.accion === 'alternar') {
+          await cambiarActivaPromocion(p.id, p.activa !== true);
+          mostrarToast(`Cupón ${p.codigo} ${p.activa === true ? 'desactivado' : 'activado'}`);
+        } else if (btn.dataset.accion === 'eliminar') {
+          if (!confirm(`¿Eliminar el cupón ${p.codigo}? Los clientes ya no podrán usarlo.`)) return;
+          await eliminarPromocion(p.id);
+          if (editando === p.id) limpiarFormulario();
+          mostrarToast(`Cupón ${p.codigo} eliminado`);
+        }
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudo completar: ' + (err.message || 'revisa tu conexión.'));
+      }
+    });
+
+    $('btn-ejemplos').addEventListener('click', async () => {
+      $('btn-ejemplos').disabled = true;
+      try {
+        const n = await cargarPromocionesEjemplo(window.BP_SESION);
+        mostrarToast(`${n} cupones de ejemplo cargados (vigentes por un año)`);
+      } catch (err) {
+        console.error(err);
+        mostrarToast('No se pudieron cargar: ' + (err.message || 'revisa tu conexión.'));
+      }
+      $('btn-ejemplos').disabled = false;
+    });
+
+    // ---- Sincronización: pagos <-> CRM <-> erp_operaciones ----
+    let pagos = [], clientes = [], operaciones = [];
+
+    function pintarSync() {
+      $('conteo-sync').textContent = pagos.length;
+      if (pagos.length === 0) {
+        $('sync').innerHTML = '<p style="color:var(--gray); font-size:.86rem; padding:10px 0;">Aún no hay pagos registrados. Aparecerán aquí en cuanto un cliente cierre una compra en la tienda.</p>';
+        return;
+      }
+      const porId = new Map(clientes.map(c => [c.id, c]));
+      $('sync').innerHTML = pagos.slice(0, 12).map((p) => {
+        const c = porId.get(p.clienteId);
+        const op = operaciones.find(o => o.ordenId === p.pedidoId);
+        return `
+          <div class="sync-item">
+            <div class="sync-linea pagos"><b>1 · Pagos</b><span>${esc(p.folio || p.id)} · <strong>${dinero(p.monto)}</strong> · ${esc(p.metodoPago)} · <span class="admin-tag ${p.estado === 'Pagado' ? 'ok' : 'muted'}">${esc(p.estado)}</span> · ${esc(p.origen || '')}</span></div>
+            <div class="sync-linea crm"><b>2 · CRM</b><span>${c
+              ? `${esc(c.nombre)} · compras: <strong>${Number(c.numCompras) || 0}</strong> · total gastado: <strong>${dinero(c.totalComprado)}</strong> · etapa: <strong>${esc(c.etapa || '—')}</strong>`
+              : `${esc(p.clienteNombre || 'Cliente')} (sin ficha en el CRM)`}</span></div>
+            <div class="sync-linea erp"><b>3 · ERP</b><span>${op
+              ? `${esc(op.tipo)} · ${esc(op.descripcion)} · registrado por ${esc(op.usuarioNombre || '')}`
+              : 'Sin registro en erp_operaciones todavía'}</span></div>
+          </div>`;
+      }).join('');
+    }
+
+    let iniciado = false;
+    function iniciar(sesion) {
+      if (iniciado || !sesion || !['administrador', 'vendedor'].includes(sesion.rol)) return;
+      iniciado = true;
+      limpiarFormulario();
+      escucharPromociones((lista) => { promos = lista; pintarPromos(); },
+        (err) => { console.error(err); mostrarToast('No se pudieron leer las promociones: ' + (err.code || err.message)); });
+      escucharPagos((l) => { pagos = l; pintarSync(); }, (err) => console.error('pagos:', err));
+      escucharClientes((l) => { clientes = l; pintarSync(); });
+      escucharOperacionesErp((l) => { operaciones = l; pintarSync(); }, (err) => console.error('erp_operaciones:', err), 60);
+    }
+    if (window.BP_SESION) iniciar(window.BP_SESION);
+    else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });
+  </script>
+</body>
+</html>

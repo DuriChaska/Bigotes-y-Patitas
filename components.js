@@ -28,10 +28,21 @@ function primerNombre(nombreCompleto) {
   return String(nombreCompleto || 'Cliente').trim().split(' ')[0] || 'Cliente';
 }
 
+// Escapa texto antes de meterlo en el HTML del header (el nombre lo escribió el propio cliente).
+function escHeader(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Respuestas de soporte sin leer del cliente con sesión (se actualiza en vivo con sus tickets).
+let ticketsSinLeer = 0;
+
 function navLinks(cliente) {
   const links = [...NAV_BASE];
   if (cliente) {
-    links.push({ href: 'Interfaz Cliente - Perfil.html', label: `Hola, ${primerNombre(cliente.nombre)}` });
+    const aviso = ticketsSinLeer > 0
+      ? ` <span class="cart-badge" style="position:static; display:inline-flex; margin-left:4px; background:#2f9e5a;" title="Respuestas de soporte sin leer">${ticketsSinLeer}</span>`
+      : '';
+    links.push({ href: 'Interfaz Cliente - Perfil.html', label: `Hola, ${escHeader(primerNombre(cliente.nombre))}${aviso}` });
     links.push({ href: '#', label: 'Cerrar sesión', accion: 'cerrarSesionClientePublico' });
   } else {
     links.push({ href: 'login.html', label: 'Iniciar sesión' });
@@ -141,16 +152,27 @@ window.cerrarSesionClientePublico = function (e) {
 // En cuanto Firebase responda, si hay un cliente con sesión real, se vuelve a
 // pintar el header con su nombre. import() dinámico porque este archivo NO es
 // un módulo (se usa con <script src="components.js">, no type="module").
-import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente }) => {
+import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, escucharTicketsDeCliente }) => {
+  let cancelarTickets = null;
   observarSesionCliente(async (user) => {
+    if (cancelarTickets) { cancelarTickets(); cancelarTickets = null; }
+    ticketsSinLeer = 0;
     if (!user) { pintarHeaderFooter(null); return; }
+    let clienteHeader;
     try {
       const perfil = await obtenerPerfilCliente(user.uid);
-      pintarHeaderFooter(perfil || { nombre: user.displayName || user.email });
+      clienteHeader = perfil || { nombre: user.displayName || user.email };
     } catch (err) {
       console.error(err);
-      pintarHeaderFooter({ nombre: user.displayName || user.email });
+      clienteHeader = { nombre: user.displayName || user.email };
     }
+    pintarHeaderFooter(clienteHeader);
+
+    // Alerta de respuestas de soporte sin leer junto a "Hola, ...".
+    cancelarTickets = escucharTicketsDeCliente(user.uid, (lista) => {
+      const n = lista.filter(t => t.leidoCliente === false).length;
+      if (n !== ticketsSinLeer) { ticketsSinLeer = n; pintarHeaderFooter(clienteHeader); }
+    }, (err) => console.error('No se pudieron leer los tickets:', err));
   });
 }).catch((err) => console.error('No se pudo cargar la sesión del cliente:', err));
 

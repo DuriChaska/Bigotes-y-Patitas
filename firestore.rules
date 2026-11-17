@@ -12,6 +12,9 @@ rules_version = '2';
 //      logistica     -> SCM completo (productos, proveedores, inventario, pedidos,
 //                       movimientos, madurez) y órdenes del ERP (las despacha:
 //                       cambia su estado y devuelve el stock si se cancelan)
+//      soporte       -> SOLO atención a clientes (tickets) y consulta de la ficha del
+//                       cliente en el CRM (compras / total gastado). No ve finanzas,
+//                       inventario ni órdenes.
 //  - Cliente: tiene perfil en "clientes/{uid}" (mismo id que su cuenta de
 //    Authentication). Se registra desde el sitio público.
 // Por eso NO se puede usar "request.auth != null" a secas para dar acceso
@@ -45,6 +48,15 @@ service cloud.firestore {
     function esPersonal() {
       return rolActual() in ['administrador', 'vendedor', 'logistica'];
     }
+    // Atención a clientes (tickets): administrador y soporte.
+    function esSoporte() {
+      return rolActual() in ['administrador', 'soporte'];
+    }
+    // Cualquier cuenta con perfil en "usuarios" (incluye soporte). Solo para que el
+    // panel pueda leer el propio rol al entrar; NO da acceso a finanzas.
+    function esPanel() {
+      return rolActual() in ['administrador', 'vendedor', 'logistica', 'soporte'];
+    }
 
     // ---- Clientes: CRM (personal) + cuentas reales de clientes ----
     // - El personal (esStaff) puede ver y gestionar cualquier cliente, igual que antes.
@@ -61,9 +73,35 @@ service cloud.firestore {
         .hasOnly(['nombre', 'telefono', 'mascota', 'direccion', 'actualizadoEn']);
     }
 
+    // Sincronización CRM de una compra hecha en la tienda (Etapa 4). El cliente solo puede
+    // sumar UNA compra a la vez y solo si en la MISMA operación se crea el documento
+    // pagos/{ventaId} de una venta suya (getAfter), por la cual el total gastado sube
+    // exactamente lo que costó esa venta. "ultimaVentaId" + "pagos/{id} no existía antes"
+    // impiden repetir la misma compra para inflar las cifras.
+    function esSincronizacionDeCompra(clienteId) {
+      return request.auth != null && request.auth.uid == clienteId
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['numCompras', 'totalComprado', 'ultimaCompra', 'ultimaVentaId', 'etapa', 'actualizadoEn'])
+        && request.resource.data.ultimaVentaId is string
+        && !exists(/databases/$(database)/documents/pagos/$(request.resource.data.ultimaVentaId))
+        && existsAfter(/databases/$(database)/documents/pagos/$(request.resource.data.ultimaVentaId))
+        && get(/databases/$(database)/documents/ventas/$(request.resource.data.ultimaVentaId)).data.clienteId == request.auth.uid
+        && request.resource.data.numCompras == (('numCompras' in resource.data ? resource.data.numCompras : 0) + 1)
+        && request.resource.data.totalComprado
+             >= (('totalComprado' in resource.data ? resource.data.totalComprado : 0)
+                  + get(/databases/$(database)/documents/ventas/$(request.resource.data.ultimaVentaId)).data.total - 0.01)
+        && request.resource.data.totalComprado
+             <= (('totalComprado' in resource.data ? resource.data.totalComprado : 0)
+                  + get(/databases/$(database)/documents/ventas/$(request.resource.data.ultimaVentaId)).data.total + 0.01)
+        && request.resource.data.etapa in ['Activo', 'Frecuente'];
+    }
+
     match /clientes/{clienteId} {
-      allow read: if esStaff() || (request.auth != null && request.auth.uid == clienteId);
-      allow update: if esStaff() || (request.auth != null && request.auth.uid == clienteId && soloCamposDeContacto());
+      // Soporte solo LEE (para ver compras y total gastado junto al ticket).
+      allow read: if esStaff() || esSoporte() || (request.auth != null && request.auth.uid == clienteId);
+      allow update: if esStaff()
+                    || (request.auth != null && request.auth.uid == clienteId && soloCamposDeContacto())
+                    || esSincronizacionDeCompra(clienteId);
       allow delete: if esStaff();
       allow create: if (esStaff() && clienteValido(request.resource.data))
                     || (request.auth != null && request.auth.uid == clienteId && clienteValido(request.resource.data));
@@ -78,10 +116,10 @@ service cloud.firestore {
     // leerlos (el panel necesita leer su propio rol al entrar); solo un
     // administrador puede crear/editar/borrar perfiles, y solo con un rol válido ----
     function rolValido(d) {
-      return d.rol in ['administrador', 'vendedor', 'logistica'];
+      return d.rol in ['administrador', 'vendedor', 'logistica', 'soporte'];
     }
     match /usuarios/{uid} {
-      allow read: if esPersonal();
+      allow read: if esPanel();
       allow create, update: if esAdmin() && rolValido(request.resource.data);
       allow delete: if esAdmin();
     }
@@ -181,9 +219,13 @@ service cloud.firestore {
     // de un cliente del CRM (dejando constancia de quién la hizo: usuarioId), y
     // logística/administrador despachan: SOLO pueden cambiar el estado de la orden
     // (y su historial), nunca sus productos ni su total.
+    // Etapa 4: el rol ventas (vendedor) TAMBIÉN cambia el estatus (En proceso / Enviada /
+    // Entregada). Cancelar una orden devuelve stock al inventario (SCM), así que cancelar
+    // sigue siendo solo de administrador y logística.
     function cambioDeEstadoDeOrdenValido() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn', 'historial'])
-        && request.resource.data.estado in ['Confirmada', 'En proceso', 'Enviada', 'Entregada', 'Cancelada'];
+        && request.resource.data.estado in ['Confirmada', 'En proceso', 'Enviada', 'Entregada', 'Cancelada']
+        && (request.resource.data.estado != 'Cancelada' || esScm());
     }
 
     match /ventas/{ventaId} {
@@ -194,7 +236,7 @@ service cloud.firestore {
         || (esStaff()
           && ventaValida(request.resource.data)
           && request.resource.data.usuarioId == request.auth.uid);
-      allow update: if esScm() && cambioDeEstadoDeOrdenValido();
+      allow update: if (esScm() || esStaff()) && cambioDeEstadoDeOrdenValido();
     }
 
     // Historial de operaciones empresariales del ERP (órdenes creadas, cambios de
@@ -205,9 +247,147 @@ service cloud.firestore {
         && d.usuarioId == request.auth.uid;
     }
 
+    // Compra hecha por un cliente en la tienda: deja su registro empresarial (origen "Tienda web")
+    // siempre ligado a una venta suya ya guardada.
+    function operacionDeTiendaValida(d) {
+      return request.auth != null
+        && d.tipo == 'Compra en tienda'
+        && d.descripcion is string && d.descripcion.size() <= 500
+        && d.usuarioId == request.auth.uid
+        && d.clienteId == request.auth.uid
+        && d.ordenId is string
+        && get(/databases/$(database)/documents/ventas/$(d.ordenId)).data.clienteId == request.auth.uid;
+    }
+
     match /erp_operaciones/{operacionId} {
       allow read: if esPersonal();
-      allow create: if esPersonal() && operacionErpValida(request.resource.data);
+      allow create: if (esPersonal() && operacionErpValida(request.resource.data))
+                    || operacionDeTiendaValida(request.resource.data);
+    }
+
+    // ---- Pagos (Etapa 4): modelo separado de la venta ----
+    // pagos/{id} usa como id el MISMO id de la venta/orden (uno por venta, así no se duplica).
+    //   { pedidoId, folio, clienteId, clienteNombre, monto, metodoPago, estado, origen,
+    //     usuarioId, usuarioNombre, fecha, creadoEn }
+    // - Cliente: crea el pago de SU venta, con el monto exacto de esa venta; lee solo los suyos.
+    // - Ventas/admin (ERP): crean el pago de las órdenes que registran.
+    // - Cambios posteriores: solo el estado (p. ej. "Cancelado" al cancelar la orden).
+    function pagoDeClienteValido(d, pagoId) {
+      return request.auth != null
+        && d.clienteId == request.auth.uid
+        && d.pedidoId == pagoId
+        && d.monto is number && d.monto >= 0
+        && d.estado == 'Pagado'
+        && d.metodoPago is string
+        && get(/databases/$(database)/documents/ventas/$(pagoId)).data.clienteId == request.auth.uid
+        && d.monto == get(/databases/$(database)/documents/ventas/$(pagoId)).data.total;
+    }
+    function pagoDeErpValido(d, pagoId) {
+      return esStaff()
+        && d.pedidoId == pagoId
+        && d.monto is number && d.monto >= 0
+        && d.estado == 'Pagado'
+        && d.usuarioId == request.auth.uid;
+    }
+
+    match /pagos/{pagoId} {
+      allow read: if esStaff() || esScm() || (request.auth != null && resource.data.clienteId == request.auth.uid);
+      allow create: if pagoDeClienteValido(request.resource.data, pagoId)
+                    || pagoDeErpValido(request.resource.data, pagoId);
+      allow update: if (esStaff() || esScm())
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn'])
+                    && request.resource.data.estado in ['Pagado', 'Cancelado', 'Reembolsado'];
+    }
+
+    // ---- Promociones (Etapa 4): cupones con vigencia, ya no fijos en el código ----
+    // El código del cupón es el id del documento. Cualquiera puede LEER uno si sabe su código
+    // (get), pero solo el personal de ventas puede listarlos o modificarlos.
+    function promocionValida(d, promoId) {
+      return d.codigo is string && d.codigo == promoId && d.codigo.size() >= 3 && d.codigo.size() <= 30
+        && d.tipo in ['porcentaje', 'tercera_prenda', 'envio_gratis']
+        && d.valor is number && d.valor >= 0 && d.valor <= 90
+        && d.vigenciaHasta is string && d.vigenciaHasta.size() == 10
+        && d.activa is bool;
+    }
+
+    match /promociones/{promoId} {
+      allow get: if true;
+      allow list: if esStaff();
+      allow create, update: if esStaff() && promocionValida(request.resource.data, promoId);
+      allow delete: if esStaff();
+    }
+
+    // ---- Contadores: solo para el folio consecutivo de tickets (T-101, T-102...) ----
+    // Cualquier cuenta con sesión puede leerlo y sumar 1; nada más.
+    match /contadores/{nombre} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && nombre == 'tickets' && request.resource.data.ultimo == 101
+                    && request.resource.data.keys().hasOnly(['ultimo']);
+      allow update: if request.auth != null && nombre == 'tickets'
+                    && request.resource.data.keys().hasOnly(['ultimo'])
+                    && request.resource.data.ultimo == resource.data.ultimo + 1;
+    }
+
+    // ---- Tickets de atención a clientes (Etapa 4) ----
+    // El id del documento ES el folio ("T-105"). Nunca se borran: lo resuelto queda en historial.
+    //  - Cliente: crea tickets a su nombre (siempre "En proceso", en espera de soporte), lee solo
+    //    los suyos y solo puede marcar como leídas las respuestas.
+    //  - Soporte/administrador: leen todos, responden y cambian el estado.
+    function ticketNuevoValido(d, ticketId) {
+      return d.folio == ticketId && ticketId.matches('T-[0-9]+')
+        && d.clienteId == request.auth.uid
+        && d.clienteNombre is string && d.clienteNombre.size() <= 120
+        && d.asunto in ['Duda sobre mi pedido', 'Cambio de producto', 'Facturación', 'Problema con monedero']
+        && d.mensaje is string && d.mensaje.size() > 0 && d.mensaje.size() <= 2000
+        && d.estado == 'En proceso'
+        && d.esperaSoporte == true
+        && d.leidoCliente == true
+        && d.respuesta == ''
+        && d.hilo is list && d.hilo.size() == 1
+        && pedidoDeTicketValido(d);
+    }
+    // Producto de la queja (opcional): debe pertenecer a una compra del mismo cliente.
+    function pedidoDeTicketValido(d) {
+      return !('pedido' in d) || (d.pedido is map
+        && d.pedido.keys().hasOnly(['ventaId', 'folio', 'productoId', 'producto', 'cantidad'])
+        && d.pedido.ventaId is string && d.pedido.ventaId.size() > 0 && d.pedido.ventaId.size() <= 60
+        && d.pedido.producto is string && d.pedido.producto.size() <= 200
+        && get(/databases/$(database)/documents/ventas/$(d.pedido.ventaId)).data.clienteId == request.auth.uid);
+    }
+    // El cliente contesta en su propio ticket (evidencia, más datos) solo mientras esté "En proceso":
+    // agrega exactamente UN mensaje suyo al final del hilo y lo deja en espera de soporte.
+    function ticketRespondidoPorCliente() {
+      let n = request.resource.data;
+      let o = resource.data;
+      return request.auth.uid == o.clienteId
+        && o.estado == 'En proceso'
+        && n.diff(o).affectedKeys().hasOnly(['hilo', 'esperaSoporte', 'leidoCliente', 'actualizadoEn'])
+        && n.esperaSoporte == true && n.leidoCliente == true
+        && n.hilo is list && n.hilo.size() == o.hilo.size() + 1
+        && n.hilo[0:o.hilo.size()] == o.hilo
+        && n.hilo[o.hilo.size()].de == 'cliente'
+        && n.hilo[o.hilo.size()].texto is string
+        && n.hilo[o.hilo.size()].texto.size() > 0 && n.hilo[o.hilo.size()].texto.size() <= 2000
+        && n.hilo[o.hilo.size()].nombre is string && n.hilo[o.hilo.size()].nombre.size() <= 120;
+    }
+    function ticketRespondidoValido() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['estado', 'respuesta', 'agente', 'agenteId', 'esperaSoporte', 'leidoCliente', 'hilo', 'actualizadoEn'])
+        && request.resource.data.estado in ['En proceso', 'Solucionado', 'Cerrado']
+        && request.resource.data.respuesta is string && request.resource.data.respuesta.size() <= 2000
+        && request.resource.data.agenteId == request.auth.uid;
+    }
+    function ticketLeidoPorCliente() {
+      return request.auth.uid == resource.data.clienteId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leidoCliente'])
+        && request.resource.data.leidoCliente == true;
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if esSoporte() || (request.auth != null && resource.data.clienteId == request.auth.uid);
+      allow create: if request.auth != null && ticketNuevoValido(request.resource.data, ticketId);
+      allow update: if (esSoporte() && ticketRespondidoValido()) || ticketLeidoPorCliente() || ticketRespondidoPorCliente();
+      allow delete: if false;
     }
 
     // Cualquier otra colección queda bloqueada por defecto.

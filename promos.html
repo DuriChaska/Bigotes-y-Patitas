@@ -61,26 +61,12 @@
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script>
-    const codigos = {
-      "CUTECANDY50": {
-        codigo: "CUTECANDY50",
-        tipo: "porcentaje",
-        valor: 50
-      },
-      "CUTECANDY10": {
-        codigo: "CUTECANDY10",
-        tipo: "tercera_prenda",
-        valor: 10
-      },
-      "CUTENVIO1": {
-        codigo: "CUTENVIO1",
-        tipo: "envio_gratis",
-        valor: 0
-      }
-    };
+  <script type="module">
+    import { validarCupon } from './firebase-db.js';
 
-    function aplicarCodigo() {
+    // Los cupones ya no están escritos aquí: viven en la colección "promociones" de Firebase,
+    // con fecha de vigencia (se administran en el panel: Promociones).
+    async function aplicarCodigo() {
       const codigo = document.getElementById("codigoPromo").value.trim().toUpperCase();
 
       if (!codigo) {
@@ -88,16 +74,20 @@
         return;
       }
 
-      const cupon = codigos[codigo];
-
-      if (!cupon) {
-        alert("Código inválido.");
-        return;
+      try {
+        const r = await validarCupon(codigo);
+        if (!r.ok) {
+          alert(r.motivo);
+          return;
+        }
+        localStorage.setItem("cuponAplicado", JSON.stringify(r.cupon));
+        alert("Cupón aplicado correctamente.");
+      } catch (err) {
+        console.error(err);
+        alert("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.");
       }
-
-      localStorage.setItem("cuponAplicado", JSON.stringify(cupon));
-      alert("Cupón aplicado correctamente.");
     }
+    window.aplicarCodigo = aplicarCodigo;
   </script>
 </body>
 </html>
