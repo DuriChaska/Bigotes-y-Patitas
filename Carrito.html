@@ -21,6 +21,11 @@
   align-items: center;
   justify-content: center;
 }
+  .btn-vaciar { background: #fff !important; color: #b34a8e !important; border: 2px solid #b34a8e !important; }
+  .btn-vaciar:hover { background: #fbe9f4 !important; }
+  .qty-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .aviso-stock { display: block; font-size: 11px; color: #b34a8e; margin-top: 4px; }
+  .nota-iva { font-size: 12px; color: #777; margin-top: 4px; }
   </style>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -59,6 +64,7 @@
       <input type="text" placeholder="Código de descuento" id="coupon-code" />
       <button class="apply-coupon" id="btn-coupon">Aplicar Cupón</button>
       <button class="update-cart" id="btn-actualizar">Actualizar Carrito</button>
+      <button class="update-cart btn-vaciar" id="btn-vaciar" type="button">Vaciar Carrito</button>
     </div>
 
     <div class="cart-totals" id="cart-totals" style="display:none;">
@@ -66,6 +72,7 @@
       <p id="discount-line" style="display:none;">Descuento: <span id="discount">-$0.00</span></p>
       <p id="coupon-line" style="display:none;"><span id="coupon-message"></span></p>
       <p><strong>Total: <span id="total">$0.00</span></strong></p>
+      <p class="nota-iva">El envío y el IVA se calculan en el siguiente paso.</p>
       <button class="checkout-btn" id="btn-checkout">Proceder a pagar</button>
     </div>
   </section>
@@ -101,6 +108,10 @@
     return `$${Number(valor).toFixed(2)}`;
   }
 
+  // Stock real de cada producto (id -> piezas), según la última lectura de Firestore.
+  // Lo usa el botón "+" para no dejar subir más de lo que hay.
+  const stockPorId = new Map();
+
   // 3. Validación contra el stock real (Firestore) ------------------------
   // El carrito vive en localStorage, pero el stock puede haber cambiado desde
   // que se agregó (alguien más compró, un admin lo editó, etc.). Antes de
@@ -119,6 +130,8 @@
       return carrito; // sin conexión: se muestra el carrito tal cual, sin bloquear a la persona
     }
 
+    stockPorId.clear();
+    productos.forEach(p => stockPorId.set(p.id, Number(p.stock) || 0));
     const avisos = [];
     const ajustado = [];
     carrito.forEach(item => {
@@ -248,6 +261,8 @@
     carrito.forEach((item, index) => {
       const itemSubtotal = Number(item.precio) * Number(item.cantidad);
       subtotal += itemSubtotal;
+      const stock = stockPorId.has(item.id) ? stockPorId.get(item.id) : null;
+      const enElMaximo = stock !== null && Number(item.cantidad) >= stock;
 
       const row = document.createElement("tr");
       row.innerHTML = `
@@ -257,10 +272,11 @@
         <td>
           <button class="qty-btn" data-accion="menos" data-index="${index}">−</button>
           <input type="number" value="${item.cantidad}" readonly style="width:40px; text-align:center; border:none;">
-          <button class="qty-btn" data-accion="mas" data-index="${index}">+</button>
+          <button class="qty-btn" data-accion="mas" data-index="${index}" ${enElMaximo ? 'disabled title="Ya no hay más piezas disponibles"' : ''}>+</button>
+          ${enElMaximo ? `<small class="aviso-stock">Solo ${stock === 1 ? 'queda 1' : `quedan ${stock}`}</small>` : ''}
         </td>
         <td>${formatearMoneda(itemSubtotal)}</td>
-        <td><button class="remove-item" data-accion="eliminar" data-index="${index}">×</button></td>
+        <td><button class="remove-item" data-accion="eliminar" data-index="${index}" title="Quitar del carrito">×</button></td>
       `;
       tbody.appendChild(row);
     });
@@ -295,15 +311,39 @@
   // 6. Acciones del Usuario
   function cambiarCantidad(index, delta) {
     let carrito = obtenerCarrito();
-    carrito[index].cantidad = Math.max(1, Number(carrito[index].cantidad) + delta);
+    const item = carrito[index];
+    if (!item) return;
+    const nueva = Math.max(1, Math.floor(Number(item.cantidad) || 1) + delta);
+    // El "+" nunca puede pasar el stock real del producto.
+    const stock = stockPorId.has(item.id) ? stockPorId.get(item.id) : null;
+    if (delta > 0 && stock !== null && nueva > stock) {
+      alert(stock <= 0
+        ? `"${item.nombre}" se agotó.`
+        : `Solo ${stock === 1 ? 'queda 1 pieza' : `quedan ${stock} piezas`} de "${item.nombre}".`);
+      return;
+    }
+    item.cantidad = nueva;
     guardarCarrito(carrito);
     renderCart();
   }
 
   function eliminarItem(index) {
     let carrito = obtenerCarrito();
+    const item = carrito[index];
+    if (!item) return;
+    if (!confirm(`¿Seguro que quieres quitar "${item.nombre}" de tu carrito?`)) return;
     carrito.splice(index, 1);
     guardarCarrito(carrito);
+    renderCart();
+  }
+
+  function vaciarCarrito() {
+    const carrito = obtenerCarrito();
+    if (carrito.length === 0) return;
+    const piezas = carrito.reduce((t, i) => t + Number(i.cantidad), 0);
+    if (!confirm(`¿Seguro que quieres vaciar tu carrito? Se quitarán ${piezas} pieza${piezas !== 1 ? 's' : ''}. Esta acción no se puede deshacer.`)) return;
+    localStorage.removeItem("cuponAplicado");
+    guardarCarrito([]);
     renderCart();
   }
 
@@ -317,6 +357,7 @@
   });
 
   document.getElementById("btn-coupon").addEventListener("click", aplicarCuponDesdeCarrito);
+  document.getElementById("btn-vaciar").addEventListener("click", vaciarCarrito);
 
   document.getElementById("btn-actualizar").addEventListener("click", async () => {
     await sincronizarConStockReal();

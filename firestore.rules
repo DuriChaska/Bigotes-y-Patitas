@@ -277,7 +277,9 @@ service cloud.firestore {
         && d.clienteId == request.auth.uid
         && d.pedidoId == pagoId
         && d.monto is number && d.monto >= 0
-        && d.estado == 'Pagado'
+        // OXXO / SPEI nacen "Pendiente" (con su referencia); tarjeta, PayPal y puntos "Pagado".
+        && d.estado in ['Pagado', 'Pendiente']
+        && d.estado == get(/databases/$(database)/documents/ventas/$(pagoId)).data.estadoPago
         && d.metodoPago is string
         && get(/databases/$(database)/documents/ventas/$(pagoId)).data.clienteId == request.auth.uid
         && d.monto == get(/databases/$(database)/documents/ventas/$(pagoId)).data.total;
@@ -296,7 +298,24 @@ service cloud.firestore {
                     || pagoDeErpValido(request.resource.data, pagoId);
       allow update: if (esStaff() || esScm())
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'actualizadoEn'])
-                    && request.resource.data.estado in ['Pagado', 'Cancelado', 'Reembolsado'];
+                    && request.resource.data.estado in ['Pagado', 'Pendiente', 'Cancelado', 'Reembolsado'];
+    }
+
+    // ---- Impuestos (Etapa 4): configuración del IVA ----
+    // impuestos/iva { nombre, tasa, activo, incluidoEnPrecio, actualizadoPor, actualizadoPorId, actualizadoEn }
+    // Cualquiera la LEE (el checkout la necesita para calcular el total); solo el administrador la cambia.
+    function impuestoValido(d) {
+      return d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 30
+        && d.tasa is number && d.tasa >= 0 && d.tasa <= 30
+        && d.activo is bool
+        && d.incluidoEnPrecio is bool
+        && d.actualizadoPorId == request.auth.uid;
+    }
+
+    match /impuestos/{impuestoId} {
+      allow read: if true;
+      allow create, update: if esAdmin() && impuestoValido(request.resource.data);
+      allow delete: if esAdmin();
     }
 
     // ---- Promociones (Etapa 4): cupones con vigencia, ya no fijos en el código ----

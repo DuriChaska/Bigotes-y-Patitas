@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Factura</title>
+  <title>Recibo de compra - Bigotes y Patitas</title>
 
   <style>
     * {
@@ -36,7 +36,7 @@
 
     .invoice-box {
       width: 100%;
-      max-width: 450px;
+      max-width: 480px;
       background: white;
       border-radius: 14px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -123,6 +123,50 @@
       color: #777;
     }
 
+    .pago-box {
+      background: #faf6f9;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+    }
+
+    .pago-box p {
+      margin: 5px 0;
+    }
+
+    .chip {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .chip-ok { background: #e3f6e8; color: #1e7b3a; }
+    .chip-pendiente { background: #fff3d6; color: #8a5b00; }
+    .chip-cancelado { background: #fdecea; color: #a52a1f; }
+
+    .ref-box {
+      background: #fbe9f4;
+      border: 2px dashed #b34a8e;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .ref-box .ref-numero {
+      display: block;
+      text-align: center;
+      font-size: 19px;
+      letter-spacing: 2px;
+      font-weight: bold;
+      color: #b34a8e;
+      margin: 6px 0;
+      word-break: break-all;
+    }
+
     .actions {
       display: flex;
       gap: 12px;
@@ -146,12 +190,34 @@
       background: #96387a;
     }
 
+    .btn:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
     .btn-secondary {
       background: #666;
     }
 
     .btn-secondary:hover {
       background: #444;
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: #b34a8e;
+      border: 2px solid #b34a8e;
+    }
+
+    .btn-outline:hover {
+      background: #fbe9f4;
+    }
+
+    .correo-estado {
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+      min-height: 18px;
     }
 
     .empty-message {
@@ -186,32 +252,41 @@
         width: 100%;
       }
     }
+
+    /* "Descargar PDF" usa la impresión del navegador (Guardar como PDF): solo sale el recibo. */
+    @media print {
+      body { background: #fff; }
+      .page-container { padding: 0; min-height: 0; }
+      .actions, .correo-estado { display: none !important; }
+      .invoice-box { box-shadow: none; border: none; max-width: 100%; }
+      .invoice-header, .chip, .ref-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
   </style>
 </head>
 <body>
 
   <div class="page-container">
     <div class="invoice-wrapper">
-
       <div class="invoice-box" id="invoice">
         <div class="invoice-header">
-          <h1>Factura de Compra</h1>
-          <p>Cotton Candy Clothing Store</p>
+          <h1>Recibo de Compra</h1>
+          <p>Bigotes y Patitas · Cotton Candy Clothing Store</p>
         </div>
 
         <div class="invoice-content">
           <div class="invoice-info">
-            <p><strong>Factura No.:</strong> <span id="factura-numero">FAC-00001</span></p>
-            <p><strong>Pedido No.:</strong> <span id="pedido-numero">CC-00001</span></p>
-            <p><strong>Fecha:</strong> <span id="fecha-factura">00/00/0000</span></p>
-            <p><strong>Cliente:</strong> <span id="cliente-factura">Cliente General</span></p>
+            <p><strong>Pedido No.:</strong> <span id="pedido-numero">—</span></p>
+            <p><strong>Fecha:</strong> <span id="fecha-factura">—</span></p>
+            <p><strong>Cliente:</strong> <span id="cliente-factura">—</span></p>
+            <p><strong>Estado del pedido:</strong> <span id="estado-pedido">—</span></p>
           </div>
 
           <hr class="invoice-divider" />
 
           <div class="product-title">Detalle de compra</div>
-
-          <div id="productos-factura"></div>
+          <div id="productos-factura">
+            <div class="empty-message">Cargando tu pedido…</div>
+          </div>
 
           <hr class="invoice-divider" />
 
@@ -235,129 +310,160 @@
             <span id="envio-factura">$0.00</span>
           </div>
 
+          <div class="invoice-row hidden" id="iva-row">
+            <span><strong id="iva-label">IVA (16%)</strong></span>
+            <span id="iva-factura">$0.00</span>
+          </div>
+
           <div class="invoice-total">
             <span>Total</span>
             <span id="total-factura">$0.00</span>
           </div>
 
+          <hr class="invoice-divider" />
+
+          <div class="product-title">Pago</div>
+          <div class="pago-box">
+            <p><strong>Método de pago:</strong> <span id="metodo-factura">—</span></p>
+            <p><strong>Estado del pago:</strong> <span id="estado-pago">—</span></p>
+          </div>
+          <div class="ref-box hidden" id="referencia-factura"></div>
+
           <div class="invoice-footer">
-            Gracias por tu compra.
+            Gracias por tu compra. 🐾
           </div>
         </div>
       </div>
 
-      <div class="actions">
-        <button class="btn" onclick="descargarPDF()">DESCARGAR FACTURA PDF</button>
-        <button class="btn btn-secondary" onclick="window.location.href='Interfaz Cliente - Perfil.html'">ATRAS</button>
-      </div>
+      <p class="correo-estado" id="correo-estado"></p>
 
+      <div class="actions">
+        <button class="btn" id="btn-pdf">DESCARGAR PDF</button>
+        <button class="btn" id="btn-correo">ENVIAR A MI CORREO</button>
+        <button class="btn btn-outline" onclick="window.location.href='shop.html'">SEGUIR COMPRANDO</button>
+        <button class="btn btn-secondary" onclick="window.location.href='Interfaz Cliente - Perfil.html'">MI CUENTA</button>
+      </div>
     </div>
   </div>
 
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> -->
-  <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>-->
+  <script type="module">
+    import { obtenerUsuarioActual, obtenerVenta } from './firebase-db.js';
+    import { reciboDesdeVenta, textoReferencia, enviarReciboPorCorreo, correoConfigurado, formatearMoneda } from './email-recibo.js';
 
-  <script>
-    function formatearMoneda(valor) {
-      return `$${Number(valor).toFixed(2)}`;
+    let reciboActual = null;
+
+    function esc(t) {
+      return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
-    function cargarFactura() {
-      const compra = JSON.parse(localStorage.getItem("ultimaCompra"));
+    function chip(texto) {
+      const clase = /pagado|entregada|confirmada/i.test(texto) ? 'chip-ok'
+        : /cancel|reembols/i.test(texto) ? 'chip-cancelado' : 'chip-pendiente';
+      return `<span class="chip ${clase}">${esc(texto)}</span>`;
+    }
 
-      if (!compra) {
-        document.getElementById("productos-factura").innerHTML = `
-          <div class="empty-message">
-            No hay datos de compra disponibles.
-          </div>
-        `;
+    function mostrarVacio(mensaje) {
+      document.getElementById("productos-factura").innerHTML = `<div class="empty-message">${esc(mensaje)}</div>`;
+      document.getElementById("btn-correo").disabled = true;
+    }
+
+    function pintarRecibo(r) {
+      reciboActual = r;
+      document.title = `Recibo ${r.folio} - Bigotes y Patitas`;
+      document.getElementById("pedido-numero").textContent = r.folio || "—";
+      document.getElementById("fecha-factura").textContent = r.fecha || "—";
+      document.getElementById("cliente-factura").textContent = r.cliente || "—";
+      document.getElementById("estado-pedido").innerHTML = chip(r.estado || "Confirmada");
+
+      document.getElementById("subtotal-factura").textContent = formatearMoneda(r.subtotal);
+      document.getElementById("envio-factura").textContent = formatearMoneda(r.envio);
+      document.getElementById("total-factura").textContent = formatearMoneda(r.total);
+
+      document.getElementById("cupon-row").classList.toggle("hidden", !r.cupon);
+      document.getElementById("cupon-factura").textContent = r.descripcionCupon || r.cupon || "";
+      document.getElementById("descuento-row").classList.toggle("hidden", !(r.descuento > 0));
+      document.getElementById("descuento-factura").textContent = `-${formatearMoneda(r.descuento)}`;
+
+      const ivaRow = document.getElementById("iva-row");
+      ivaRow.classList.toggle("hidden", !(r.tasaIva > 0));
+      document.getElementById("iva-label").textContent = `${r.ivaIncluido ? 'IVA incluido' : 'IVA'} (${r.tasaIva}%)`;
+      document.getElementById("iva-factura").textContent = formatearMoneda(r.iva);
+
+      document.getElementById("metodo-factura").textContent = r.metodo;
+      document.getElementById("estado-pago").innerHTML = chip(r.estadoPago);
+
+      const refBox = document.getElementById("referencia-factura");
+      const mostrarRef = r.referencia && r.estadoPago === 'Pendiente';
+      refBox.classList.toggle("hidden", !mostrarRef);
+      refBox.innerHTML = mostrarRef ? textoReferencia(r.referencia, r.total, true) : "";
+
+      const cont = document.getElementById("productos-factura");
+      if (!r.productos.length) {
+        mostrarVacio("No hay productos registrados en este pedido.");
+        return;
+      }
+      cont.innerHTML = r.productos.map(p => `
+        <div class="invoice-row">
+          <span>${esc(p.nombre)} x${p.cantidad}</span>
+          <span>${formatearMoneda(p.precio * p.cantidad)}</span>
+        </div>`).join("");
+    }
+
+    // ?id=<ventaId>: se lee la venta real de Firebase (solo su dueño puede verla).
+    // Sin id: se muestra la última compra guardada en este navegador (respaldo).
+    async function cargar() {
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (id) {
+        const usuario = await obtenerUsuarioActual();
+        if (!usuario) {
+          window.location.href = 'login.html?next=' + encodeURIComponent('factura.html?id=' + id);
+          return;
+        }
+        try {
+          const venta = await obtenerVenta(id);
+          if (!venta) { mostrarVacio("No encontramos ese pedido."); return; }
+          pintarRecibo(reciboDesdeVenta(venta));
+        } catch (err) {
+          console.error(err);
+          mostrarVacio("No tienes permiso para ver este pedido o no hay conexión.");
+        }
         return;
       }
 
-      document.getElementById("factura-numero").textContent = compra.factura || "FAC-00001";
-      document.getElementById("pedido-numero").textContent = compra.pedido || "CC-00001";
-      document.getElementById("fecha-factura").textContent = compra.fecha || "--/--/----";
-      document.getElementById("cliente-factura").textContent = compra.cliente || "Cliente General";
-      document.getElementById("subtotal-factura").textContent = formatearMoneda(compra.subtotal || 0);
-      document.getElementById("envio-factura").textContent = formatearMoneda(compra.envio || 0);
-      document.getElementById("total-factura").textContent = formatearMoneda(compra.total || 0);
+      const guardada = JSON.parse(localStorage.getItem("ultimaCompra") || "null");
+      if (!guardada) { mostrarVacio("No hay datos de compra disponibles."); return; }
+      // Los recibos nuevos ya vienen en el formato correcto; los viejos (pedido/productos/metodo) se adaptan.
+      pintarRecibo(guardada.ventaId !== undefined ? guardada : reciboDesdeVenta({
+        ...guardada, folio: guardada.pedido, items: guardada.productos, clienteNombre: guardada.cliente,
+      }));
+    }
 
-      const cuponRow = document.getElementById("cupon-row");
-      const descuentoRow = document.getElementById("descuento-row");
+    document.getElementById("btn-pdf").addEventListener("click", () => window.print());
 
-      if (compra.cupon) {
-        cuponRow.classList.remove("hidden");
-        document.getElementById("cupon-factura").textContent = compra.descripcionCupon || compra.cupon;
-      } else {
-        cuponRow.classList.add("hidden");
-      }
-
-      if (Number(compra.descuento || 0) > 0) {
-        descuentoRow.classList.remove("hidden");
-        document.getElementById("descuento-factura").textContent = `-${formatearMoneda(compra.descuento)}`;
-      } else {
-        descuentoRow.classList.add("hidden");
-      }
-
-      const contenedorProductos = document.getElementById("productos-factura");
-      contenedorProductos.innerHTML = "";
-
-      if (!compra.productos || compra.productos.length === 0) {
-        contenedorProductos.innerHTML = `
-          <div class="empty-message">
-            No hay productos registrados en esta factura.
-          </div>
-        `;
+    document.getElementById("btn-correo").addEventListener("click", async () => {
+      if (!reciboActual) return;
+      const estado = document.getElementById("correo-estado");
+      if (!correoConfigurado()) {
+        estado.textContent = "El envío por correo aún no está activado en la tienda. Usa \"Descargar PDF\".";
         return;
       }
+      const correo = prompt("¿A qué correo te enviamos el recibo?", reciboActual.correo || "");
+      if (correo === null) return;
+      const boton = document.getElementById("btn-correo");
+      boton.disabled = true;
+      estado.textContent = "Enviando…";
+      try {
+        await enviarReciboPorCorreo(reciboActual, correo);
+        estado.textContent = `📧 Recibo enviado a ${correo}.`;
+      } catch (err) {
+        console.error(err);
+        estado.textContent = err.message || "No se pudo enviar el correo. Intenta de nuevo.";
+      } finally {
+        boton.disabled = false;
+      }
+    });
 
-      compra.productos.forEach(item => {
-        const totalProducto = Number(item.precio) * Number(item.cantidad);
-
-        const fila = document.createElement("div");
-        fila.className = "invoice-row";
-        fila.innerHTML = `
-          <span>${item.nombre} x${item.cantidad}</span>
-          <span>${formatearMoneda(totalProducto)}</span>
-        `;
-
-        contenedorProductos.appendChild(fila);
-      });
-    }
-
-    // Función modificada para mostrar solo el mensaje
-    function descargarPDF() {
-      alert("PDF descargado");
-    }
-    
-    /*async function descargarPDF() {
-      const { jsPDF } = window.jspdf;
-      const invoice = document.getElementById('invoice');
-
-      const canvas = await html2canvas(invoice, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff"
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-
-      const pdfWidth = 210;
-      const imgWidth = 160;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const x = (pdfWidth - imgWidth) / 2;
-      const y = 20;
-
-      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
-      pdf.save('Factura.pdf');
-    }*/
-
-    cargarFactura();
-</script>
-
-
-  
-
+    cargar();
+  </script>
 </body>
 </html>

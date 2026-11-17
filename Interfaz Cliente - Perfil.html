@@ -264,11 +264,15 @@
       document.getElementById("modalCompras").classList.add("open");
     }
 
-    // Reconstruye el mismo objeto que factura.html espera en "ultimaCompra",
-    // pero a partir de la venta real guardada en Firestore.
+    // Abre el recibo de la venta real guardada en Firestore (factura.html?id=...).
+    // El objeto en localStorage queda solo como respaldo.
     function verTicketDetalle(index) {
       const venta = ventasCliente[index];
       if (!venta) return;
+      if (venta.id) {
+        window.location.href = "factura.html?id=" + encodeURIComponent(venta.id);
+        return;
+      }
       localStorage.setItem("ultimaCompra", JSON.stringify({
         factura: venta.folio,
         pedido: venta.folio,

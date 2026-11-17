@@ -16,8 +16,10 @@
 //    usuarios/{uid}     { nombre, correo, rol: "administrador"|"vendedor"|"logistica"|"soporte" }
 //    ventas/{id}        { clienteId (uid), clienteNombre, clienteCorreo,
 //                          items: [{ productoId, nombre, precio, cantidad }],
-//                          subtotal, descuento, cupon, total, folio,
-//                          direccionEnvio, metodoPago, estado, creadoEn }
+//                          subtotal, descuento, cupon, envio, iva, tasaIva, ivaIncluido,
+//                          total, folio, direccionEnvio, metodoPago, metodoPagoClave,
+//                          pagoDetalle, estadoPago, referenciaPago, estado, historial, creadoEn }
+//    impuestos/iva      { nombre, tasa, activo, incluidoEnPrecio, actualizadoPor, actualizadoEn }
 //                          (una compra real de un cliente; descuenta stock)
 //    scm_productos/{id} { nombre, descripcion, categoria, proveedor, proveedorId,
 //                          stock, stockMin, estrategia: "PUSH"|"PULL", costo, img }
@@ -643,20 +645,141 @@ export function escucharVentasDeCliente(uid, callback, onError) {
   }, onError);
 }
 
+// ---------- Impuestos (Etapa 4): configuración del IVA ----------
+//    impuestos/iva { nombre: "IVA", tasa: 16, activo: true, incluidoEnPrecio: false,
+//                    actualizadoPor, actualizadoPorId, actualizadoEn }
+//    - incluidoEnPrecio = false -> el IVA se SUMA al total (subtotal - descuento + envío + IVA).
+//    - incluidoEnPrecio = true  -> los precios ya traen IVA: solo se desglosa, el total no cambia.
+// Lo lee el checkout (público) y solo el administrador lo cambia (ver firestore.rules).
+
+export const IVA_POR_DEFECTO = Object.freeze({ id: "iva", nombre: "IVA", tasa: 16, activo: true, incluidoEnPrecio: false });
+
+const redondear2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+/** Lee la configuración del IVA. Si no existe todavía (o no hay internet) usa 16% sumado al total. */
+export async function obtenerImpuestoIva() {
+  try {
+    const snap = await getDoc(doc(db, "impuestos", "iva"));
+    return snap.exists() ? { ...IVA_POR_DEFECTO, ...snap.data(), id: "iva" } : { ...IVA_POR_DEFECTO };
+  } catch (err) {
+    console.error("[impuestos] No se pudo leer el IVA, se usa 16%:", err);
+    return { ...IVA_POR_DEFECTO };
+  }
+}
+
+/** Escucha en tiempo real la configuración del IVA (pantalla de administración). */
+export function escucharImpuestoIva(callback, onError) {
+  return onSnapshot(doc(db, "impuestos", "iva"), (snap) => {
+    callback(snap.exists() ? { ...IVA_POR_DEFECTO, ...snap.data(), id: "iva" } : null);
+  }, onError);
+}
+
+/** Guarda la configuración del IVA (solo administrador). usuario = window.BP_SESION. */
+export function guardarImpuestoIva({ tasa, activo, incluidoEnPrecio }, usuario) {
+  const t = Number(tasa);
+  if (!Number.isFinite(t) || t < 0 || t > 30) throw new Error("La tasa debe estar entre 0 y 30%.");
+  return setDoc(doc(db, "impuestos", "iva"), {
+    nombre: "IVA",
+    tasa: redondear2(t),
+    activo: !!activo,
+    incluidoEnPrecio: !!incluidoEnPrecio,
+    actualizadoPor: usuario?.nombre || usuario?.correo || "",
+    actualizadoPorId: usuario?.uid || "",
+    actualizadoEn: serverTimestamp(),
+  });
+}
+
 /**
- * Crea una venta real: guarda el pedido, descuenta el stock de cada producto
- * comprado y registra un movimiento de "Salida" por cada línea — todo en una
- * sola operación atómica (writeBatch: o se guarda todo, o no se guarda nada).
- *
- * datosVenta: { clienteId, clienteNombre, clienteCorreo, items: [{ productoId,
- *   nombre, precio, cantidad }], subtotal, descuento, cupon, total,
- *   direccionEnvio, metodoPago }
- * productosActuales: catálogo con el stock ANTES de la compra (ya disponible en
- *   la página desde escucharProductosScm, no hace falta volver a pedirlo aquí).
+ * Calcula el IVA sobre la base gravable (subtotal - descuento + envío).
+ * Devuelve { tasa, iva, incluido, totalConIva }.
  */
-export async function crearVenta(datosVenta, productosActuales) {
+export function calcularIva(base, config = IVA_POR_DEFECTO) {
+  const b = Math.max(0, Number(base) || 0);
+  if (!config || config.activo === false) return { tasa: 0, iva: 0, incluido: false, totalConIva: redondear2(b) };
+  const tasa = Number(config.tasa) || 0;
+  if (config.incluidoEnPrecio) {
+    const iva = redondear2(b - b / (1 + tasa / 100));
+    return { tasa, iva, incluido: true, totalConIva: redondear2(b) };
+  }
+  const iva = redondear2(b * tasa / 100);
+  return { tasa, iva, incluido: false, totalConIva: redondear2(b + iva) };
+}
+
+// ---------- Referencias de pago (OXXO / SPEI) ----------
+
+/** Dígito verificador de una CLABE (pesos 3,7,1 sobre los primeros 17 dígitos). */
+function digitoVerificadorClabe(clabe17) {
+  const pesos = [3, 7, 1];
+  let suma = 0;
+  for (let i = 0; i < 17; i++) suma += (Number(clabe17[i]) * pesos[i % 3]) % 10;
+  return (10 - (suma % 10)) % 10;
+}
+
+/** Números "aleatorios" pero repetibles a partir del folio (la misma venta = la misma referencia). */
+function digitosDesdeTexto(texto, largo) {
+  let h = 2166136261;
+  let salida = "";
+  while (salida.length < largo) {
+    for (const ch of texto + salida.length) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    salida += String(h % 10);
+  }
+  return salida.slice(0, largo);
+}
+
+/**
+ * Genera la referencia de pago de un pedido según el método:
+ *   SPEI -> CLABE interbancaria válida de 18 dígitos (banco 646 STP, plaza 180) única por pedido.
+ *   OXXO -> referencia de 14 dígitos.
+ * Ambas vencen en 72 horas. Para tarjeta/PayPal/Puntos devuelve null (se paga al momento).
+ */
+export function generarReferenciaPago(folio, metodoClave, ahora = new Date()) {
+  const vence = new Date(ahora.getTime() + 72 * 60 * 60 * 1000).toISOString();
+  if (metodoClave === "spei") {
+    const base = "646" + "180" + digitosDesdeTexto(folio, 11);
+    return { tipo: "SPEI", banco: "STP", clabe: base + digitoVerificadorClabe(base), concepto: folio, vence };
+  }
+  if (metodoClave === "oxxo") {
+    return { tipo: "OXXO", referencia: "9300" + digitosDesdeTexto(folio, 10), vence };
+  }
+  return null;
+}
+
+/** Lee una venta por su id (el cliente solo puede leer las suyas; ver firestore.rules). */
+export async function obtenerVenta(id) {
+  const snap = await getDoc(doc(db, "ventas", id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/**
+ * Crea una venta real dentro de una TRANSACCIÓN de Firestore:
+ *   1) lee el stock y el precio MÁS RECIENTES de cada producto (no los de la pantalla),
+ *   2) si falta stock o cambió el precio, cancela todo con un mensaje claro,
+ *   3) guarda la venta, descuenta el stock y registra la "Salida" de inventario.
+ * Si dos clientes compran el último producto al mismo tiempo, Firestore detecta que el
+ * documento cambió, repite la transacción del segundo, ve stock 0 y la rechaza: así
+ * nunca se vende algo que ya no existe.
+ *
+ * datosVenta: { clienteId, clienteNombre, clienteCorreo, items: [{ productoId, nombre,
+ *   precio, cantidad }], subtotal, descuento, cupon, envio, iva, tasaIva, ivaIncluido,
+ *   total, direccionEnvio, metodoPago, metodoPagoClave, pagoDetalle }
+ * productosActuales: ya no se usa para validar (se lee dentro de la transacción); se deja
+ *   el parámetro para no romper a quien lo llame.
+ * Devuelve { id, folio, referenciaPago, estadoPago }.
+ */
+export async function crearVenta(datosVenta, productosActuales) { // eslint-disable-line no-unused-vars
   const items = datosVenta.items || [];
   if (items.length === 0) throw new Error("El carrito está vacío.");
+
+  // Une líneas repetidas del mismo producto y descarta cantidades inválidas.
+  const porProducto = new Map();
+  for (const i of items) {
+    const cantidad = Math.floor(Number(i.cantidad));
+    if (!i.productoId || !Number.isFinite(cantidad) || cantidad < 1) {
+      throw new Error(`La cantidad de "${i.nombre || "un producto"}" no es válida.`);
+    }
+    const previo = porProducto.get(i.productoId);
+    porProducto.set(i.productoId, { ...i, cantidad: (previo ? previo.cantidad : 0) + cantidad });
+  }
 
   // Etapa 4: los cupones viven en Firestore con vigencia; se revisa otra vez justo antes de
   // cobrar por si venció o se desactivó mientras estaba en el carrito.
@@ -667,55 +790,86 @@ export async function crearVenta(datosVenta, productosActuales) {
     }
   }
 
-  // Verifica que haya stock suficiente ANTES de tocar nada.
-  for (const item of items) {
-    const prod = productosActuales.find(p => p.id === item.productoId);
-    if (!prod) throw new Error(`El producto "${item.nombre}" ya no está disponible en el catálogo.`);
-    if (Number(prod.stock) < Number(item.cantidad)) {
-      throw new Error(`Ya no hay suficiente stock de "${prod.nombre}" (disponible: ${Number(prod.stock)}).`);
-    }
+  // El IVA se vuelve a calcular con la configuración actual: si el administrador la cambió
+  // mientras el cliente estaba en el checkout, se le pide revisar su resumen.
+  const configIva = await obtenerImpuestoIva();
+  const base = (Number(datosVenta.subtotal) || 0) - (Number(datosVenta.descuento) || 0) + (Number(datosVenta.envio) || 0);
+  const ivaCalc = calcularIva(base, configIva);
+  if (Math.abs(ivaCalc.iva - (Number(datosVenta.iva) || 0)) > 0.01
+      || Math.abs(ivaCalc.totalConIva - (Number(datosVenta.total) || 0)) > 0.01) {
+    throw new Error("El IVA o el total de tu pedido cambiaron. Recarga la página para ver el resumen actualizado.");
   }
 
-  // El folio NO se genera contando los documentos existentes (a diferencia de
-  // "PC-001" en pedidos/proveedores, que sí lo hace): un cliente real no tiene
-  // permiso para leer TODAS las ventas (las reglas de "ventas" solo dejan ver
-  // las propias o al personal), así que una lectura sin filtro aquí sería
-  // rechazada por Firestore. En su lugar se arma un folio único con la fecha
-  // y un sufijo aleatorio, sin necesitar ningún permiso extra.
+  // El folio NO se genera contando los documentos existentes: un cliente no tiene permiso para
+  // leer TODAS las ventas, así que se arma con la fecha y un sufijo aleatorio.
   const ahora = new Date();
   const fechaFolio = ahora.toISOString().slice(2, 10).replace(/-/g, "");
   const sufijo = Math.random().toString(36).slice(2, 6).toUpperCase();
   const folio = `CC-${fechaFolio}-${sufijo}`;
-  const hoy = ahora.toISOString().slice(0, 10);
+  const hoy = hoyISO(ahora);
 
-  const lote = writeBatch(db);
+  const referenciaPago = generarReferenciaPago(folio, datosVenta.metodoPagoClave, ahora);
+  const estadoPago = referenciaPago ? "Pendiente" : "Pagado";
+  const quien = datosVenta.clienteNombre || datosVenta.clienteCorreo || "Cliente";
   const ventaRef = doc(ventasRef);
-  lote.set(ventaRef, {
-    ...datosVenta,
-    folio,
-    estado: "Confirmada",
-    creadoEn: serverTimestamp(),
-  });
 
-  items.forEach((item) => {
-    const prod = productosActuales.find(p => p.id === item.productoId);
-    const nuevoStock = Math.max(0, Number(prod.stock) - Number(item.cantidad));
-    lote.update(doc(db, "scm_productos", item.productoId), {
-      stock: nuevoStock, actualizadoEn: serverTimestamp(),
-    });
-    lote.set(doc(collection(db, "scm_movimientos")), {
-      productoId: item.productoId,
-      producto: item.nombre,
-      tipo: "Salida",
-      cantidad: Number(item.cantidad),
-      motivo: `Venta ${folio}`,
-      fecha: hoy,
-      usuario: datosVenta.clienteNombre || datosVenta.clienteCorreo || "Cliente",
+  await runTransaction(db, async (tx) => {
+    // 1) Todas las lecturas primero (Firestore exige leer antes de escribir).
+    const lecturas = [];
+    for (const [productoId, item] of porProducto) {
+      const ref = doc(db, "scm_productos", productoId);
+      lecturas.push({ ref, item, snap: await tx.get(ref) });
+    }
+
+    // 2) Validar con el stock y el precio de este instante.
+    for (const { item, snap } of lecturas) {
+      if (!snap.exists()) throw new Error(`El producto "${item.nombre}" ya no está disponible en el catálogo.`);
+      const p = snap.data();
+      const stock = Number(p.stock) || 0;
+      if (stock < item.cantidad) {
+        throw new Error(stock <= 0
+          ? `Lo sentimos, "${p.nombre}" se acaba de agotar. Quítalo de tu carrito para continuar.`
+          : `Solo quedan ${stock} de "${p.nombre}" (alguien más acaba de comprar). Ajusta tu carrito.`);
+      }
+      if (Math.abs((Number(p.precio) || 0) - (Number(item.precio) || 0)) > 0.009) {
+        throw new Error(`El precio de "${p.nombre}" cambió. Regresa al carrito y dale "Actualizar carrito".`);
+      }
+    }
+
+    // 3) Guardar la venta.
+    tx.set(ventaRef, {
+      ...datosVenta,
+      items: [...porProducto.values()].map(i => ({
+        productoId: i.productoId, nombre: i.nombre, precio: Number(i.precio), cantidad: i.cantidad,
+      })),
+      iva: ivaCalc.iva,
+      tasaIva: ivaCalc.tasa,
+      ivaIncluido: ivaCalc.incluido,
+      total: ivaCalc.totalConIva,
+      folio,
+      origen: "Tienda web",
+      estado: "Confirmada",
+      estadoPago,
+      referenciaPago: referenciaPago || null,
+      historial: [{ estado: "Confirmada", usuario: quien, fecha: ahora.toISOString() }],
       creadoEn: serverTimestamp(),
     });
-  });
 
-  await lote.commit();
+    // 4) Descontar stock + registrar la salida de inventario de cada producto.
+    for (const { ref, item, snap } of lecturas) {
+      tx.update(ref, { stock: (Number(snap.data().stock) || 0) - item.cantidad, actualizadoEn: serverTimestamp() });
+      tx.set(doc(collection(db, "scm_movimientos")), {
+        productoId: item.productoId,
+        producto: item.nombre,
+        tipo: "Salida",
+        cantidad: item.cantidad,
+        motivo: `Venta ${folio}`,
+        fecha: hoy,
+        usuario: quien,
+        creadoEn: serverTimestamp(),
+      });
+    }
+  });
 
   // Etapa 4: pagos + CRM + erp_operaciones. La venta ya quedó guardada; si esta sincronización
   // fallara (p. ej. sin internet justo ahora) NO se le cobra dos veces ni se pierde la compra.
@@ -725,13 +879,16 @@ export async function crearVenta(datosVenta, productosActuales) {
       folio,
       clienteId: datosVenta.clienteId,
       clienteNombre: datosVenta.clienteNombre,
-      total: datosVenta.total,
+      total: ivaCalc.totalConIva,
       metodoPago: datosVenta.metodoPago,
+      estadoPago,
+      referenciaPago,
+      iva: ivaCalc.iva,
     });
   } catch (err) {
     console.error("[Etapa 4] La compra se guardó, pero no se pudo sincronizar con pagos/CRM/ERP:", err);
   }
-  return { id: ventaRef.id, folio };
+  return { id: ventaRef.id, folio, referenciaPago, estadoPago, total: ivaCalc.totalConIva, iva: ivaCalc.iva, tasaIva: ivaCalc.tasa, ivaIncluido: ivaCalc.incluido };
 }
 
 // ---------- ERP: órdenes empresariales (Etapa 3) ----------
@@ -1185,8 +1342,8 @@ export async function calcularMetricasScm() {
 //    contadores/tickets     { ultimo }   (solo para el folio consecutivo T-101, T-102...)
 //    promociones/{CODIGO}   { codigo, descripcion, tipo: "porcentaje"|"tercera_prenda"|"envio_gratis",
 //                             valor, minimoCompra, vigenciaHasta "AAAA-MM-DD", activa, creadoPor }
-//    pagos/{ventaId}        { pedidoId, folio, clienteId, clienteNombre, monto, metodoPago,
-//                             estado: "Pagado"|"Cancelado"|"Reembolsado", origen, usuarioId,
+//    pagos/{ventaId}        { pedidoId, folio, clienteId, clienteNombre, monto, iva, metodoPago,
+//                             estado: "Pagado"|"Pendiente"|"Cancelado"|"Reembolsado", referencia, origen, usuarioId,
 //                             usuarioNombre, fecha, creadoEn }
 // ============================================================================
 
@@ -1450,13 +1607,14 @@ export function escucharPagos(callback, onError, maximo = 30) {
 /**
  * Sincroniza una compra recién cerrada en la tienda con el resto del sistema, en UNA operación
  * atómica (writeBatch):
- *   1) pagos/{ventaId}  -> documento independiente del pago (pedidoId, monto, método, estado)
+ *   1) pagos/{ventaId}  -> documento independiente del pago (pedidoId, monto, iva, método,
+ *                          estado "Pagado" | "Pendiente" (OXXO/SPEI), referencia)
  *   2) clientes/{uid}   -> suma 1 compra, suma el total gastado, última compra y etapa del CRM
  *   3) erp_operaciones  -> deja el registro empresarial "Compra en tienda"
  * Los 3 documentos se ligan a la venta por su id. Las reglas comprueban que el monto y el
  * total gastado coincidan con la venta real. Lo llama crearVenta() justo después de guardar la compra.
  */
-export async function registrarIntegracionCompra({ ventaId, folio, clienteId, clienteNombre, total, metodoPago }) {
+export async function registrarIntegracionCompra({ ventaId, folio, clienteId, clienteNombre, total, metodoPago, estadoPago, referenciaPago, iva }) {
   const hoy = hoyISO();
   const monto = Number(total) || 0;
   const clienteRef = doc(db, "clientes", clienteId);
@@ -1469,8 +1627,11 @@ export async function registrarIntegracionCompra({ ventaId, folio, clienteId, cl
     clienteId,
     clienteNombre: clienteNombre || "",
     monto,
+    iva: Number(iva) || 0,
     metodoPago: metodoPago || "No especificado",
-    estado: "Pagado",
+    // OXXO / SPEI quedan "Pendiente" hasta que el personal confirme que llegó el dinero.
+    estado: estadoPago === "Pendiente" ? "Pendiente" : "Pagado",
+    referencia: referenciaPago ? (referenciaPago.clabe || referenciaPago.referencia || "") : "",
     origen: "Tienda web",
     usuarioId: clienteId,
     usuarioNombre: clienteNombre || "",
