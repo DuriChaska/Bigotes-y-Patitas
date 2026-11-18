@@ -156,45 +156,73 @@
     <p class="dest-estado" id="estadoEllos">Cargando…</p>
   </section>
 
-  <!-- INFO PERSONALIZACIÓN -->
-  <section class="info-section">
-    <div class="info-text">
-      <h3>PERSONALIZACIÓN</h3>
-      <p>Elige la talla, el color y el estampado. Adaptamos cada prenda a la medida de tu perrito o gatito.</p>
-      <a href="#">LEER MÁS</a>
+  <!-- PERSONALIZACIÓN Y QUIÉNES SOMOS (franja con ondas) -->
+  <section class="franja-info" aria-label="Personalización y quiénes somos">
+    <svg class="ola ola-arriba" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 40 C240 10 480 0 760 22 C1040 44 1240 30 1440 18 V90 H0 Z"/>
+      <path class="ola-fondo" d="M0 62 C260 34 520 24 780 44 C1040 62 1250 50 1440 40 V90 H0 Z"/>
+    </svg>
+    <div class="franja-contenido">
+      <article class="franja-bloque" id="personalizacion">
+        <p class="franja-ante">Hecho a su medida</p>
+        <h2 class="franja-titulo">Personalización</h2>
+        <span class="franja-linea" aria-hidden="true"></span>
+        <p>En <strong>Bigotes y Patitas</strong> cada prenda puede ser tan única como tu peludito. <strong>Elige la talla, el color y el estampado</strong>
+          y adaptamos la prenda a sus medidas, para que le quede cómoda y se vea increíble.</p>
+        <p>¿No sabes qué talla pedir? En cada producto encontrarás la <strong>guía de tallas</strong> y una calculadora que te dice cuál le queda
+          con solo medir el largo de su espalda.</p>
+      </article>
+
+      <article class="franja-bloque" id="quienes-somos">
+        <p class="franja-ante">Ropa para perros y gatos</p>
+        <h2 class="franja-titulo">¿Quiénes somos?</h2>
+        <span class="franja-linea" aria-hidden="true"></span>
+        <p>Somos una tienda de <strong>Aguascalientes</strong> especializada en <strong>ropa y accesorios para perritos y gatitos</strong>,
+          pensados tanto para su comodidad como para su estilo: suéteres, sudaderas, chamarras, chalecos, playeras, moños, bandanas y mucho más.</p>
+        <p>Hacemos <strong>envíos a domicilio a todo México</strong> y también puedes <strong>recoger en tienda</strong>. Paga de forma segura con
+          <strong>PayPal, tarjeta de crédito o débito, OXXO / SPEI</strong> o con el saldo de tu <strong>monedero</strong>.</p>
+        <p><strong>¿Tienes alguna pregunta?</strong> Escríbenos desde nuestro <a href="contact.html">formulario de contacto</a> o en
+          <a href="atencion-clientes.html">Atención a clientes</a>. Estamos para ayudarte en cada paso.</p>
+        <p>¡Consiente a tu mejor amigo con <a href="shop.html">nuestro catálogo</a> hoy mismo!</p>
+      </article>
     </div>
-    <div class="info-image">
-      <img src="Imagenes/Mascotas/prod-gorro-gato.svg" alt="Personalización de prendas para mascotas" />
-    </div>
+    <svg class="ola ola-abajo" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
   </section>
 
-  <!-- INFO QUIÉNES SOMOS -->
-  <section class="info-section" style="flex-direction:row-reverse;">
-    <div class="info-text">
-      <h3>¿QUIÉNES SOMOS?</h3>
-      <p>En Estampa-tla Pets nos especializamos en ropa y accesorios para perros y gatos, pensados para su comodidad
-        tanto como para su estilo.</p>
-      <a href="#">LEER MÁS</a>
+  <!-- NUEVOS DISEÑOS (los productos agregados más recientemente) -->
+  <section class="destacados dest-nuevos" aria-labelledby="titNuevos">
+    <p class="dest-antetitulo">Recién llegados</p>
+    <svg class="dest-huella" aria-hidden="true"><use href="#hc-huella"/></svg>
+    <h2 class="dest-titulo" id="titNuevos">Nuevos diseños</h2>
+    <div class="dest-carrusel">
+      <button type="button" class="dest-flecha dest-izq" aria-label="Ver anteriores" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="dest-pista" id="pistaNuevos" tabindex="0" aria-label="Nuevos diseños"></div>
+      <button type="button" class="dest-flecha dest-der" aria-label="Ver más" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
-    <div class="info-image">
-      <img src="Imagenes/Mascotas/prod-chamarra-perro.svg" alt="Quiénes Somos" />
-    </div>
+    <p class="dest-estado" id="estadoNuevos">Cargando…</p>
   </section>
 
-  <!-- NUEVOS DISEÑOS -->
-  <section class="new-designs">
-    <h2>NUEVOS DISEÑOS</h2>
-    <div id="estadoNuevos" style="text-align:center; padding:20px 0; color:var(--gray);">Cargando…</div>
-    <div class="products-grid" id="gridNuevos"></div>
-  </section>
-
-  <!-- NEWSLETTER -->
-  <section class="newsletter">
-    <h3>PARA NOTICIAS, COLECCIONES Y MÁS</h3>
-    <p style="margin-bottom:10px; color:#888;">Inicia sesión con email</p>
-    <input type="email" placeholder="Ingresa tu dirección de email" />
-    <br />
-    <button>REGÍSTRATE</button>
+  <!-- ÚNETE A LA MANADA (antes "noticias, colecciones y más"): lleva al registro con el correo ya escrito.
+       Si la persona ya inició sesión, esta sección se oculta. -->
+  <section class="manada" id="seccion-manada">
+    <p class="dest-antetitulo">Noticias, colecciones y más</p>
+    <h2 class="manada-titulo">Únete a la manada</h2>
+    <p class="manada-texto">Crea tu cuenta gratis y entérate primero de las <strong>colecciones nuevas</strong>, <strong>promociones</strong> y <strong>cupones</strong>.
+      Además podrás guardar tus favoritos y seguir tus pedidos.</p>
+    <form class="manada-form" id="form-manada" novalidate>
+      <label class="sr-solo" for="manada-correo">Tu correo electrónico</label>
+      <input type="email" id="manada-correo" placeholder="Escribe tu correo electrónico" autocomplete="email" />
+      <button type="submit">Crear mi cuenta</button>
+    </form>
+    <p class="manada-error" id="manada-error" role="alert" hidden></p>
+    <p class="manada-pie">¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
   </section>
 
   <div id="footer"></div>
@@ -202,7 +230,7 @@
   <script src="components.js"></script>
   <script src="hero-carrusel.js"></script>
   <script type="module">
-    import { escucharProductosScm } from './firebase-db.js';
+    import { escucharProductosScm, observarSesionCliente } from './firebase-db.js';
 
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -393,13 +421,60 @@
       window.addEventListener('resize', () => actualizarFlechas(pista));
     });
 
+    // ─── Nuevos diseños: los más recientes (por fecha de alta), hasta 8 ───
+    function fechaAlta(p) {
+      const f = p.creadoEn;
+      if (!f) return 0;
+      if (typeof f.toMillis === 'function') return f.toMillis();
+      if (f instanceof Date) return f.getTime();
+      if (typeof f.seconds === 'number') return f.seconds * 1000;
+      return Number(new Date(f)) || 0;
+    }
+    function pintarNuevos(lista) {
+      const pista = document.getElementById('pistaNuevos');
+      const estado = document.getElementById('estadoNuevos');
+      const nuevos = [...lista]
+        .sort((a, b) => fechaAlta(b) - fechaAlta(a) || ((Number(b.stock) || 0) > 0) - ((Number(a.stock) || 0) > 0))
+        .slice(0, 8);
+      if (!nuevos.length) {
+        pista.innerHTML = '';
+        estado.style.display = '';
+        estado.textContent = 'Pronto tendremos diseños nuevos.';
+      } else {
+        estado.style.display = 'none';
+        pista.innerHTML = nuevos.map(itemDestacado).join('');
+        pista.querySelectorAll('img').forEach(img => {
+          img.addEventListener('error', () => {
+            const original = img.dataset.original;
+            if (original && img.getAttribute('src') !== original) img.src = original;
+            else img.src = IMG_VACIA;
+          });
+        });
+      }
+      actualizarFlechas(pista);
+    }
+
+    // ─── Únete a la manada → registro con el correo ya escrito ───
+    document.getElementById('form-manada').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const correo = document.getElementById('manada-correo').value.trim();
+      const error = document.getElementById('manada-error');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) {
+        error.textContent = 'Escribe un correo válido, por ejemplo nombre@correo.com.';
+        error.hidden = false;
+        return;
+      }
+      window.location.href = 'login.html?modo=registro&correo=' + encodeURIComponent(correo);
+    });
+    observarSesionCliente((user) => { document.getElementById('seccion-manada').hidden = !!user; });
+
     escucharProductosScm(
       (lista) => {
         productos = lista;
         // "Populares" y "Nuevos" se reparten el catálogo para no repetir productos
         // (en un catálogo más grande, esto se podría afinar con datos de ventas reales).
         pintarDestacados(lista);
-        pintarSeccion('gridNuevos', 'estadoNuevos', lista.slice(8, 12));
+        pintarNuevos(lista);
       },
       (err) => {
         document.getElementById('estadoEllas').textContent = 'No se pudo cargar el catálogo.';

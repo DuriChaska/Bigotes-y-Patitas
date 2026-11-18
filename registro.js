@@ -243,4 +243,9 @@ formPaso(4).addEventListener('submit', async (e) => {
   }
 });
 
+// Si llega con ?modo=registro&correo=... (desde "Únete a la manada"), el correo ya va escrito en el paso 2.
+{
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('modo') === 'registro' && p.get('correo')) $('reg-correo').value = p.get('correo').trim().slice(0, 120);
+}
 irAPaso(1, { enfocar: false });

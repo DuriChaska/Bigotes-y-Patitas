@@ -2566,3 +2566,54 @@ body.pd-con-barra #bp-notificacion { bottom: 96px !important; }
 .gt-tip a { color: #b8603a; font-weight: 700; text-decoration: underline; }
 .gt-calc-caja { margin-top: 26px; padding: 22px 24px; border-radius: 14px; background: #fcf7f1; border: 1px solid #eee2d3; }
 .gt-calc-caja .pd-gris a { color: #b8603a; font-weight: 600; text-decoration: underline; }
+
+/* ===========================
+   Inicio: franja de Personalización y ¿Quiénes somos? (con ondas)
+=========================== */
+.franja-info { --franja: #f2dec5; --franja-clara: #f8ece0; --franja-rojo: #d93359; position: relative; margin: 30px 0; }
+.ola { display: block; width: 100%; height: 70px; }
+.ola .ola-clara { fill: var(--franja-clara); }
+.ola .ola-fondo { fill: var(--franja); }
+.ola-abajo { margin-top: -1px; }
+.ola-arriba { margin-bottom: -1px; }
+.franja-contenido { background: var(--franja); padding: 30px 0 40px; }
+.franja-bloque { max-width: 1180px; margin: 0 auto; padding: 0 6%; color: #4b4038; }
+.franja-bloque + .franja-bloque { margin-top: 56px; }
+.franja-ante {
+  font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600;
+  font-size: 1.25rem; letter-spacing: .24em; text-transform: uppercase; color: #3d3530; margin-bottom: 4px;
+}
+.franja-titulo {
+  font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600;
+  font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1.05; color: var(--franja-rojo); margin: 0 0 22px;
+}
+.franja-linea { display: block; width: 62px; height: 1.5px; background: #3d3530; margin-bottom: 26px; }
+.franja-bloque p { font-size: 1.12rem; line-height: 1.85; margin-bottom: 18px; font-weight: 300; }
+.franja-bloque strong { font-weight: 600; color: #3d3530; }
+.franja-bloque a { color: var(--franja-rojo); font-weight: 500; }
+.franja-bloque a:hover { text-decoration: underline; }
+@media (max-width: 700px) {
+  .ola { height: 40px; }
+  .franja-bloque p { font-size: 1rem; line-height: 1.75; }
+  .franja-ante { font-size: 1rem; letter-spacing: .18em; }
+}
+
+/* Inicio: Nuevos diseños y Únete a la manada */
+.dest-nuevos { --dest-color: #5f8a68; padding-top: 30px; }
+.manada { text-align: center; padding: 50px 20px 70px; max-width: 720px; margin: 0 auto; --dest-color: #b8603a; }
+.manada-titulo { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: clamp(2.4rem, 5vw, 3.4rem); color: #b8603a; line-height: 1.1; margin-bottom: 14px; }
+.manada-texto { color: #4b4038; font-size: 1.05rem; line-height: 1.75; margin-bottom: 22px; }
+.manada-texto strong { font-weight: 600; }
+.manada-form { display: flex; max-width: 520px; margin: 0 auto; border-radius: 999px; background: #fff; box-shadow: 0 4px 18px rgba(74,56,38,.12); overflow: hidden; }
+.manada-form input { flex: 1; min-width: 0; border: 0; padding: 0 22px; height: 56px; font: inherit; font-size: 1rem; outline: none; }
+.manada-form button { background: #b8603a; color: #fff; font-weight: 700; padding: 0 26px; transition: background .2s; white-space: nowrap; }
+.manada-form button:hover { background: #9a4c2c; }
+.manada-error { color: #a3322a; font-size: .9rem; margin-top: 10px; }
+.manada-pie { margin-top: 14px; color: #6d6259; font-size: .95rem; }
+.manada-pie a { color: #b8603a; font-weight: 700; text-decoration: underline; }
+.manada[hidden] { display: none; }
+.sr-solo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 520px) {
+  .manada-form { flex-direction: column; border-radius: 16px; }
+  .manada-form button { height: 50px; }
+}
