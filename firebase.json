@@ -8,6 +8,26 @@
       "**/.*",
       "**/node_modules/**",
       "*.md"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(html|css|js)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(jpg|jpeg|png|svg|webp|gif|ico)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400"
+          }
+        ]
+      }
     ]
   },
   "firestore": {

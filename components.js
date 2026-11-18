@@ -278,3 +278,21 @@ style.innerHTML = `
   }
 `;
 document.head.appendChild(style);
+
+// Ícono de la pestaña del navegador (logo de la tienda) en todas las páginas.
+(function ponerFavicon() {
+  if (document.querySelector('link[rel~="icon"]')) return;
+  [
+    ['icon', 'favicon.ico', null, 'any'],
+    ['icon', 'Imagenes/Iconos/favicon-32.png', 'image/png', '32x32'],
+    ['icon', 'Imagenes/Iconos/favicon-192.png', 'image/png', '192x192'],
+    ['apple-touch-icon', 'Imagenes/Iconos/apple-touch-icon.png', null, null],
+  ].forEach(([rel, href, type, sizes]) => {
+    const l = document.createElement('link');
+    l.rel = rel; l.href = href;
+    if (type) l.type = type;
+    if (sizes) l.sizes = sizes;
+    document.head.appendChild(l);
+  });
+})();
+

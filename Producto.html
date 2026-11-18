@@ -229,34 +229,70 @@
 
   <!-- Modal: guía de tallas -->
   <div class="pd-modal" id="modal-tallas" hidden role="dialog" aria-modal="true" aria-labelledby="t-tallas">
-    <div class="pd-modal-caja">
+    <div class="pd-modal-caja gt-caja">
       <button type="button" class="pd-modal-cerrar" aria-label="Cerrar">×</button>
-      <h3 id="t-tallas">Guía de tallas</h3>
-      <p class="pd-gris">Mide el <strong>largo de espalda</strong> de tu perrito: desde la base del cuello hasta la base de la cola.</p>
-      <table class="pd-tabla">
-        <thead><tr><th>Talla</th><th>Largo de espalda</th><th>Recomendado para</th></tr></thead>
-        <tbody>
-          <tr><td>Chico</td><td>33 a 38 cm</td><td>Razas pequeñas</td></tr>
-          <tr><td>Mediano</td><td>41 a 46 cm</td><td>Razas pequeñas y medianas</td></tr>
-          <tr><td>Grande</td><td>43 a 48 cm</td><td>Razas medianas</td></tr>
-        </tbody>
-      </table>
-      <p class="pd-gris" style="margin-top:10px;">Si queda entre dos tallas, elige la más grande.</p>
+      <h3 id="t-tallas" class="gt-h">Guía de tallas</h3>
+      <p class="gt-intro">La guía es aproximada y orientativa: te recomendamos medir a tu peludito cada vez que elijas una prenda.
+        Si no le quedó, puedes cambiarla por otra talla; escríbenos en <strong>Atención a clientes</strong>.
+        Las medidas exactas de cada prenda vienen en sus <strong>Beneficios</strong>.</p>
+      <div class="gt-tabs" id="gt-tabs" role="tablist"></div>
+      <div id="gt-tablas"></div>
+
+      <p class="gt-tip">💡 ¿No sabes cómo medir a tu peludito? <a href="#" id="link-guia-a-medir">Mira cómo hacerlo aquí</a>.
+        Si queda entre dos tallas, elige la más grande.</p>
     </div>
   </div>
 
-  <!-- Modal: ¿cuál es mi talla? -->
+  <!-- Modal: ¿cuál es la talla correcta? (cómo medir + calculadora) -->
   <div class="pd-modal" id="modal-mi-talla" hidden role="dialog" aria-modal="true" aria-labelledby="t-mi-talla">
-    <div class="pd-modal-caja">
+    <div class="pd-modal-caja gt-caja">
       <button type="button" class="pd-modal-cerrar" aria-label="Cerrar">×</button>
-      <h3 id="t-mi-talla">¿Cuál es la talla correcta?</h3>
-      <p class="pd-gris">Escribe el largo de espalda de tu perrito (de la base del cuello a la base de la cola).</p>
-      <div class="pd-calc">
-        <input type="number" id="medida" min="10" max="90" step="0.5" placeholder="Ej. 42" inputmode="decimal" />
-        <span>cm</span>
-        <button type="button" class="pd-btn pd-btn-carrito" id="btn-calcular">Calcular</button>
+      <h3 id="t-mi-talla" class="gt-h">¿Cuál es la talla correcta?</h3>
+      <h4 class="gt-h3" id="como-medir">Tipos de medidas y cómo obtenerlas</h4>
+      <img class="gt-dibujo" src="Imagenes/Mascotas/como-medir.svg" alt="Perrito con las medidas A (espalda), B (pecho), C (cuello), D y E (pata)" />
+      <div class="gt-medidas">
+        <section>
+          <h4>A. Largo de espalda</h4>
+          <ul>
+            <li>Con tu perrito de pie, pon la cinta métrica sobre su columna: desde donde termina el cuello (donde va el collar) hasta donde empieza la cola.</li>
+            <li>En perritos machos, si la prenda no tiene un corte en la panza, réstale un poco a la medida para que no se moje al orinar.</li>
+          </ul>
+        </section>
+        <section>
+          <h4>B. Ancho de pecho</h4>
+          <ul>
+            <li>Rodea la parte más ancha de sus costillas, normalmente justo detrás de las patas delanteras.</li>
+            <li>Mide con tu perrito de pie y deja el espacio de dos dedos entre la cinta y su cuerpo para que le quede cómodo.</li>
+          </ul>
+        </section>
+        <section>
+          <h4>C. Ancho de cuello</h4>
+          <ul>
+            <li>Mide el contorno de su cuello en la parte donde descansa el collar.</li>
+            <li>También aquí deja dos dedos de espacio para que no le apriete.</li>
+          </ul>
+        </section>
+        <section>
+          <h4>D y E. Largo y ancho de pata</h4>
+          <ul>
+            <li>Con tu perrito parado, pon su pata sobre una hoja y marca el contorno.</li>
+            <li>Mide el largo (D) hasta la uña más larga y el ancho (E) en la parte más ancha.</li>
+          </ul>
+        </section>
       </div>
-      <p class="pd-calc-resultado" id="calc-resultado"></p>
+      <p class="gt-tip">💡 Si tu peludito queda entre dos tallas, elige la más grande.</p>
+
+      <div class="gt-calc-caja">
+        <h4 class="gt-h3">Calcula su talla de ropa</h4>
+        <p class="pd-gris">Escribe su <strong>largo de espalda (A)</strong> y, si lo sabes, su peso.</p>
+        <div class="pd-calc">
+          <label class="gt-campo">Largo de espalda<span><input type="number" id="medida" min="10" max="90" step="0.5" placeholder="Ej. 42" inputmode="decimal" /> cm</span></label>
+          <label class="gt-campo">Peso (opcional)<span><input type="number" id="peso" min="0.5" max="90" step="0.1" placeholder="Ej. 8" inputmode="decimal" /> kg</span></label>
+          <button type="button" class="pd-btn pd-btn-carrito" id="btn-calcular">Calcular</button>
+        </div>
+        <p class="pd-calc-resultado" id="calc-resultado"></p>
+        <p class="pd-gris" style="margin-top:8px;"><a href="#" id="link-ver-guia">Ver la guía de tallas completa</a></p>
+      </div>
     </div>
   </div>
 

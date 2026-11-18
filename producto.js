@@ -13,6 +13,7 @@ import {
   escucharPreguntas, crearPregunta, responderPregunta, eliminarPregunta,
   rolDelPanelActual, escucharFavoritos, agregarFavorito, quitarFavorito,
 } from './firebase-db.js';
+import { pintarGuia, pestanaDeProducto, recomendarTallaRopa } from './guia-tallas.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
@@ -142,7 +143,10 @@ function abrirModal(id) {
   const m = $(id);
   m.hidden = false;
   document.body.classList.add('pd-sin-scroll');
-  setTimeout(() => (m.querySelector('input, textarea, select') || m.querySelector('.pd-modal-cerrar'))?.focus(), 30);
+  // En los modales largos (guía y cómo medir) se enfoca la ✕ para que se vea desde arriba.
+  const primero = m.querySelector('.gt-caja') ? m.querySelector('.pd-modal-cerrar')
+    : (m.querySelector('input, textarea, select') || m.querySelector('.pd-modal-cerrar'));
+  setTimeout(() => primero?.focus({ preventScroll: true }), 30);
 }
 function cerrarModal(m) { m.hidden = true; if ($('visor').hidden) document.body.classList.remove('pd-sin-scroll'); }
 document.querySelectorAll('.pd-modal').forEach((m) => {
@@ -163,28 +167,59 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Calculadora de talla
-const TALLAS = [
-  { talla: 'Chico', min: 33, max: 38 },
-  { talla: 'Mediano', min: 41, max: 46 },
-  { talla: 'Grande', min: 43, max: 48 },
-];
+// ─── Guía de tallas ───
+let pestanaGuia = 'ropa';
+function pintarGuiaTallas() { pintarGuia($('gt-tabs'), $('gt-tablas'), pestanaGuia); }
+$('gt-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-guia]');
+  if (b) { pestanaGuia = b.dataset.guia; pintarGuiaTallas(); }
+});
+document.querySelector('[data-abrir="modal-tallas"]').addEventListener('click', () => {
+  pestanaGuia = pestanaDeProducto(producto);
+  pintarGuiaTallas();
+  $('modal-tallas').querySelector('.gt-caja').scrollTop = 0;
+});
+// De la guía → cómo medir, y de vuelta
+$('link-guia-a-medir').addEventListener('click', (e) => {
+  e.preventDefault();
+  cerrarModal($('modal-tallas'));
+  abrirModal('modal-mi-talla');
+});
+$('link-ver-guia').addEventListener('click', (e) => {
+  e.preventDefault();
+  cerrarModal($('modal-mi-talla'));
+  pestanaGuia = pestanaDeProducto(producto); pintarGuiaTallas();
+  abrirModal('modal-tallas');
+  $('modal-tallas').querySelector('.gt-caja').scrollTop = 0;
+});
+document.querySelector('[data-abrir="modal-mi-talla"]').addEventListener('click', () => {
+  $('modal-mi-talla').querySelector('.gt-caja').scrollTop = 0;
+});
+
+// Calculadora de talla (ropa)
 $('btn-calcular').addEventListener('click', () => {
   const cm = parseFloat($('medida').value);
+  const kg = parseFloat($('peso').value);
   const out = $('calc-resultado');
-  if (!(cm > 0)) { out.textContent = 'Escribe la medida en centímetros.'; return; }
-  const quedan = TALLAS.filter((t) => cm >= t.min && cm <= t.max).map((t) => t.talla);
-  if (quedan.length) {
-    out.innerHTML = `Te recomendamos talla <strong>${quedan.join(' o ')}</strong>.` +
-      (quedan.length > 1 ? ' Si tu perrito es de pelo abundante, elige la más grande.' : '');
-  } else if (cm < 33) {
-    out.textContent = 'Es una medida más chica que nuestras tallas. Escríbenos y te ayudamos a encontrar una prenda.';
-  } else if (cm > 48) {
-    out.textContent = 'Es una medida más grande que nuestras tallas. Escríbenos y te ayudamos a encontrar una prenda.';
-  } else {
-    const cercana = TALLAS.reduce((a, b) => (Math.min(Math.abs(cm - a.min), Math.abs(cm - a.max)) <= Math.min(Math.abs(cm - b.min), Math.abs(cm - b.max)) ? a : b));
-    out.innerHTML = `Queda entre dos tallas: te recomendamos <strong>${cercana.talla}</strong> o la siguiente más grande.`;
+  if (!(cm > 0)) { out.textContent = 'Escribe el largo de espalda en centímetros.'; $('medida').focus(); return; }
+  const { tallas, nota } = recomendarTallaRopa(cm, kg);
+  let html;
+  if (nota === 'chica') html = 'Es una medida más chica que nuestras tallas. Escríbenos y te ayudamos a encontrar una prenda.';
+  else if (nota === 'grande') html = 'Es una medida más grande que nuestras tallas. Escríbenos y te ayudamos a encontrar una prenda.';
+  else if (nota === 'peso') html = `Por su espalda le queda <strong>${tallas[0]}</strong>, pero por su peso puede necesitar <strong>${tallas[1]}</strong>. Si es de pecho ancho o pelo abundante, elige ${tallas[1]}.`;
+  else html = `Te recomendamos talla <strong>${tallas[0]}</strong>.`;
+  // Medida exacta de ESTA prenda (viene en sus beneficios, p. ej. "largo de espalda de 41 a 46 cm")
+  const texto = (producto?.beneficios || []).join(' ');
+  const m = /largo de espalda de (\d+(?:[.,]\d+)?) a (\d+(?:[.,]\d+)?)\s*cm/i.exec(texto);
+  if (m) {
+    const a = parseFloat(m[1].replace(',', '.')), b = parseFloat(m[2].replace(',', '.'));
+    const general = html.replace('Te recomendamos talla', 'En la guía general sería talla');
+    html = (cm >= a && cm <= b
+      ? `✅ <strong>Esta prenda en talla ${esc(tallaDe(producto))} sí le queda</strong>: está hecha para espaldas de ${a} a ${b} cm.`
+      : `⚠️ <strong>Esta prenda en talla ${esc(tallaDe(producto))} no le quedaría</strong>: está hecha para espaldas de ${a} a ${b} cm.`)
+      + `<br><span class="pd-gris">${general}</span>`;
   }
+  out.innerHTML = html;
 });
 
 // ─── Compartir ───
