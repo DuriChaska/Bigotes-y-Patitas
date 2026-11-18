@@ -248,6 +248,13 @@ window.addEventListener('storage', (e) => {
 });
 
 observarSesionCliente((user) => {
+  // Durante el registro Firebase abre y cierra sesión enseguida: el carrito no se toca.
+  let registrando = false;
+  try { registrando = sessionStorage.getItem('bpRegistrando') === '1'; } catch { /* sin almacenamiento */ }
+  if (registrando) {
+    if (!user) { try { sessionStorage.removeItem('bpRegistrando'); } catch { /* idem */ } }
+    return;
+  }
   if (user) alIniciarSesion(user).catch(() => avisoError('sesion', 'No se pudo sincronizar tu carrito con tu cuenta.'));
   else alCerrarSesion();
 });

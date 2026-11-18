@@ -217,7 +217,7 @@
   <script src="components.js"></script>
 
   <script type="module">
-    import { obtenerUsuarioActual, obtenerPerfilCliente, escucharVentasDeCliente, logoutCliente, escucharMonedero } from './firebase-db.js';
+    import { obtenerUsuarioActual, asegurarPerfilCliente, escucharVentasDeCliente, logoutCliente, escucharMonedero } from './firebase-db.js';
     import { montarFotoPerfil, ICONO_PERFIL } from './foto-perfil.js';
 
     // Mientras carga la sesión se ve el ícono genérico (nunca una foto fija de otra persona).
@@ -401,7 +401,7 @@
 
       let perfil = null;
       try {
-        perfil = await obtenerPerfilCliente(usuario.uid);
+        perfil = await asegurarPerfilCliente(usuario);
       } catch {
         (window.bpNotificar || (() => {}))('No se pudieron cargar los datos de tu perfil. Revisa tu conexión.', 'error');
       }

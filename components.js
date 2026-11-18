@@ -154,7 +154,7 @@ window.cerrarSesionClientePublico = function (e) {
 // En cuanto Firebase responda, si hay un cliente con sesión real, se vuelve a
 // pintar el header con su nombre. import() dinámico porque este archivo NO es
 // un módulo (se usa con <script src="components.js">, no type="module").
-import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, escucharTicketsDeCliente, escucharFotoPerfil }) => {
+import('./firebase-db.js').then(({ observarSesionCliente, asegurarPerfilCliente, escucharTicketsDeCliente, escucharFotoPerfil }) => {
   let cancelarTickets = null;
   let cancelarFoto = null;
   observarSesionCliente(async (user) => {
@@ -164,7 +164,7 @@ import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, 
     if (!user) { pintarHeaderFooter(null); return; }
     let clienteHeader;
     try {
-      const perfil = await obtenerPerfilCliente(user.uid);
+      const perfil = await asegurarPerfilCliente(user);   // crea el perfil si la cuenta no lo tenía
       clienteHeader = perfil || { nombre: user.displayName || user.email };
     } catch {
       clienteHeader = { nombre: user.displayName || user.email };   // sin perfil: se usa el nombre de la cuenta

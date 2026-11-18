@@ -10,7 +10,7 @@
 //  Requiere cuenta-menu.js cargado antes (pintarMenuCuenta).
 // ============================================
 
-import { obtenerUsuarioActual, obtenerPerfilCliente, escucharTicketsDeCliente } from './firebase-db.js';
+import { obtenerUsuarioActual, asegurarPerfilCliente, escucharTicketsDeCliente } from './firebase-db.js';
 
 export const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
   (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -70,6 +70,7 @@ export function mensajeError(err, porDefecto = 'No se pudo completar. Revisa tu 
     'auth/invalid-email': 'El correo no es válido.',
     'auth/weak-password': 'La contraseña es muy débil (mínimo 6 caracteres).',
     'auth/network-request-failed': 'Sin conexión a internet.',
+    'not-found': 'Tu perfil no existía y no se pudo crear. Cierra sesión, vuelve a entrar e intenta de nuevo.',
   };
   return codigos[err?.code] || err?.message || porDefecto;
 }
@@ -96,7 +97,7 @@ export async function iniciarCuenta(pagina, idMenu) {
   }
   let perfil = null;
   try {
-    perfil = await obtenerPerfilCliente(usuario.uid);
+    perfil = await asegurarPerfilCliente(usuario);   // si la cuenta no tenía perfil, se crea aquí
   } catch {
     toast('No se pudieron cargar los datos de tu perfil. Revisa tu conexión.');
   }

@@ -59,6 +59,10 @@ import {
   EmailAuthProvider,
   sendPasswordResetEmail,
   verifyBeforeUpdateEmail,
+  sendEmailVerification,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+  applyActionCode,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   collection, doc,
@@ -74,7 +78,7 @@ const usuariosRef = collection(db, "usuarios");
 // ---------- Autenticación ----------
 
 export function loginAdmin(email, password) {
-  return signInWithEmailAndPassword(auth, email, password);
+  return iniciarSesionProtegida(email, password);
 }
 
 export function logoutAdmin() {
@@ -222,11 +226,37 @@ export async function registrarCliente({ nombre, correo, contrasena, telefono, m
     fechaRegistro: new Date().toLocaleDateString('es-MX'),
     creadoEn: serverTimestamp(),
   });
+  // Correo de bienvenida de Firebase ("confirma tu correo"): siempre funciona, sin configurar nada.
+  // Si falla (sin internet), la cuenta ya quedó creada igual.
+  try { await enviarCorreoConEnlace((ajustes) => sendEmailVerification(credencial.user, ajustes), "login.html?verificado=1"); } catch { /* opcional */ }
   return credencial.user;
 }
 
+/**
+ * Dirección completa de una página de esta misma tienda (sirve con Live Server, en una subcarpeta
+ * o ya publicada). Se usa como "continueUrl": a dónde regresa la persona después de usar un enlace.
+ */
+function urlDeLaTienda(pagina) {
+  const carpeta = window.location.href.replace(/[^/]*([?#].*)?$/, "");
+  return carpeta + pagina;
+}
+
+/**
+ * Manda un correo de Firebase con botón para regresar a la tienda. Si el dominio no está
+ * autorizado en Firebase (auth/unauthorized-continue-uri), lo manda sin ese botón.
+ */
+async function enviarCorreoConEnlace(enviar, paginaRegreso) {
+  auth.languageCode = "es";
+  try {
+    await enviar({ url: urlDeLaTienda(paginaRegreso) });
+  } catch (err) {
+    if (["auth/unauthorized-continue-uri", "auth/invalid-continue-uri", "auth/missing-continue-uri"].includes(err.code)) await enviar(undefined);
+    else throw err;
+  }
+}
+
 export function loginCliente(correo, contrasena) {
-  return signInWithEmailAndPassword(auth, correo, contrasena);
+  return iniciarSesionProtegida(correo, contrasena);
 }
 
 export function logoutCliente() {
@@ -2090,12 +2120,38 @@ export async function eliminarDireccion(uid, id, todas = []) {
 
 // ---------- Mis datos y contraseña del cliente ----------
 
+/**
+ * Cuentas que existen en Authentication pero NO tienen su documento en "clientes" (se crearon
+ * cuando el registro estaba roto, o desde el panel): se les crea el perfil con lo que se sabe de
+ * la cuenta. Sin esto, "Mis datos" fallaba con "No document to update" y sus compras no llegaban
+ * al CRM. Devuelve el perfil (existente o nuevo).
+ */
+export async function asegurarPerfilCliente(user) {
+  if (!user) return null;
+  const ref = doc(db, "clientes", user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return { id: snap.id, ...snap.data() };
+  const nuevo = {
+    nombre: String(user.displayName || (user.email || "Cliente").split("@")[0]).slice(0, 120),
+    correo: user.email || "",
+    telefono: "",
+    mascota: "Sin especificar",
+    etapa: "Prospecto",
+    estado: "Activo",
+    fechaRegistro: new Date().toLocaleDateString("es-MX"),
+    creadoEn: serverTimestamp(),
+  };
+  await setDoc(ref, nuevo);
+  return { id: user.uid, ...nuevo };
+}
+
 /** El cliente cambia sus datos de contacto (y su nombre también en Authentication). */
 export async function actualizarDatosCliente(uid, { nombre, telefono, mascota }) {
   const n = String(nombre || "").trim();
   const tel = String(telefono || "").replace(/\D/g, "");
   if (n.length < 3 || !/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/.test(n)) throw new Error("Escribe tu nombre completo (solo letras).");
   if (tel && tel.length !== 10) throw new Error("El teléfono debe tener 10 dígitos.");
+  if (auth.currentUser && auth.currentUser.uid === uid) await asegurarPerfilCliente(auth.currentUser);
   await updateDoc(doc(db, "clientes", uid), {
     nombre: n.slice(0, 120),
     telefono: tel,
@@ -2131,10 +2187,43 @@ export function cambiarContrasenaCliente(contrasenaNueva, contrasenaActual) {
   return cambiarContrasenaPropia(contrasenaNueva, contrasenaActual);
 }
 
-/** "¿Olvidaste tu contraseña?": Firebase manda un correo con el enlace para crear una nueva. */
-export function enviarCorreoRecuperacion(correo) {
-  auth.languageCode = "es";
-  return sendPasswordResetEmail(auth, String(correo || "").trim());
+/**
+ * "¿Olvidaste tu contraseña?": Firebase manda un correo con el enlace para crear una nueva.
+ * IMPORTANTE: cada correo nuevo deja SIN VALOR a los anteriores, y el enlace dura 1 hora y sirve una
+ * sola vez. Por eso aquí no se deja pedir otro hasta pasados 60 segundos (lanza code
+ * "bp/espera-reenvio" con segundos), para que nadie termine abriendo un enlace viejo.
+ */
+export async function enviarCorreoRecuperacion(correo) {
+  const c = String(correo || "").trim().toLowerCase();
+  const clave = "bpUltimoReset:" + c;
+  let ultimo = 0;
+  try { ultimo = Number(localStorage.getItem(clave)) || 0; } catch { /* sin almacenamiento */ }
+  const espera = 60000 - (Date.now() - ultimo);
+  if (espera > 0) {
+    const err = new Error(`Ya te enviamos un enlace hace un momento. Usa ese correo (el más reciente) o espera ${Math.ceil(espera / 1000)} segundos para pedir otro.`);
+    err.code = "bp/espera-reenvio";
+    throw err;
+  }
+  await enviarCorreoConEnlace((ajustes) => sendPasswordResetEmail(auth, c, ajustes), "login.html?restablecida=1");
+  try { localStorage.setItem(clave, String(Date.now())); } catch { /* sin almacenamiento */ }
+}
+
+// ---------- Página propia para los enlaces de los correos (cuenta-accion.html) ----------
+
+/** Revisa que el enlace de "crear contraseña nueva" siga sirviendo. Devuelve el correo de la cuenta. */
+export function revisarEnlaceContrasena(codigo) {
+  return verifyPasswordResetCode(auth, codigo);
+}
+
+/** Guarda la contraseña nueva usando el código del enlace (aquí es donde el enlace se "gasta"). */
+export function guardarContrasenaNueva(codigo, contrasenaNueva) {
+  if (String(contrasenaNueva || "").length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
+  return confirmPasswordReset(auth, codigo, contrasenaNueva);
+}
+
+/** Confirma el correo (enlace del correo de bienvenida) o un cambio de correo. */
+export function aplicarEnlaceCorreo(codigo) {
+  return applyActionCode(auth, codigo);
 }
 
 // =====================================================================
@@ -2244,4 +2333,109 @@ export async function guardarFotoPerfil(uid, dataUrl) {
 /** Quita la foto: vuelve a verse el ícono genérico. */
 export function quitarFotoPerfil(uid) {
   return deleteDoc(doc(db, "fotos_perfil", uid));
+}
+
+
+// =====================================================================
+// ---------- Etapa 4 · Seguridad: bloqueo tras 5 intentos fallidos ----------
+// =====================================================================
+// Protocolo de seguridad contra adivinar contraseñas (fuerza bruta):
+//   - Cada intento fallido de iniciar sesión con un correo suma 1 en intentos_login/{id}.
+//   - Al 5.º fallo la cuenta queda BLOQUEADA 5 minutos: ni con la contraseña correcta se entra.
+//   - Al entrar bien, el contador se borra. Si pasan 15 min sin fallos, vuelve a empezar en 1.
+//   - El {id} del documento es el SHA-256 del correo (en mayúsculas hex): en la base de datos
+//     no queda escrito ningún correo, solo su "huella".
+// Lo usan el login de la tienda (loginCliente) y el del panel (loginAdmin).
+//
+// Sobre las CONTRASEÑAS: este proyecto nunca las guarda. Firebase Authentication las guarda
+// con hash (algoritmo scrypt modificado, con "sal" distinta por usuario); ni el equipo ni la
+// base de datos pueden verlas. Por eso solo se pueden RESTABLECER, nunca "recuperar".
+
+export const BLOQUEO_LOGIN = Object.freeze({ intentos: 5, minutosBloqueo: 5, minutosReinicio: 15 });
+const ERRORES_CREDENCIAL = ["auth/invalid-credential", "auth/wrong-password", "auth/user-not-found", "auth/invalid-login-credentials"];
+
+/** SHA-256 del correo en hexadecimal MAYÚSCULAS (igual que hashing.sha256(...).toHexString() en las reglas). */
+export async function huellaCorreo(correo) {
+  const texto = String(correo || "").trim().toLowerCase();
+  if (!globalThis.crypto?.subtle) return null;   // sin contexto seguro (https/localhost) no hay bloqueo
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+  return [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+function errorBloqueado(restanteMs) {
+  const min = Math.max(1, Math.ceil(restanteMs / 60000));
+  const err = new Error(`Por seguridad, la cuenta está bloqueada por ${min} minuto${min === 1 ? "" : "s"} después de ${BLOQUEO_LOGIN.intentos} intentos fallidos.`);
+  err.code = "bp/cuenta-bloqueada";
+  err.restanteMs = restanteMs;
+  return err;
+}
+
+function leerEstadoIntentos(d) {
+  if (!d) return { fallidos: 0, bloqueado: false, restanteMs: 0 };
+  const desde = d.bloqueadoDesde ? milisDe(d.bloqueadoDesde) : 0;
+  const fin = desde + BLOQUEO_LOGIN.minutosBloqueo * 60000;
+  const bloqueado = Number(d.fallidos) >= BLOQUEO_LOGIN.intentos && desde > 0 && Date.now() < fin;
+  return { fallidos: Number(d.fallidos) || 0, bloqueado, restanteMs: bloqueado ? fin - Date.now() : 0, finMs: fin, ultimo: milisDe(d.actualizadoEn) };
+}
+
+/** ¿Está bloqueado este correo? -> { bloqueado, restanteMs, fallidos } (si no se puede revisar, no bloquea). */
+export async function estadoBloqueoLogin(correo) {
+  const id = await huellaCorreo(correo);
+  if (!id) return { bloqueado: false, restanteMs: 0, fallidos: 0 };
+  const snap = await getDoc(doc(db, "intentos_login", id));
+  return leerEstadoIntentos(snap.exists() ? snap.data() : null);
+}
+
+/** Suma un intento fallido. Devuelve { restantes, bloqueado, restanteMs }. */
+async function registrarIntentoFallido(correo) {
+  const id = await huellaCorreo(correo);
+  if (!id) return null;
+  const ref = doc(db, "intentos_login", id);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const est = leerEstadoIntentos(snap.exists() ? snap.data() : null);
+    if (est.bloqueado) return { restantes: 0, bloqueado: true, restanteMs: est.restanteMs };
+    const reiniciar = !snap.exists()
+      || est.fallidos >= BLOQUEO_LOGIN.intentos                                   // ya pasó un bloqueo
+      || Date.now() - est.ultimo > BLOQUEO_LOGIN.minutosReinicio * 60000;           // fallos viejos
+    if (reiniciar) {
+      tx.set(ref, { fallidos: 1, bloqueadoDesde: null, actualizadoEn: serverTimestamp() });
+      return { restantes: BLOQUEO_LOGIN.intentos - 1, bloqueado: false, restanteMs: 0 };
+    }
+    const n = est.fallidos + 1;
+    if (n >= BLOQUEO_LOGIN.intentos) {
+      tx.update(ref, { fallidos: BLOQUEO_LOGIN.intentos, bloqueadoDesde: serverTimestamp(), actualizadoEn: serverTimestamp() });
+      return { restantes: 0, bloqueado: true, restanteMs: BLOQUEO_LOGIN.minutosBloqueo * 60000 };
+    }
+    tx.update(ref, { fallidos: n, actualizadoEn: serverTimestamp() });
+    return { restantes: BLOQUEO_LOGIN.intentos - n, bloqueado: false, restanteMs: 0 };
+  });
+}
+
+/**
+ * Inicio de sesión con el protocolo de bloqueo. Errores que puede lanzar además de los de Firebase:
+ *   code "bp/cuenta-bloqueada" (con restanteMs). Los de contraseña incorrecta llevan
+ *   err.intentosRestantes para avisar "te quedan N intentos".
+ */
+async function iniciarSesionProtegida(correo, contrasena) {
+  const correoN = String(correo || "").trim().toLowerCase();
+  let estado = null;
+  try { estado = await estadoBloqueoLogin(correoN); } catch { /* si no se puede revisar, Firebase igual limita intentos */ }
+  if (estado?.bloqueado) throw errorBloqueado(estado.restanteMs);
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, correoN, contrasena);
+    // Entró bien: se borra el contador (solo el dueño del correo puede borrarlo, ver reglas).
+    const id = await huellaCorreo(correoN).catch(() => null);
+    if (id && estado && estado.fallidos > 0) await deleteDoc(doc(db, "intentos_login", id)).catch(() => {});
+    return cred;
+  } catch (err) {
+    if (ERRORES_CREDENCIAL.includes(err.code)) {
+      let r = null;
+      try { r = await registrarIntentoFallido(correoN); } catch { /* sin conexión: queda el límite propio de Firebase */ }
+      if (r?.bloqueado) throw errorBloqueado(r.restanteMs);
+      if (r) err.intentosRestantes = r.restantes;
+    }
+    throw err;
+  }
 }

@@ -603,6 +603,41 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ---- Seguridad: bloqueo de 5 minutos tras 5 intentos fallidos de inicio de sesión (Etapa 4) ----
+    // intentos_login/{id}: id = SHA-256 (hex en mayúsculas) del correo, así no queda ningún correo escrito.
+    // Lo escribe quien intenta entrar (todavía SIN sesión), por eso las reglas solo permiten estos pasos:
+    //   1) primer fallo (o volver a empezar): fallidos = 1
+    //   2) un fallo más: fallidos + 1 (hasta 4)
+    //   3) el 5.º fallo: fallidos = 5 y bloqueadoDesde = la hora del servidor (no se puede inventar)
+    // Nadie puede bajar el contador ni quitar el bloqueo antes de tiempo: volver a empezar solo se
+    // permite si ya pasaron 5 min del bloqueo o 15 min sin fallos. Borrarlo (al entrar bien) solo lo
+    // puede hacer la persona dueña de ese correo, ya con su sesión iniciada.
+    function intentoValido(d) {
+      return d.keys().hasOnly(['fallidos', 'bloqueadoDesde', 'actualizadoEn'])
+        && d.fallidos is int
+        && d.actualizadoEn == request.time;
+    }
+    function reinicioPermitido() {
+      return (resource.data.fallidos >= 5 && request.time > resource.data.bloqueadoDesde + duration.value(5, 'm'))
+          || (resource.data.fallidos < 5 && request.time > resource.data.actualizadoEn + duration.value(15, 'm'));
+    }
+
+    match /intentos_login/{id} {
+      allow get: if true;           // hay que saber si está bloqueado ANTES de iniciar sesión
+      allow list: if false;         // nadie puede listar los correos que fallaron
+      allow create: if id.size() == 64 && intentoValido(request.resource.data)
+                    && request.resource.data.fallidos == 1 && request.resource.data.bloqueadoDesde == null;
+      allow update: if intentoValido(request.resource.data) && (
+          (resource.data.fallidos < 4 && request.resource.data.fallidos == resource.data.fallidos + 1
+             && request.resource.data.bloqueadoDesde == null)
+          || (resource.data.fallidos == 4 && request.resource.data.fallidos == 5
+             && request.resource.data.bloqueadoDesde == request.time)
+          || (reinicioPermitido() && request.resource.data.fallidos == 1 && request.resource.data.bloqueadoDesde == null)
+        );
+      allow delete: if request.auth != null && request.auth.token.email is string
+                    && id == hashing.sha256(request.auth.token.email.lower()).toHexString();
+    }
+
     // Cualquier otra colección queda bloqueada por defecto.
     match /{document=**} {
       allow read, write: if false;

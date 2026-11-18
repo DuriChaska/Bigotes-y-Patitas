@@ -2,12 +2,15 @@
 //  Bigotes y Patitas - registro.js
 //  Formulario público de registro de clientes.
 //  Crea una cuenta REAL en Firebase Authentication (con la
-//  contraseña que escribe la persona) y, ya con la sesión
-//  iniciada, guarda su perfil en Firestore (clientes/{uid}),
-//  para que también aparezca de inmediato en el CRM.
+//  contraseña que escribe la persona; Firebase la guarda con
+//  hash, nunca en texto), guarda su perfil en Firestore
+//  (clientes/{uid}) para que aparezca en el CRM, manda el
+//  correo de bienvenida y CIERRA la sesión: la persona entra
+//  después con sus datos en login.html.
 // ============================================
 
-import { registrarCliente } from "./firebase-db.js";
+import { registrarCliente, logoutCliente } from "./firebase-db.js";
+import { enviarCorreoBienvenida } from "./email-recibo.js";
 
 const form = document.getElementById("registerForm");
 const mensajeExito = document.getElementById("registerMessage");
@@ -69,6 +72,10 @@ form.addEventListener("submit", async function (e) {
   boton.disabled = true;
   boton.textContent = "Registrando...";
 
+  // Firebase inicia sesión solo al crear la cuenta; este aviso hace que el carrito (carrito-sync.js)
+  // no se mezcle ni se borre en ese momento, porque enseguida se cierra la sesión.
+  try { sessionStorage.setItem("bpRegistrando", "1"); } catch { /* sin almacenamiento */ }
+
   try {
     await registrarCliente({
       nombre: `${nombre} ${apellidos}`.trim(),
@@ -78,14 +85,20 @@ form.addEventListener("submit", async function (e) {
       mascota: mascota || "Sin especificar",
     });
 
+    // Correo de bienvenida con el diseño de la tienda (si la plantilla de EmailJS está configurada).
+    // Firebase ya mandó su correo de "confirma tu correo" dentro de registrarCliente().
+    try { await enviarCorreoBienvenida({ nombre: `${nombre} ${apellidos}`.trim(), correo }); } catch { /* opcional */ }
+
+    // No se queda con la sesión abierta: la persona inicia sesión con sus datos.
+    try { await logoutCliente(); } catch { /* igual se manda al login */ }
+
     mensajeExito.style.display = "block";
     form.reset();
-    // La cuenta ya quedó con sesión iniciada: se manda directo a la tienda
-    // (o de vuelta a donde iba, p. ej. Checkout.html, si venía de ahí).
-    setTimeout(() => {
-      window.location.href = nextParam || "index.html";
-    }, 1500);
+    const destino = "login.html?registrado=1&correo=" + encodeURIComponent(correo)
+      + (nextParam ? "&next=" + encodeURIComponent(nextParam) : "");
+    setTimeout(() => { window.location.href = destino; }, 1800);
   } catch (err) {
+    try { sessionStorage.removeItem("bpRegistrando"); } catch { /* sin almacenamiento */ }
     mostrarError(ERRORES_FIREBASE[err.code] || ("No se pudo completar el registro: " + (err.message || "revisa tu conexión.")));
     boton.disabled = false;
     boton.textContent = "REGISTRARSE";

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tu cuenta - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!--
+    Página a la que llevan los ENLACES DE LOS CORREOS de Firebase (Etapa 4):
+      - mode=resetPassword        → crear contraseña nueva
+      - mode=verifyEmail          → confirmar el correo (correo de bienvenida)
+      - mode=verifyAndChangeEmail → confirmar el cambio de correo (Mis datos)
+      - mode=recoverEmail         → deshacer un cambio de correo
+    Para que los correos traigan ESTA página en vez de la de Firebase: consola de Firebase →
+    Authentication → Plantillas → (lápiz) → "Personalizar URL de acción" →
+    http://localhost:5500/cuenta-accion.html   (o el dominio donde esté publicada la tienda).
+    Ver SETUP-FIREBASE.md, sección "Etapa 4 — Correos de la cuenta".
+  -->
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="client-interface login">
+    <h2 id="titulo">Revisando tu enlace…</h2>
+    <p id="mensaje" style="margin:.4rem 0 1rem; line-height:1.5;"></p>
+
+    <form class="login-form" id="formNueva" style="display:none;" novalidate>
+      <input type="password" id="nueva" placeholder="Contraseña nueva (mínimo 6 caracteres)" autocomplete="new-password" />
+      <input type="password" id="nueva2" placeholder="Confirmar contraseña nueva" autocomplete="new-password" />
+      <p id="error" role="alert" style="color:#c0392b; font-size:.85rem; display:none; margin:.4rem 0 0;"></p>
+      <button type="submit" id="btnGuardar">Guardar contraseña</button>
+    </form>
+
+    <p id="acciones" style="margin-top:1rem; display:none;">
+      <a href="login.html" id="linkLogin" style="color:var(--pink-medio); font-weight:600;">Ir a iniciar sesión</a>
+    </p>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script type="module">
+    import { revisarEnlaceContrasena, guardarContrasenaNueva, aplicarEnlaceCorreo } from './firebase-db.js';
+
+    const p = new URLSearchParams(window.location.search);
+    const modo = p.get('mode');
+    const codigo = p.get('oobCode');
+    const $ = (id) => document.getElementById(id);
+
+    // Por qué un enlace ya no sirve, en palabras claras.
+    const MOTIVOS = {
+      'auth/expired-action-code': 'Este enlace ya caducó (duran 1 hora).',
+      'auth/invalid-action-code': 'Este enlace ya se usó o ya no es válido. Pasa cuando se abre un correo viejo: cada vez que pides un enlace nuevo, los anteriores dejan de servir.',
+      'auth/user-disabled': 'Esta cuenta está desactivada.',
+      'auth/user-not-found': 'Esta cuenta ya no existe.',
+      'auth/weak-password': 'La contraseña es muy débil (mínimo 6 caracteres).',
+      'auth/network-request-failed': 'Sin conexión a internet. Revisa tu conexión y vuelve a abrir el enlace.',
+    };
+    const motivo = (err) => MOTIVOS[err?.code] || err?.message || 'No se pudo completar la acción.';
+
+    function terminar(titulo, texto, { exito = false, destino = 'login.html' } = {}) {
+      $('titulo').textContent = titulo;
+      $('mensaje').textContent = texto;
+      $('mensaje').style.color = exito ? '#2f6b3a' : '#8a1f15';
+      $('formNueva').style.display = 'none';
+      $('linkLogin').href = destino;
+      $('acciones').style.display = 'block';
+    }
+
+    function fallido(err) {
+      terminar('Este enlace ya no sirve', motivo(err)
+        + ' Pide uno nuevo en "¿Olvidaste tu contraseña?" y abre el correo MÁS RECIENTE.', { destino: 'login.html' });
+    }
+
+    async function restablecer() {
+      let correo;
+      try {
+        // Solo REVISA el enlace; todavía no lo gasta (se gasta al guardar la contraseña).
+        correo = await revisarEnlaceContrasena(codigo);
+      } catch (err) { fallido(err); return; }
+
+      $('titulo').textContent = 'Crea tu contraseña nueva';
+      $('mensaje').textContent = `Cuenta: ${correo}`;
+      $('formNueva').style.display = 'flex';
+      $('nueva').focus();
+
+      $('formNueva').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const error = $('error');
+        error.style.display = 'none';
+        const nueva = $('nueva').value;
+        if (nueva.length < 6) { error.textContent = 'La contraseña debe tener al menos 6 caracteres.'; error.style.display = 'block'; return; }
+        if (nueva !== $('nueva2').value) { error.textContent = 'Las contraseñas no coinciden.'; error.style.display = 'block'; return; }
+        const boton = $('btnGuardar');
+        boton.disabled = true;
+        boton.textContent = 'Guardando…';
+        try {
+          await guardarContrasenaNueva(codigo, nueva);
+          terminar('¡Listo!', 'Tu contraseña se cambió. Ya puedes iniciar sesión con la nueva.',
+            { exito: true, destino: `login.html?restablecida=1&correo=${encodeURIComponent(correo)}` });
+          setTimeout(() => { window.location.href = `login.html?restablecida=1&correo=${encodeURIComponent(correo)}`; }, 2500);
+        } catch (err) {
+          if (['auth/expired-action-code', 'auth/invalid-action-code'].includes(err.code)) { fallido(err); return; }
+          error.textContent = motivo(err);
+          error.style.display = 'block';
+          boton.disabled = false;
+          boton.textContent = 'Guardar contraseña';
+        }
+      });
+    }
+
+    async function confirmarCorreo(titulo, texto) {
+      try {
+        await aplicarEnlaceCorreo(codigo);
+        terminar(titulo, texto, { exito: true, destino: 'login.html?verificado=1' });
+      } catch (err) {
+        terminar('Este enlace ya no sirve', motivo(err), { destino: 'login.html' });
+      }
+    }
+
+    if (!codigo || !modo) {
+      terminar('Enlace incompleto', 'El enlace no trae toda la información. Ábrelo directamente desde el correo.');
+    } else if (modo === 'resetPassword') {
+      restablecer();
+    } else if (modo === 'verifyEmail') {
+      confirmarCorreo('¡Correo confirmado! 🐾', 'Gracias. Tu correo quedó confirmado; ya puedes iniciar sesión.');
+    } else if (modo === 'verifyAndChangeEmail') {
+      confirmarCorreo('¡Correo actualizado!', 'Tu cuenta ya usa el correo nuevo. Inicia sesión con él.');
+    } else if (modo === 'recoverEmail') {
+      confirmarCorreo('Cambio deshecho', 'Tu cuenta volvió a su correo anterior. Te recomendamos cambiar tu contraseña.');
+    } else {
+      terminar('Enlace no reconocido', 'No sabemos qué hacer con este enlace. Ábrelo directamente desde el correo.');
+    }
+  </script>
+</body>
+</html>
