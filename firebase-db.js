@@ -215,18 +215,26 @@ export function eliminarCliente(id) {
 // cliente en la tienda. El documento de "clientes" se crea con el mismo id
 // que el uid de su cuenta, para poder distinguirlo de los que agrega el CRM.
 
-export async function registrarCliente({ nombre, correo, contrasena, telefono, mascota }) {
+export async function registrarCliente({ nombre, correo, contrasena, telefono, mascota,
+                                         apellidoPaterno, apellidoMaterno, codigoPostal, aceptaPromociones }) {
   const credencial = await createUserWithEmailAndPassword(auth, correo, contrasena);
   await updateProfile(credencial.user, { displayName: nombre });
   const refCliente = doc(db, "clientes", credencial.user.uid);
+  // Datos extra del registro por pasos (solo se guardan los que vienen).
+  const extra = {};
+  if (apellidoPaterno) extra.apellidoPaterno = String(apellidoPaterno).slice(0, 60);
+  if (apellidoMaterno) extra.apellidoMaterno = String(apellidoMaterno).slice(0, 60);
+  if (codigoPostal) extra.codigoPostal = String(codigoPostal).slice(0, 5);
+  if (typeof aceptaPromociones === "boolean") extra.aceptaPromociones = aceptaPromociones;
   if ((await getDoc(refCliente)).exists()) {
     // Ya la creó otra parte de la página: se completan solo los datos que el cliente sí puede cambiar.
-    await updateDoc(refCliente, { nombre, telefono: telefono || "", mascota: mascota || "Sin especificar", actualizadoEn: serverTimestamp() });
+    await updateDoc(refCliente, { nombre, telefono: telefono || "", mascota: mascota || "Sin especificar", ...extra, actualizadoEn: serverTimestamp() });
   } else {
     await setDoc(refCliente, {
       nombre, correo,
       telefono: telefono || "",
       mascota: mascota || "Sin especificar",
+      ...extra,
       etapa: "Prospecto",
       estado: "Activo",
       fechaRegistro: new Date().toLocaleDateString('es-MX'),

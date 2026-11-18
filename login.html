@@ -3,177 +3,241 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Iniciar Sesión - Bigotes y Patitas</title>
+  <title>Iniciar sesión - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
-<body>
+<body class="ac-body">
 
   <div id="header"></div>
 
-  <section class="client-interface login">
-    <h2>Iniciar Sesión</h2>
-    <form class="login-form" id="loginForm">
-      <input type="email" id="login-correo" placeholder="Correo electrónico" required />
-      <input type="password" id="login-pass" placeholder="Contraseña" required />
-      <p id="loginError" style="color:#c0392b; font-size:.85rem; display:none; margin:.4rem 0 0;"></p>
-      <button type="submit">Entrar</button>
-    </form>
-    <p style="margin-top:.8rem; font-size:.9rem;">
-      <a href="#" id="linkOlvide" style="color:var(--pink-medio); font-weight:600;">¿Olvidaste tu contraseña?</a>
-    </p>
-    <form class="login-form" id="olvideForm" style="display:none; margin-top:.6rem;" novalidate>
-      <p style="font-size:.85rem; margin:0 0 .4rem;">Escribe el correo de tu cuenta y te mandaremos un enlace para crear una contraseña nueva.</p>
-      <input type="email" id="olvide-correo" placeholder="Correo electrónico" autocomplete="email" />
-      <p id="olvideMsg" style="font-size:.85rem; display:none; margin:.4rem 0 0;"></p>
-      <button type="submit">Enviar enlace</button>
-    </form>
-    <p style="margin-top:1rem; font-size:.9rem;">
-      ¿No tienes cuenta?
-      <a href="#" id="linkRegistro" style="color:var(--pink-medio); font-weight:600;">Regístrate aquí</a>
-    </p>
-  </section>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ac-ojo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g></symbol>
+    <symbol id="ac-ojo-no" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.7 8.5 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></g></symbol>
+    <symbol id="ac-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ac-lupa" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></g></symbol>
+  </svg>
+
+  <main class="ac-pagina">
+    <nav class="pd-ruta" aria-label="Ruta de navegación">
+      <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+      <span>/</span><strong id="ruta-actual">Inicia sesión</strong>
+    </nav>
+
+    <div class="ac-grid">
+      <!-- Bienvenida -->
+      <aside class="ac-bienvenida">
+        <div class="ac-ilustracion"><svg class="ac-svg-bienv" aria-hidden="true" viewBox="0 0 200 200" fill="none" stroke="#2f4858" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="100" cy="100" r="96" fill="#f3ece3" stroke="none"/>
+  <!-- perro -->
+  <path d="M58 150 C52 128 56 108 66 98"/>
+  <path d="M66 98 C60 92 58 84 62 76 C66 66 78 62 88 66 C96 69 100 76 99 84 C98 92 92 98 84 100"/>
+  <path d="M62 76 C54 76 48 84 50 94 C51 99 56 100 59 96"/>
+  <path d="M90 66 C94 58 102 56 106 62 C108 66 104 72 99 74"/>
+  <circle cx="76" cy="80" r="1.8" fill="#2f4858"/>
+  <path d="M90 84 l4 1"/>
+  <path d="M84 100 C92 112 94 130 92 150"/>
+  <path d="M58 150 h40"/>
+  <path d="M70 150 v-22 M82 150 v-24"/>
+  <path d="M98 146 C108 146 112 138 110 130"/>
+  <path d="M64 98 C70 104 80 104 86 100" stroke="#b8603a" stroke-width="5"/>
+  <!-- gato -->
+  <path d="M120 150 C116 132 120 116 132 108"/>
+  <path d="M132 108 C126 100 126 88 132 82 L130 66 L142 76 C146 75 150 75 154 76 L166 66 L164 82 C170 88 170 100 164 108"/>
+  <path d="M164 108 C176 116 180 132 176 150 H120"/>
+  <circle cx="141" cy="92" r="1.8" fill="#2f4858"/><circle cx="155" cy="92" r="1.8" fill="#2f4858"/>
+  <path d="M146 99 l2 2 l2 -2"/>
+  <path d="M128 98 l-10 -2 M128 102 l-10 2 M168 98 l10 -2 M168 102 l10 2" stroke-width="2"/>
+  <path d="M176 140 C190 140 192 124 184 118"/>
+  <path d="M136 110 C144 116 154 116 160 110" stroke="#6b8f71" stroke-width="5"/>
+  <!-- corazon -->
+  <path d="M100 44 c-4 -6 -14 -4 -12 4 c2 6 12 12 12 12 s10 -6 12 -12 c2 -8 -8 -10 -12 -4z" fill="#b8603a" stroke="#b8603a" stroke-width="2"/>
+</svg></div>
+        <h1 id="bienv-titulo">¡Bienvenido!</h1>
+        <p id="bienv-texto">Ingresa con tu <strong>correo electrónico</strong> para entrar a tu cuenta de <strong>Bigotes y Patitas</strong>.<br>
+          ¿Todavía no tienes cuenta? <a href="#" data-ir-tab="registro">Regístrate ahora</a></p>
+      </aside>
+
+      <div class="ac-lado">
+        <div class="ac-tabs" role="tablist">
+          <button type="button" role="tab" id="tab-login" class="activa" aria-selected="true" aria-controls="panel-login">Iniciar sesión</button>
+          <button type="button" role="tab" id="tab-registro" aria-selected="false" aria-controls="panel-registro">Registrarme</button>
+        </div>
+
+        <p class="ac-aviso" id="aviso-llegada" role="status" hidden></p>
+
+        <!-- ============ INICIAR SESIÓN ============ -->
+        <section id="panel-login" role="tabpanel" aria-labelledby="tab-login">
+          <form id="loginForm" novalidate>
+            <label class="ac-label" for="login-correo">Correo electrónico</label>
+            <input class="ac-input" type="email" id="login-correo" placeholder="Escribe tu correo electrónico" autocomplete="email" />
+            <label class="ac-label" for="login-pass">Contraseña</label>
+            <div class="ac-pass">
+              <input class="ac-input" type="password" id="login-pass" placeholder="Escribe tu contraseña" autocomplete="current-password" />
+              <button type="button" class="ac-ojo" data-ver="login-pass" aria-label="Mostrar contraseña"><svg><use href="#ac-ojo-no"/></svg></button>
+            </div>
+            <p class="ac-error" id="loginError" role="alert" hidden></p>
+            <button type="submit" class="ac-btn">Iniciar sesión</button>
+          </form>
+          <p class="ac-pie" id="pie-olvide">¿Olvidaste tu contraseña? <a href="#" id="linkOlvide">Recupérala</a></p>
+
+          <form id="olvideForm" novalidate hidden>
+            <h2 class="ac-paso-titulo">Recupera tu contraseña</h2>
+            <p class="ac-nota">Escribe el correo de tu cuenta y te mandaremos un enlace para crear una contraseña nueva.</p>
+            <label class="ac-label" for="olvide-correo">Correo electrónico</label>
+            <input class="ac-input" type="email" id="olvide-correo" placeholder="Escribe tu correo electrónico" autocomplete="email" />
+            <p class="ac-error" id="olvideMsg" role="status" hidden></p>
+            <button type="submit" class="ac-btn">Enviar enlace</button>
+            <button type="button" class="ac-btn ac-btn-sec" id="olvideVolver">Volver</button>
+          </form>
+        </section>
+
+        <!-- ============ REGISTRO (4 pasos) ============ -->
+        <section id="panel-registro" role="tabpanel" aria-labelledby="tab-registro" hidden>
+          <div class="ac-progreso" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+          <p class="ac-paso"><span class="ac-paso-num" id="paso-num">1</span><span id="paso-nombre">Datos personales</span></p>
+
+          <!-- Paso 1 -->
+          <form class="ac-paso-form" data-paso="1" novalidate>
+            <h2 class="ac-paso-titulo">Por favor introduce los siguientes datos</h2>
+            <p class="ac-nota">Los datos con * son <strong>obligatorios</strong></p>
+            <label class="ac-label" for="reg-nombre">Nombre*</label>
+            <input class="ac-input" type="text" id="reg-nombre" maxlength="60" autocomplete="given-name" placeholder="Escribe tu nombre" />
+            <label class="ac-label" for="reg-paterno">Apellido paterno*</label>
+            <input class="ac-input" type="text" id="reg-paterno" maxlength="60" autocomplete="family-name" placeholder="Escribe tu apellido paterno" />
+            <label class="ac-label" for="reg-materno">Apellido materno</label>
+            <input class="ac-input" type="text" id="reg-materno" maxlength="60" placeholder="Escribe tu apellido materno" />
+            <label class="ac-label" for="reg-cp">Código postal*</label>
+            <input class="ac-input" type="text" id="reg-cp" inputmode="numeric" autocomplete="postal-code" placeholder="5 dígitos" />
+            <p class="ac-error" data-error="1" role="alert" hidden></p>
+            <button type="submit" class="ac-btn">Continuar</button>
+          </form>
+
+          <!-- Paso 2 -->
+          <form class="ac-paso-form" data-paso="2" novalidate hidden>
+            <h2 class="ac-paso-titulo"><span id="saludo-nombre"></span>, introduce tus datos de contacto</h2>
+            <p class="ac-nota">Los datos con * son <strong>obligatorios</strong></p>
+            <label class="ac-label" for="reg-correo">Correo electrónico*</label>
+            <input class="ac-input" type="email" id="reg-correo" maxlength="120" autocomplete="email" placeholder="nombre@correo.com" />
+            <label class="ac-label" for="reg-telefono">Número telefónico (10 dígitos)*</label>
+            <input class="ac-input" type="tel" id="reg-telefono" inputmode="numeric" autocomplete="tel" placeholder="4491234567" />
+            <p class="ac-error" data-error="2" role="alert" hidden></p>
+            <button type="button" class="ac-btn ac-btn-sec" data-volver>Volver</button>
+            <button type="submit" class="ac-btn">Continuar</button>
+          </form>
+
+          <!-- Paso 3 -->
+          <form class="ac-paso-form" data-paso="3" novalidate hidden>
+            <h2 class="ac-paso-titulo">Tu cuenta está casi lista, ahora crea tu contraseña</h2>
+            <p class="ac-nota">Los datos con * son <strong>obligatorios</strong></p>
+            <label class="ac-label" for="reg-pass">Contraseña*</label>
+            <div class="ac-pass">
+              <input class="ac-input" type="password" id="reg-pass" autocomplete="new-password" placeholder="Crea tu contraseña" />
+              <button type="button" class="ac-ojo" data-ver="reg-pass" aria-label="Mostrar contraseña"><svg><use href="#ac-ojo-no"/></svg></button>
+            </div>
+            <ul class="ac-reglas" id="reglas-pass">
+              <li data-regla="largo"><svg><use href="#ac-check"/></svg>Usa 6 o más caracteres</li>
+              <li data-regla="mayus"><svg><use href="#ac-check"/></svg>Usa una combinación de mayúsculas y minúsculas</li>
+              <li data-regla="simbolos"><svg><use href="#ac-check"/></svg>Solo puedes usar estos símbolos especiales: <b># @ ! ? ¿ ¡ $</b></li>
+            </ul>
+            <label class="ac-label" for="reg-pass2">Confirmar contraseña*</label>
+            <div class="ac-pass">
+              <input class="ac-input" type="password" id="reg-pass2" autocomplete="new-password" placeholder="Escríbela otra vez" />
+              <button type="button" class="ac-ojo" data-ver="reg-pass2" aria-label="Mostrar contraseña"><svg><use href="#ac-ojo-no"/></svg></button>
+            </div>
+            <label class="ac-casilla"><input type="checkbox" id="reg-aviso" /><span class="ac-caja"></span>
+              <span>Acepto el <a href="#" data-abrir-aviso>aviso de privacidad</a> y los <a href="#" data-abrir-aviso>términos y condiciones</a>.*</span></label>
+            <label class="ac-casilla"><input type="checkbox" id="reg-promos" checked /><span class="ac-caja"></span>
+              <span>Deseo recibir en mi correo ofertas y promociones de Bigotes y Patitas.</span></label>
+            <p class="ac-error" data-error="3" role="alert" hidden></p>
+            <button type="button" class="ac-btn ac-btn-sec" data-volver>Volver</button>
+            <button type="submit" class="ac-btn">Continuar</button>
+          </form>
+
+          <!-- Paso 4 -->
+          <form class="ac-paso-form" data-paso="4" novalidate hidden>
+            <h2 class="ac-paso-titulo">¿Qué mascota es de tu interés?</h2>
+            <div class="ac-mascotas" role="radiogroup" aria-label="Tipo de mascota">
+              <button type="button" class="ac-mascota" data-tipo="Perro" role="radio" aria-checked="false"><svg class="ac-svg-mascota" aria-hidden="true" viewBox="0 0 100 100" fill="none" stroke="#2f4858" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M30 88 C24 70 26 52 36 42"/>
+  <path d="M36 42 C32 34 34 24 42 20 C50 16 60 18 66 24 L76 26 C80 27 80 32 76 34 L66 36 C62 42 54 46 46 46"/>
+  <path d="M44 20 C40 22 38 30 40 38 C42 42 46 42 47 38 L46 24"/>
+  <circle cx="58" cy="26" r="1.6" fill="#2f4858"/>
+  <path d="M46 46 C56 56 60 74 58 88"/>
+  <path d="M30 88 h32 M40 88 v-14 M52 88 v-16"/>
+  <path d="M60 84 C70 84 72 76 70 68" />
+  <path d="M38 44 C44 50 52 50 58 46" stroke="#b8603a" stroke-width="4.5"/>
+</svg><span>Perro</span></button>
+              <button type="button" class="ac-mascota" data-tipo="Gato" role="radio" aria-checked="false"><svg class="ac-svg-mascota" aria-hidden="true" viewBox="0 0 100 100" fill="none" stroke="#2f4858" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14 80 C14 66 26 58 44 58 L60 58"/>
+  <path d="M56 60 C52 52 52 42 58 36 L56 22 L66 30 C70 29 74 29 78 30 L88 22 L86 36 C92 42 92 52 86 60 C82 64 76 66 70 66"/>
+  <circle cx="66" cy="45" r="1.6" fill="#2f4858"/><circle cx="78" cy="45" r="1.6" fill="#2f4858"/>
+  <path d="M70 52 l2 2 l2 -2"/>
+  <path d="M86 66 C92 72 92 80 86 82 H20 C14 82 12 76 16 74"/>
+  <path d="M46 70 C40 64 30 64 26 70 L38 80" fill="#b8603a" stroke="none" opacity=".85"/>
+  <path d="M60 82 v-8 M74 82 v-10"/>
+</svg><span>Gato</span></button>
+              <button type="button" class="ac-mascota" data-tipo="Otras mascotas" role="radio" aria-checked="false"><svg class="ac-svg-mascota" aria-hidden="true" viewBox="0 0 100 100" fill="none" stroke="#2f4858" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <!-- pez -->
+  <path d="M10 28 C16 18 30 18 36 28 C30 38 16 38 10 28 Z M36 28 l8 -6 v12 z"/>
+  <circle cx="17" cy="26" r="1.3" fill="#2f4858"/>
+  <!-- ave -->
+  <path d="M62 34 C60 22 68 14 78 16 C84 18 86 24 84 30 L92 32 L84 36 C80 42 70 44 62 34 Z"/>
+  <path d="M66 30 C72 32 76 30 78 26"/>
+  <circle cx="80" cy="22" r="1.3" fill="#2f4858"/>
+  <path d="M70 42 v8 M76 42 v8"/>
+  <!-- hamster -->
+  <path d="M10 82 C8 68 18 58 30 58 C42 58 50 66 48 80 C46 86 14 88 10 82 Z"/>
+  <circle cx="18" cy="60" r="4"/><circle cx="36" cy="58" r="4"/>
+  <circle cx="22" cy="68" r="1.3" fill="#2f4858"/><circle cx="32" cy="68" r="1.3" fill="#2f4858"/>
+  <path d="M26 73 l1 1.5 l1 -1.5"/>
+  <!-- conejo -->
+  <path d="M60 86 C56 74 62 64 72 62 C70 54 66 44 70 42 C74 42 76 52 76 60 C78 52 82 44 86 46 C88 50 84 58 80 62 C90 66 92 78 88 86 Z"/>
+  <circle cx="76" cy="70" r="1.3" fill="#2f4858"/>
+  <path d="M88 80 c4 0 5 -4 2 -6" />
+</svg><span>Otras mascotas</span></button>
+            </div>
+
+            <div id="caja-detalle" hidden>
+              <h3 class="ac-paso-titulo" id="detalle-titulo"></h3>
+              <div class="ac-buscar">
+                <input type="search" id="detalle-buscar" placeholder="" autocomplete="off" />
+                <span class="ac-buscar-icono"><svg><use href="#ac-lupa"/></svg></span>
+              </div>
+              <div class="ac-opciones" id="detalle-lista" role="radiogroup"></div>
+            </div>
+
+            <p class="ac-error" data-error="4" role="alert" hidden></p>
+            <p class="ac-exito" id="registerMessage" role="status" hidden></p>
+            <button type="button" class="ac-btn ac-btn-sec" data-volver>Volver</button>
+            <button type="submit" class="ac-btn" id="btn-crear">Crear cuenta</button>
+          </form>
+
+          <p class="ac-pie">¿Ya tienes cuenta? <a href="#" data-ir-tab="login">Inicia sesión</a></p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Aviso de privacidad -->
+  <div class="pd-modal" id="modal-aviso" hidden role="dialog" aria-modal="true" aria-labelledby="t-aviso">
+    <div class="pd-modal-caja">
+      <button type="button" class="pd-modal-cerrar" aria-label="Cerrar">×</button>
+      <h3 id="t-aviso">Aviso de privacidad y términos</h3>
+      <p class="pd-gris" style="margin-top:8px;">Bigotes y Patitas usa tus datos (nombre, correo, teléfono, código postal y mascota de interés)
+        solo para crear tu cuenta, procesar y enviar tus pedidos, darte atención y, si lo aceptas, mandarte promociones.
+        No vendemos ni compartimos tus datos con terceros, salvo lo necesario para entregar tus compras.</p>
+      <p class="pd-gris" style="margin-top:8px;">Tu contraseña la guarda Firebase cifrada: nadie de la tienda puede verla.
+        Puedes cambiar tus datos en <strong>Mi cuenta → Mis datos</strong> o pedir que borremos tu cuenta en <strong>Atención a clientes</strong>.</p>
+      <p class="pd-gris" style="margin-top:8px;">Al crear tu cuenta aceptas usar la tienda de buena fe y que los precios y existencias pueden cambiar sin aviso.</p>
+      <button type="button" class="ac-btn" id="aceptar-aviso" style="margin-top:16px;">Entendido</button>
+    </div>
+  </div>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script type="module">
-    import { loginCliente, enviarCorreoRecuperacion } from './firebase-db.js';
-
-    const form = document.getElementById('loginForm');
-    const error = document.getElementById('loginError');
-    const next = new URLSearchParams(window.location.search).get('next');
-
-    // Avisos al llegar desde el registro o desde un enlace de correo.
-    const parametros = new URLSearchParams(window.location.search);
-    const AVISOS_LLEGADA = {
-      registrado: '✅ ¡Tu cuenta se creó! Te enviamos un correo de bienvenida. Inicia sesión con tu correo y contraseña.',
-      restablecida: '✅ Tu contraseña se cambió. Inicia sesión con la nueva.',
-      verificado: '✅ Tu correo quedó confirmado. Ya puedes iniciar sesión.',
-      baja: 'Tu cuenta fue dada de baja por la tienda y se borró. Si quieres, puedes registrarte de nuevo con el mismo correo.',
-    };
-    const llegada = Object.keys(AVISOS_LLEGADA).find(k => parametros.get(k) === '1');
-    if (llegada) {
-      const aviso = document.createElement('p');
-      aviso.setAttribute('role', 'status');
-      aviso.style.cssText = 'background:#e5efe4;color:#2f6b3a;border-radius:10px;padding:10px 12px;font-size:.9rem;margin:0 0 .8rem;';
-      aviso.textContent = AVISOS_LLEGADA[llegada];
-      form.parentNode.insertBefore(aviso, form);
-    }
-    if (parametros.get('correo')) {
-      document.getElementById('login-correo').value = parametros.get('correo');
-      document.getElementById('login-pass').focus();
-    }
-
-    const linkRegistro = document.getElementById('linkRegistro');
-    linkRegistro.href = 'Interfaz Usuario - Registro .html' + (next ? '?next=' + encodeURIComponent(next) : '');
-
-    // Mismo mensaje si el correo no existe o la contraseña está mal: así nadie puede averiguar
-    // qué correos tienen cuenta.
-    const ERRORES_FIREBASE = {
-      'auth/invalid-credential': 'Correo o contraseña incorrectos.',
-      'auth/invalid-email': 'El correo no es válido.',
-      'auth/user-not-found': 'Correo o contraseña incorrectos.',
-      'auth/wrong-password': 'Correo o contraseña incorrectos.',
-      'auth/too-many-requests': 'Demasiados intentos. Espera un momento e intenta de nuevo.',
-    };
-
-    // ---- Bloqueo de 5 minutos tras 5 intentos fallidos (cuenta regresiva en pantalla) ----
-    let relojBloqueo = null;
-    function mostrarBloqueo(restanteMs) {
-      const boton = form.querySelector('button[type=submit]');
-      const fin = Date.now() + restanteMs;
-      clearInterval(relojBloqueo);
-      const pintar = () => {
-        const ms = fin - Date.now();
-        if (ms <= 0) {
-          clearInterval(relojBloqueo);
-          error.style.display = 'none';
-          boton.disabled = false;
-          boton.textContent = 'Entrar';
-          return;
-        }
-        const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000);
-        error.textContent = `🔒 Por seguridad bloqueamos el acceso a esta cuenta después de 5 intentos fallidos. Podrás intentar de nuevo en ${m}:${String(s).padStart(2, '0')}.`;
-        error.style.display = 'block';
-        boton.disabled = true;
-        boton.textContent = 'Bloqueado';
-      };
-      pintar();
-      relojBloqueo = setInterval(pintar, 1000);
-    }
-
-    // ---- ¿Olvidaste tu contraseña? (Firebase manda el enlace para crear una nueva) ----
-    const olvideForm = document.getElementById('olvideForm');
-    const olvideMsg = document.getElementById('olvideMsg');
-    document.getElementById('linkOlvide').addEventListener('click', (e) => {
-      e.preventDefault();
-      const visible = olvideForm.style.display !== 'none';
-      olvideForm.style.display = visible ? 'none' : 'flex';
-      if (!visible) {
-        document.getElementById('olvide-correo').value = document.getElementById('login-correo').value.trim();
-        document.getElementById('olvide-correo').focus();
-      }
-    });
-    olvideForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const correo = document.getElementById('olvide-correo').value.trim();
-      const boton = olvideForm.querySelector('button[type=submit]');
-      olvideMsg.style.display = 'block';
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) {
-        olvideMsg.style.color = '#c0392b';
-        olvideMsg.textContent = 'Escribe un correo válido.';
-        return;
-      }
-      boton.disabled = true;
-      try {
-        await enviarCorreoRecuperacion(correo);
-        olvideMsg.style.color = '#2f6b3a';
-        // Por seguridad no se dice si el correo existe o no.
-        olvideMsg.textContent = `Si ${correo} tiene una cuenta, te llegará un enlace en unos minutos (revisa también spam). Abre el correo MÁS RECIENTE: el enlace sirve una sola vez y por 1 hora.`;
-      } catch (err) {
-        olvideMsg.style.color = '#c0392b';
-        olvideMsg.textContent = err.code === 'bp/espera-reenvio' ? err.message
-          : err.code === 'auth/too-many-requests'
-          ? 'Demasiados intentos. Espera un momento.'
-          : err.code === 'auth/invalid-email' ? 'El correo no es válido.' : 'No se pudo enviar el enlace. Revisa tu conexión.';
-      }
-      boton.disabled = false;
-    });
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      error.style.display = 'none';
-
-      const correo = document.getElementById('login-correo').value.trim();
-      const pass = document.getElementById('login-pass').value;
-      const boton = form.querySelector('button[type=submit]');
-      boton.disabled = true;
-      boton.textContent = 'Entrando...';
-
-      try {
-        await loginCliente(correo, pass);
-        window.location.href = next || 'Interfaz Cliente - Perfil.html';
-      } catch (err) {
-        if (err.code === 'bp/cuenta-bloqueada') { mostrarBloqueo(err.restanteMs); return; }
-        if (err.code === 'bp/cuenta-dada-de-baja') {
-          error.textContent = err.message;
-          error.style.display = 'block';
-          boton.disabled = false;
-          boton.textContent = 'Entrar';
-          return;
-        }
-        let texto = ERRORES_FIREBASE[err.code] || 'No se pudo iniciar sesión. Revisa tu conexión.';
-        if (typeof err.intentosRestantes === 'number') {
-          texto += err.intentosRestantes === 1
-            ? ' Te queda 1 intento antes de que la cuenta se bloquee 5 minutos.'
-            : ` Te quedan ${err.intentosRestantes} intentos.`;
-        }
-        error.textContent = texto;
-        error.style.display = 'block';
-        boton.disabled = false;
-        boton.textContent = 'Entrar';
-      }
-    });
-  </script>
+  <script type="module" src="login.js"></script>
+  <script type="module" src="registro.js"></script>
 </body>
 </html>

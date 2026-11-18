@@ -72,7 +72,8 @@ service cloud.firestore {
     // (después de que la persona abrió el enlace que Firebase le mandó al correo nuevo).
     function soloCamposDeContacto() {
       return request.resource.data.diff(resource.data).affectedKeys()
-        .hasOnly(['nombre', 'telefono', 'mascota', 'direccion', 'correo', 'actualizadoEn'])
+        .hasOnly(['nombre', 'telefono', 'mascota', 'direccion', 'correo', 'actualizadoEn',
+                  'apellidoPaterno', 'apellidoMaterno', 'codigoPostal', 'aceptaPromociones'])
         && (request.resource.data.get('correo', '') == resource.data.get('correo', '')
             || request.resource.data.correo == request.auth.token.email);
     }

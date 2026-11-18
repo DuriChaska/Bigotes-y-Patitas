@@ -1055,3 +1055,11 @@ bajas/{uid}   ← registro de cada eliminación (nadie lo puede borrar)
 - **`preguntas/{id}`** `{ productoId, uid, nombre, texto, fecha, respuesta?, respondidoPor?, respondidaEn? }`: la crea un cliente con sesión; solo administrador, vendedor o soporte agregan la respuesta (desde la misma página del producto).
 - **`clientes/{uid}/favoritos/{productoId}`** `{ productoId, agregadoEn }`: solo el dueño. Se ven en **Mi cuenta → Mis favoritos** (`mis-favoritos.html`). Se borran con la baja del cliente.
 - **Colección Otoño-Invierno**: `COLECCION_OTONO` en `scm-config.js` (fotos en `Imagenes/Productos/`). Botón *Agregar colección Otoño-Invierno* en SCM → Productos; solo crea las prendas que falten (compara por nombre).
+
+## 16. Iniciar sesión y registro por pasos (login.html)
+
+- `login.html` tiene las dos pestañas: **Iniciar sesión** (`login.js`) y **Registrarme** (`registro.js`). `?modo=registro` abre la segunda. `Interfaz Usuario - Registro .html` solo redirige ahí (para enlaces viejos).
+- Registro en 4 pasos: 1) nombre, apellido paterno, apellido materno (opcional) y código postal; 2) correo y teléfono; 3) contraseña con reglas en vivo (6+ caracteres, mayúsculas y minúsculas, solo los símbolos `# @ ! ? ¿ ¡ $`), confirmación, aviso de privacidad (obligatorio) y promociones (opcional); 4) mascota de interés (perro → raza, gato → color, otras), se puede omitir.
+- `clientes/{uid}` guarda además `apellidoPaterno`, `apellidoMaterno`, `codigoPostal`, `aceptaPromociones`; `mascota` queda como "Perro · Chihuahua", "Gato · Negro", etc.
+- Si Firebase dice que el correo ya existe, regresa al paso 2 con el aviso.
+- `?next=` solo acepta páginas de la propia tienda (no redirige a otros sitios).
