@@ -5,179 +5,140 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Catálogo - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
-<body>
+<body class="cat-body">
 
   <div id="header"></div>
+  <div id="toast-container"></div>
 
-  <main>
-    <div id="toast-container"></div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="cat-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+    <symbol id="cat-corazon" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7.1 4.5c2 0 3.4 1.1 4.9 3 1.5-1.9 2.9-3 4.9-3 3.5 0 5.6 3.5 4.4 6.8-1.8 4.6-9.3 9.2-9.3 9.2z" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="cat-flecha" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="cat-filtro" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="8" cy="6" r="2.2" fill="#fff"/><circle cx="16" cy="12" r="2.2" fill="#fff"/><circle cx="10" cy="18" r="2.2" fill="#fff"/></g></symbol>
+    <symbol id="cat-lupa" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></g></symbol>
+    <symbol id="cat-camion" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4.5l3.5 3.5V16h-8z"/><circle cx="6" cy="17.5" r="1.8" fill="#fff"/><circle cx="17" cy="17.5" r="1.8" fill="#fff"/></g></symbol>
+    <symbol id="cat-cuadros" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></g></symbol>
+    <symbol id="cat-lista" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/></g></symbol>
+    <symbol id="cat-cinta" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M6 8v3M10 8v4M14 8v3M18 8v4"/></g></symbol>
+  </svg>
 
-    <div class="shop-search-row">
-      <input id="priceSearch" type="text" placeholder="Buscar por precio: 299 | 250-400" aria-label="Buscar por precio" />
-      <select id="categoryFilter" aria-label="Filtrar por categoría">
-        <option value="all">Todas</option>
-      </select>
-    </div>
+  <main class="cat-pagina">
+    <!-- ===== Filtros ===== -->
+    <aside class="cat-filtros" id="cat-filtros" aria-label="Filtros">
+      <div class="cat-filtros-cab">
+        <h2><svg><use href="#cat-filtro"/></svg> Filtra tu búsqueda</h2>
+        <button type="button" class="cat-cerrar-filtros" id="cerrar-filtros" aria-label="Cerrar filtros">×</button>
+      </div>
 
-    <div id="productsState" style="text-align:center; padding:40px 0; color:var(--gray);">Cargando catálogo…</div>
-    <div class="products-grid" id="productsGrid"></div>
+      <div class="cat-buscar">
+        <label class="sr-solo" for="buscar">Buscar productos</label>
+        <input type="search" id="buscar" placeholder="Busca: suéter, rojo, collar…" autocomplete="off" />
+        <svg><use href="#cat-lupa"/></svg>
+      </div>
+
+      <div class="cat-grupo" data-grupo="novedades">
+        <button type="button" class="cat-grupo-cab" aria-expanded="true">Novedades <svg><use href="#cat-flecha"/></svg></button>
+        <div class="cat-grupo-cuerpo" id="f-novedades"></div>
+      </div>
+      <div class="cat-grupo" data-grupo="categoria">
+        <button type="button" class="cat-grupo-cab" aria-expanded="true">Mascotas y categorías <svg><use href="#cat-flecha"/></svg></button>
+        <div class="cat-grupo-cuerpo" id="f-categoria"></div>
+      </div>
+      <div class="cat-grupo" data-grupo="para">
+        <button type="button" class="cat-grupo-cab" aria-expanded="true">Para quién <svg><use href="#cat-flecha"/></svg></button>
+        <div class="cat-grupo-cuerpo" id="f-para"></div>
+      </div>
+      <div class="cat-grupo" data-grupo="talla">
+        <button type="button" class="cat-grupo-cab" aria-expanded="true">Talla <svg><use href="#cat-flecha"/></svg></button>
+        <div class="cat-grupo-cuerpo" id="f-talla"></div>
+      </div>
+      <div class="cat-grupo" data-grupo="marca">
+        <button type="button" class="cat-grupo-cab" aria-expanded="true">Marca <svg><use href="#cat-flecha"/></svg></button>
+        <div class="cat-grupo-cuerpo" id="f-marca"></div>
+      </div>
+      <div class="cat-grupo" data-grupo="precio">
+        <button type="button" class="cat-grupo-cab" aria-expanded="true">Precio <svg><use href="#cat-flecha"/></svg></button>
+        <div class="cat-grupo-cuerpo">
+          <label class="sr-solo" for="precio">Precio o rango</label>
+          <input type="text" id="precio" class="cat-input" placeholder="Escribe: 299 ó 250-400" inputmode="numeric" />
+          <p class="cat-ayuda">Un número = hasta ese precio. También puedes usar &lt;300 o &gt;500.</p>
+          <div class="cat-chips" id="f-precio-rapido">
+            <button type="button" data-precio="-300">Hasta $300</button>
+            <button type="button" data-precio="300-500">$300 a $500</button>
+            <button type="button" data-precio=">500">Más de $500</button>
+          </div>
+        </div>
+      </div>
+      <div class="cat-grupo" data-grupo="disponible">
+        <button type="button" class="cat-grupo-cab" aria-expanded="true">Disponibilidad <svg><use href="#cat-flecha"/></svg></button>
+        <div class="cat-grupo-cuerpo" id="f-disponible"></div>
+      </div>
+
+      <button type="button" class="cat-limpiar" id="limpiar">Limpiar filtros</button>
+      <button type="button" class="cat-ver-resultados" id="ver-resultados">Ver resultados</button>
+    </aside>
+    <div class="cat-velo" id="cat-velo" hidden></div>
+
+    <!-- ===== Resultados ===== -->
+    <section class="cat-contenido">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong id="ruta-cat">Catálogo</strong>
+      </nav>
+      <h1 class="cat-titulo" id="cat-titulo">Ropa y accesorios</h1>
+
+      <div class="cat-banner" aria-hidden="true">
+        <div class="cat-banner-foto f1"><img src="Imagenes/Productos/sueter-rojo-monos-1.jpg" alt="" /></div>
+        <div class="cat-banner-foto f2"><img src="Imagenes/Productos/chaleco-polar-beige-3.jpg" alt="" /></div>
+        <div class="cat-banner-centro">
+          <svg class="cat-banner-logo"><use href="#cat-huella"/></svg>
+          <p class="cat-banner-1">Moda que</p>
+          <p class="cat-banner-2">mueve colitas</p>
+          <span class="cat-banner-sello"><svg><use href="#cat-camion"/></svg>Envíos a todo México</span>
+        </div>
+        <div class="cat-banner-foto f3"><img src="Imagenes/Productos/sueter-blanco-lentejuela-2.jpg" alt="" /></div>
+        <div class="cat-banner-foto f4"><img src="Imagenes/Productos/chamarra-borrego-rosa-1.jpg" alt="" /></div>
+      </div>
+
+      <div class="cat-barra">
+        <button type="button" class="cat-btn-filtros" id="abrir-filtros"><svg><use href="#cat-filtro"/></svg> Filtrar <span id="num-filtros"></span></button>
+        <p class="cat-resultados" id="resultados" aria-live="polite">Cargando…</p>
+        <div class="cat-vistas" role="group" aria-label="Vista">
+          <button type="button" data-vista="cuadros" class="activa" aria-pressed="true" title="Cuadrícula"><svg><use href="#cat-cuadros"/></svg></button>
+          <button type="button" data-vista="lista" aria-pressed="false" title="Lista"><svg><use href="#cat-lista"/></svg></button>
+        </div>
+        <div class="cat-orden">
+          <label class="sr-solo" for="orden">Ordenar por</label>
+          <select id="orden">
+            <option value="destacados">Destacados</option>
+            <option value="nuevos">Lo más nuevo</option>
+            <option value="calificados">Mejor calificados</option>
+            <option value="nombre-asc">Nombre (A a la Z)</option>
+            <option value="nombre-desc">Nombre (Z a la A)</option>
+            <option value="precio-asc">Precio (más económico primero)</option>
+            <option value="precio-desc">Precio (mayor precio primero)</option>
+          </select>
+          <svg><use href="#cat-flecha"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-activos" id="filtros-activos"></div>
+      <p class="cat-estado" id="productsState">Cargando catálogo…</p>
+      <div class="cat-grid" id="productsGrid"></div>
+    </section>
   </main>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script type="module">
-    import { escucharProductosScm } from './firebase-db.js';
-    import { CATEGORIAS } from './scm-config.js';
-
-    const grid = document.getElementById('productsGrid');
-    const estado = document.getElementById('productsState');
-    const priceInput = document.getElementById('priceSearch');
-    const categorySelect = document.getElementById('categoryFilter');
-
-    CATEGORIAS.forEach(c => {
-      const o = document.createElement('option');
-      o.value = c; o.textContent = c;
-      categorySelect.appendChild(o);
-    });
-
-    // Si venimos de un enlace "PERROS / GATOS / ..." en el inicio, se preselecciona la categoría.
-    const categoriaInicial = new URLSearchParams(window.location.search).get('categoria');
-    if (categoriaInicial && CATEGORIAS.includes(categoriaInicial)) categorySelect.value = categoriaInicial;
-
-    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
-      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-    const IMG_VACIA = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#f1ece1"/>' +
-      '<text x="150" y="155" font-family="sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#8a7d6b">Bigotes y Patitas</text></svg>');
-
-    function urlImagen(u) {
-      if (typeof u !== 'string' || !u.trim()) return IMG_VACIA;
-      const val = u.trim();
-      if (/^https?:\/\//i.test(val)) return val;
-      if (!/^[a-z][a-z0-9+.-]*:/i.test(val)) return val;
-      return IMG_VACIA;
-    }
-
-    function obtenerCarrito() { return JSON.parse(localStorage.getItem("carrito") || "[]"); }
-    function guardarCarrito(c) {
-      localStorage.setItem("carrito", JSON.stringify(c));
-      window.dispatchEvent(new Event('actualizarCarrito'));
-    }
-
-    function mostrarToast(mensaje, tipo = 'success') {
-      const container = document.getElementById('toast-container');
-      if (!container) return;
-      const toast = document.createElement('div');
-      toast.className = `toast ${tipo}`;
-      toast.textContent = mensaje;
-      container.appendChild(toast);
-      setTimeout(() => toast.classList.add('show'), 100);
-      setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 500); }, 2800);
-    }
-
-    let productos = [];
-
-    function agregarAlCarrito(id) {
-      const producto = productos.find(p => p.id === id);
-      if (!producto) { mostrarToast("Producto no encontrado", "error"); return; }
-      if (Number(producto.stock) <= 0) { mostrarToast("Ese producto está agotado", "error"); return; }
-      let carrito = obtenerCarrito();
-      const existe = carrito.find(i => i.id === id);
-      const enCarrito = existe ? existe.cantidad : 0;
-      if (enCarrito + 1 > Number(producto.stock)) {
-        mostrarToast(`Solo quedan ${producto.stock} de "${producto.nombre}"`, "error");
-        return;
-      }
-      if (existe) { existe.cantidad += 1; }
-      else {
-        carrito.push({
-          id: producto.id, nombre: producto.nombre, precio: Number(producto.precio) || 0,
-          imagen: producto.img || '', cantidad: 1,
-        });
-      }
-      guardarCarrito(carrito);
-      mostrarToast(`¡Agregado! 1 × ${producto.nombre}`, "success");
-    }
-    window.agregarAlCarrito = agregarAlCarrito;
-
-    function parseQuery(raw) {
-      const q = (raw || "").trim().replace(/\s+/g, "");
-      if (!q) return null;
-      let m = q.match(/^(\d+\.?\d*)-(\d+\.?\d*)$/);
-      if (m) { const [a, b] = [parseFloat(m[1]), parseFloat(m[2])]; return p => p >= Math.min(a, b) && p <= Math.max(a, b); }
-      m = q.match(/^(<=|>=|<|>)(\d+\.?\d*)$/);
-      if (m) { const v = parseFloat(m[2]); return { "<=": p => p <= v, ">=": p => p >= v, "<": p => p < v, ">": p => p > v }[m[1]]; }
-      m = q.match(/^(\d+\.?\d*)$/);
-      if (m) { const v = parseFloat(m[1]); return p => p <= v; }
-      return null;
-    }
-
-    function productosFiltrados() {
-      const fn = parseQuery(priceInput.value);
-      const cat = categorySelect.value;
-      return productos.filter(p => {
-        const coincideCat = cat === 'all' || p.categoria === cat;
-        const precio = Number(p.precio) || 0;
-        const coincidePrecio = !fn || fn(precio);
-        return coincideCat && coincidePrecio;
-      });
-    }
-
-    function pintarGrid() {
-      const lista = productosFiltrados();
-
-      if (productos.length === 0) {
-        grid.innerHTML = '';
-        estado.style.display = '';
-        estado.textContent = 'Todavía no hay productos publicados. ¡Vuelve pronto!';
-        return;
-      }
-      if (lista.length === 0) {
-        grid.innerHTML = '';
-        estado.style.display = '';
-        estado.textContent = 'No encontramos productos con esos filtros.';
-        return;
-      }
-      estado.style.display = 'none';
-
-      grid.innerHTML = lista.map(p => {
-        const stock = Number(p.stock) || 0;
-        const stockMin = Number(p.stockMin) || 0;
-        const agotado = stock <= 0;
-        const bajo = !agotado && stock <= stockMin;
-        return `
-        <article class="product-card${agotado ? ' agotado' : ''}" data-id="${esc(p.id)}">
-          ${agotado ? '<span class="badge-stock agotado">Agotado</span>' : (bajo ? '<span class="badge-stock bajo">¡Últimas piezas!</span>' : '')}
-          <img src="${esc(urlImagen(p.img))}" alt="${esc(p.nombre)}" loading="lazy" />
-          <div class="product-info">
-            <h3>${esc(p.nombre)}</h3>
-            <p>${esc(p.descripcion || '')}</p>
-          </div>
-          <div class="product-price">$${(Number(p.precio) || 0).toFixed(2)} MXN</div>
-          <button class="ver-detalles" type="button" onclick="window.location.href='Producto.html?id=${encodeURIComponent(p.id)}'">Ver Detalles</button>
-          <button class="add-to-cart" type="button" ${agotado ? 'disabled' : ''} onclick="agregarAlCarrito('${esc(p.id)}')">AGREGAR AL CARRITO</button>
-        </article>`;
-      }).join('');
-
-      grid.querySelectorAll('img').forEach(img => {
-        img.addEventListener('error', () => { img.src = IMG_VACIA; }, { once: true });
-      });
-    }
-
-    priceInput.addEventListener('input', pintarGrid);
-    categorySelect.addEventListener('change', pintarGrid);
-
-    escucharProductosScm(
-      (lista) => { productos = lista; pintarGrid(); },
-      (err) => {
-        estado.style.display = '';
-        estado.textContent = 'No se pudo cargar el catálogo. Revisa tu conexión.';
-        grid.innerHTML = '';
-      }
-    );
-  </script>
+  <script type="module" src="catalogo.js"></script>
 </body>
 </html>

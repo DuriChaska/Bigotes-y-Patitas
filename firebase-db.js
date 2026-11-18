@@ -2660,3 +2660,10 @@ export function agregarFavorito(uid, productoId) {
 export function quitarFavorito(uid, productoId) {
   return deleteDoc(doc(db, "clientes", uid, "favoritos", productoId));
 }
+
+/** Todas las reseñas (para mostrar las huellitas en el catálogo). Lectura pública. */
+export function escucharTodasLasResenas(callback, onError) {
+  return onSnapshot(collection(db, "resenas"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
