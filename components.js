@@ -166,7 +166,13 @@ import('./firebase-db.js').then(({ observarSesionCliente, asegurarPerfilCliente,
     try {
       const perfil = await asegurarPerfilCliente(user);   // crea el perfil si la cuenta no lo tenía
       clienteHeader = perfil || { nombre: user.displayName || user.email };
-    } catch {
+    } catch (err) {
+      if (err && err.code === 'bp/cuenta-dada-de-baja') {
+        // La tienda dio de baja esta cuenta desde el panel: ya se borró y se cerró la sesión.
+        pintarHeaderFooter(null);
+        window.bpNotificar('Tu cuenta fue dada de baja por la tienda y se borró. Puedes registrarte de nuevo cuando quieras.', 'error');
+        return;
+      }
       clienteHeader = { nombre: user.displayName || user.email };   // sin perfil: se usa el nombre de la cuenta
     }
     pintarHeaderFooter(clienteHeader);

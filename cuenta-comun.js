@@ -98,7 +98,8 @@ export async function iniciarCuenta(pagina, idMenu) {
   let perfil = null;
   try {
     perfil = await asegurarPerfilCliente(usuario);   // si la cuenta no tenía perfil, se crea aquí
-  } catch {
+  } catch (err) {
+    if (err?.code === 'bp/cuenta-dada-de-baja') { window.location.href = 'login.html?baja=1'; return null; }
     toast('No se pudieron cargar los datos de tu perfil. Revisa tu conexión.');
   }
   const nombre = perfil?.nombre || usuario.displayName || usuario.email;

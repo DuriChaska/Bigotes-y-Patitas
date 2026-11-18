@@ -21,7 +21,7 @@ const linkLogin = document.getElementById("linkLogin");
 if (linkLogin) linkLogin.href = 'login.html' + (nextParam ? '?next=' + encodeURIComponent(nextParam) : '');
 
 const ERRORES_FIREBASE = {
-  'auth/email-already-in-use': 'Ya existe una cuenta registrada con ese correo. Inicia sesión o usa "¿Olvidaste tu contraseña?".',
+  'auth/email-already-in-use': 'Ya existe una cuenta registrada con ese correo. Inicia sesión o usa "¿Olvidaste tu contraseña?". (Si la tienda dio de baja esa cuenta, inicia sesión una vez con la contraseña anterior y se terminará de borrar.)',
   'auth/invalid-email': 'El correo no es válido.',
   'auth/weak-password': 'La contraseña es demasiado débil (usa al menos 6 caracteres).',
   'auth/network-request-failed': 'Sin conexión a internet. Revisa tu conexión e intenta de nuevo.',

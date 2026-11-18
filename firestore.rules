@@ -118,6 +118,53 @@ service cloud.firestore {
                               && direccionValida(request.resource.data);
         allow delete: if request.auth != null && request.auth.uid == clienteId;
       }
+
+      // Favoritos del cliente (corazón en la página de producto y "Mis favoritos").
+      match /favoritos/{productoId} {
+        allow read, delete: if request.auth != null && request.auth.uid == clienteId;
+        allow create, update: if request.auth != null && request.auth.uid == clienteId
+                              && request.resource.data.keys().hasOnly(['productoId', 'agregadoEn'])
+                              && request.resource.data.productoId == productoId
+                              && request.resource.data.agregadoEn == request.time;
+      }
+    }
+
+    // ---- Reseñas y preguntas de la página de producto (lectura pública).
+    // Reseña: una por cliente y producto; el id es "{productoId}_{uid}". No se edita.
+    match /resenas/{resenaId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['productoId', 'uid', 'nombre', 'huellitas', 'titulo', 'texto', 'fecha'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.productoId is string
+        && resenaId == request.resource.data.productoId + '_' + request.auth.uid
+        && exists(/databases/$(database)/documents/scm_productos/$(request.resource.data.productoId))
+        && request.resource.data.huellitas is int
+        && request.resource.data.huellitas >= 1 && request.resource.data.huellitas <= 5
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 60
+        && request.resource.data.titulo is string && request.resource.data.titulo.size() <= 100
+        && request.resource.data.texto is string && request.resource.data.texto.size() <= 1000
+        && request.resource.data.fecha == request.time;
+      allow delete: if (request.auth != null && resource.data.uid == request.auth.uid) || esStaff() || esSoporte();
+    }
+
+    // Pregunta: la hace un cliente con sesión; solo el personal (ventas o soporte) la responde.
+    match /preguntas/{preguntaId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['productoId', 'uid', 'nombre', 'texto', 'fecha'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.productoId is string
+        && exists(/databases/$(database)/documents/scm_productos/$(request.resource.data.productoId))
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 60
+        && request.resource.data.texto is string && request.resource.data.texto.size() > 0 && request.resource.data.texto.size() <= 500
+        && request.resource.data.fecha == request.time;
+      allow update: if (esStaff() || esSoporte())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['respuesta', 'respondidoPor', 'respondidaEn'])
+        && request.resource.data.respuesta is string && request.resource.data.respuesta.size() > 0 && request.resource.data.respuesta.size() <= 1000
+        && request.resource.data.respondidoPor is string && request.resource.data.respondidoPor.size() <= 60
+        && request.resource.data.respondidaEn == request.time;
+      allow delete: if (request.auth != null && resource.data.uid == request.auth.uid) || esStaff() || esSoporte();
     }
 
     function direccionValida(d) {
@@ -636,6 +683,20 @@ service cloud.firestore {
         );
       allow delete: if request.auth != null && request.auth.token.email is string
                     && id == hashing.sha256(request.auth.token.email.lower()).toHexString();
+    }
+
+    // ---- Bajas de clientes desde el panel (Etapa 4) ----
+    // bajas/{uid}: cuando no está publicada la Cloud Function, el panel marca la cuenta como
+    // "Pendiente" y borra su ficha; la tienda termina de borrar la cuenta cuando esa persona entra.
+    // Ventas/admin la crean (con su propio uid como responsable); el cliente solo la LEE (para saber
+    // que fue dado de baja). Nadie la borra: queda como registro de quién y cuándo dio la baja.
+    match /bajas/{uid} {
+      allow read: if esStaff() || (request.auth != null && request.auth.uid == uid);
+      allow create, update: if esStaff()
+                            && request.resource.data.clienteId == uid
+                            && request.resource.data.estado == 'Pendiente'
+                            && request.resource.data.usuarioId == request.auth.uid;
+      allow delete: if false;
     }
 
     // Cualquier otra colección queda bloqueada por defecto.

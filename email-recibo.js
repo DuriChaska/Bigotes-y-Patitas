@@ -42,7 +42,7 @@ export const EMAILJS_CONFIG = {
   publicKey:  "NVwUghzHqOM-2CaC9",
   serviceId:  "service_5i0wsc6",
   templateId: "template_jl19tgn",
-  templateBienvenida: "template_dxc4pol",          // ← pega aquí el Template ID del correo de bienvenida
+  templateBienvenida: "template_dxc4pol",   // Template ID del correo de bienvenida
 };
 
 const URL_EMAILJS = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";

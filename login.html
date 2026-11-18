@@ -49,6 +49,7 @@
       registrado: '✅ ¡Tu cuenta se creó! Te enviamos un correo de bienvenida. Inicia sesión con tu correo y contraseña.',
       restablecida: '✅ Tu contraseña se cambió. Inicia sesión con la nueva.',
       verificado: '✅ Tu correo quedó confirmado. Ya puedes iniciar sesión.',
+      baja: 'Tu cuenta fue dada de baja por la tienda y se borró. Si quieres, puedes registrarte de nuevo con el mismo correo.',
     };
     const llegada = Object.keys(AVISOS_LLEGADA).find(k => parametros.get(k) === '1');
     if (llegada) {
@@ -154,6 +155,13 @@
         window.location.href = next || 'Interfaz Cliente - Perfil.html';
       } catch (err) {
         if (err.code === 'bp/cuenta-bloqueada') { mostrarBloqueo(err.restanteMs); return; }
+        if (err.code === 'bp/cuenta-dada-de-baja') {
+          error.textContent = err.message;
+          error.style.display = 'block';
+          boton.disabled = false;
+          boton.textContent = 'Entrar';
+          return;
+        }
         let texto = ERRORES_FIREBASE[err.code] || 'No se pudo iniciar sesión. Revisa tu conexión.';
         if (typeof err.intentosRestantes === 'number') {
           texto += err.intentosRestantes === 1

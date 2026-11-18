@@ -402,7 +402,8 @@
       let perfil = null;
       try {
         perfil = await asegurarPerfilCliente(usuario);
-      } catch {
+      } catch (err) {
+        if (err.code === 'bp/cuenta-dada-de-baja') { window.location.href = 'login.html?baja=1'; return; }
         (window.bpNotificar || (() => {}))('No se pudieron cargar los datos de tu perfil. Revisa tu conexión.', 'error');
       }
       pintarPerfil(perfil, usuario);

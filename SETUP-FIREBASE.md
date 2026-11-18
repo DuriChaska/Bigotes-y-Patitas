@@ -364,3 +364,37 @@ la de Firebase. Así el mensaje sale en español y explica bien si un enlace ya 
 
 **3. Vuelve a publicar `firestore.rules`.** Son necesarias para el bloqueo por intentos (`intentos_login`)
 y para la foto de perfil (`fotos_perfil`).
+
+### Etapa 4 — Eliminar clientes por completo (Cloud Function)
+
+En el panel, **Clientes → 🗑 Eliminar** ahora intenta borrar también la **cuenta de acceso** del cliente.
+Una página web no puede borrar la cuenta de otra persona (solo un servidor puede), así que funciona de
+dos formas:
+
+| ¿Está publicada la Cloud Function? | Qué pasa al eliminar |
+|---|---|
+| **Sí** (plan Blaze) | Se borra **al instante**: cuenta de acceso, ficha, direcciones, carrito y foto. El correo queda libre. |
+| **No** (plan gratis Spark) | **Baja**: se borra la ficha y la cuenta queda bloqueada. Su cuenta de acceso se borra sola en cuanto la persona intente entrar o abra la tienda; desde ahí el correo queda libre. |
+
+En los dos casos se conservan sus ventas, pagos, tickets y movimientos del monedero, porque son el historial
+del negocio.
+
+**Para publicar la Cloud Function (borrado inmediato):**
+
+1. Consola de Firebase → engrane ⚙️ → **Uso y facturación → Detalles y configuración → Modificar plan → Blaze**.
+   - Pide una tarjeta, pero tiene una cuota gratis mensual muy grande; para un proyecto escolar normalmente
+     el cobro es **$0**.
+   - **Recomendación:** en Google Cloud → Facturación → **Presupuestos y alertas**, crea un presupuesto de $1
+     para que te avise si algo llegara a costar.
+2. En PowerShell, dentro de la carpeta del proyecto. `npm install` necesita una red que no bloquee npm; si no,
+   usa el internet del celular:
+   ```powershell
+   cd functions
+   npm install
+   cd ..
+   firebase deploy --only functions
+   ```
+3. Listo. Desde ese momento, eliminar desde el panel borra al instante (el aviso dice "se eliminó por completo").
+
+Sin Blaze no hay que hacer nada más: el panel usa la **baja** automáticamente. Para borrar una cuenta al
+instante sin Blaze, también se puede hacer a mano en **Authentication → Usuarios → ⋮ → Borrar cuenta**.

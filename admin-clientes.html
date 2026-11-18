@@ -144,7 +144,7 @@
 
   <script src="admin-components.js"></script>
   <script type="module">
-    import { escucharClientes, crearCliente, actualizarCliente, actualizarEtapaCliente, eliminarCliente as eliminarClienteDB } from './firebase-db.js';
+    import { escucharClientes, crearCliente, actualizarCliente, actualizarEtapaCliente, eliminarClienteCompleto } from './firebase-db.js';
 
     let clientes = [];
     const claseEtapa  = { "Activo": "ok", "Frecuente": "warn", "Prospecto": "info", "Inactivo": "muted" };
@@ -218,10 +218,14 @@
     async function eliminarCliente(id) {
       const c = clientes.find(x => x.id === id);
       if (!c) return;
-      if (!(await bpConfirmar(`¿Eliminar a ${c.nombre} del listado de clientes? Esta acción no se puede deshacer.`, { titulo: 'Eliminar cliente', aceptar: 'Eliminar', peligro: true }))) return;
+      if (!(await bpConfirmar(`¿Eliminar a ${c.nombre}?\n\nSe borran su ficha del CRM, su cuenta para iniciar sesión en la tienda, sus direcciones, su carrito y su foto. Sus ventas, pagos y tickets se conservan como historial.\n\nEsta acción no se puede deshacer.`, { titulo: 'Eliminar cliente', aceptar: 'Eliminar cliente', peligro: true }))) return;
       try {
-        await eliminarClienteDB(id);
-        mostrarToast(`Cliente ${c.nombre} eliminado`);
+        const r = await eliminarClienteCompleto(c, window.BP_SESION);
+        if (r.modo === 'completo') {
+          mostrarToast(`${c.nombre} se eliminó por completo (también su cuenta de acceso).`);
+        } else {
+          await bpAlerta(`${c.nombre} se eliminó del CRM y su cuenta quedó dada de baja: ya no puede usar la tienda.\n\nSu cuenta de acceso se terminará de borrar en cuanto intente entrar. Para borrarla al instante hay que publicar la Cloud Function (ver SETUP-FIREBASE.md) o borrarla en Firebase → Authentication → Usuarios.`, { tipo: 'aviso', titulo: 'Cliente dado de baja' });
+        }
       } catch (err) {
         mostrarToast('No se pudo eliminar: ' + (err.message || 'revisa tu conexión con Firebase.'));
       }

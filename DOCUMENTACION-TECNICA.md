@@ -1017,3 +1017,41 @@ creadas cuando el registro estaba roto. En "Mis datos" salía el error "No docum
 
 Ahora `asegurarPerfilCliente()` crea el perfil la primera vez que la persona entra a la tienda, con etapa
 "Prospecto", estado "Activo" y fecha de hoy. Así también sus compras ya llegan al CRM.
+
+### 14.5 Eliminar un cliente desde el panel
+
+Antes, **Eliminar** en Clientes solo borraba la ficha del CRM: la persona podía seguir entrando a la tienda
+y su correo quedaba "ocupado" para siempre. Ahora `eliminarClienteCompleto()` (`firebase-db.js`) hace esto:
+
+1. **Si la Cloud Function `eliminarClienteCompleto` está publicada** (`functions/index.js`, plan Blaze):
+   - Con el Admin SDK borra al instante la cuenta de Authentication, `clientes/{uid}` con sus direcciones,
+     `carritos/{uid}` con su detalle y `fotos_perfil/{uid}`.
+   - Deja `bajas/{uid}` con `estado: "Completada"`.
+   - Solo la pueden usar administrador y vendedor. No borra cuentas del personal (eso es en Usuarios) ni la
+     propia.
+2. **Si no está publicada:** guarda `bajas/{uid}` con `estado: "Pendiente"` y borra la ficha del CRM.
+   - Cuando esa persona intenta iniciar sesión, o abre la tienda con su sesión todavía abierta, la página
+     ejecuta `completarBajaSiCorresponde()`: borra sus direcciones, su carrito y su foto, y luego **su propia
+     cuenta de acceso** (cada usuario sí puede borrar la suya).
+   - Después le avisa que fue dada de baja y que puede registrarse de nuevo.
+   - `asegurarPerfilCliente()` revisa la baja **antes** de crear un perfil, para no "revivir" a un cliente
+     eliminado.
+
+En los dos casos **se conservan** `ventas`, `pagos`, `tickets` y `monedero_movimientos`: son registros del
+negocio, no datos de la cuenta.
+
+```
+bajas/{uid}   ← registro de cada eliminación (nadie lo puede borrar)
+  clienteId, nombre, correo
+  estado: "Pendiente" (baja) | "Completada" (Cloud Function)
+  metodo, usuarioId, usuarioNombre (quién lo eliminó), fecha
+```
+
+## 15. Página de producto, reseñas, preguntas y favoritos
+
+- **Producto.html / producto.js**: galería con varias imágenes (campo `imagenes` del producto; si no existe se usa `img`), visor ampliado, guía de tallas y calculadora por largo de espalda, talla (otros productos con el mismo nombre en distinta talla aparecen como opciones), cantidad, *Agregar al carrito*, *Comprar ahora* (agrega y va a `Checkout.html`), favoritos, compartir (WhatsApp, Facebook, X, copiar enlace; en celular usa el menú nativo), disponibilidad para envío a domicilio y recoger en tienda, descripción y beneficios, y barra fija inferior al bajar.
+- **Campos nuevos en `scm_productos`** (todos opcionales): `imagenes: string[]`, `marca`, `talla`, `beneficios: string[]`, `paraQuien` ('Ellas' | 'Ellos' | 'Ambos'), `destacado: bool`. Se editan en SCM → Productos.
+- **`resenas/{productoId}_{uid}`** `{ productoId, uid, nombre, huellitas 1-5, titulo, texto, fecha }`: una por cliente y producto (el id lo garantiza). Lectura pública; la crea el cliente con sesión; la borra su autor o el personal.
+- **`preguntas/{id}`** `{ productoId, uid, nombre, texto, fecha, respuesta?, respondidoPor?, respondidaEn? }`: la crea un cliente con sesión; solo administrador, vendedor o soporte agregan la respuesta (desde la misma página del producto).
+- **`clientes/{uid}/favoritos/{productoId}`** `{ productoId, agregadoEn }`: solo el dueño. Se ven en **Mi cuenta → Mis favoritos** (`mis-favoritos.html`). Se borran con la baja del cliente.
+- **Colección Otoño-Invierno**: `COLECCION_OTONO` en `scm-config.js` (fotos en `Imagenes/Productos/`). Botón *Agregar colección Otoño-Invierno* en SCM → Productos; solo crea las prendas que falten (compara por nombre).

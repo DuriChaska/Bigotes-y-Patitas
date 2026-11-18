@@ -44,7 +44,7 @@
 //    carritos/{uid}/detalle/{productoId} { productoId, nombre, cantidad, precioUnitario, imagen, agregadoEn }
 // ============================================
 
-import { auth, db, firebaseConfig } from "./firebase-config.js";
+import { auth, db, firebaseConfig, firebaseApp } from "./firebase-config.js";
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   signInWithEmailAndPassword,
@@ -63,6 +63,7 @@ import {
   verifyPasswordResetCode,
   confirmPasswordReset,
   applyActionCode,
+  deleteUser,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   collection, doc,
@@ -217,15 +218,21 @@ export function eliminarCliente(id) {
 export async function registrarCliente({ nombre, correo, contrasena, telefono, mascota }) {
   const credencial = await createUserWithEmailAndPassword(auth, correo, contrasena);
   await updateProfile(credencial.user, { displayName: nombre });
-  await setDoc(doc(db, "clientes", credencial.user.uid), {
-    nombre, correo,
-    telefono: telefono || "",
-    mascota: mascota || "Sin especificar",
-    etapa: "Prospecto",
-    estado: "Activo",
-    fechaRegistro: new Date().toLocaleDateString('es-MX'),
-    creadoEn: serverTimestamp(),
-  });
+  const refCliente = doc(db, "clientes", credencial.user.uid);
+  if ((await getDoc(refCliente)).exists()) {
+    // Ya la creó otra parte de la página: se completan solo los datos que el cliente sí puede cambiar.
+    await updateDoc(refCliente, { nombre, telefono: telefono || "", mascota: mascota || "Sin especificar", actualizadoEn: serverTimestamp() });
+  } else {
+    await setDoc(refCliente, {
+      nombre, correo,
+      telefono: telefono || "",
+      mascota: mascota || "Sin especificar",
+      etapa: "Prospecto",
+      estado: "Activo",
+      fechaRegistro: new Date().toLocaleDateString('es-MX'),
+      creadoEn: serverTimestamp(),
+    });
+  }
   // Correo de bienvenida de Firebase ("confirma tu correo"): siempre funciona, sin configurar nada.
   // Si falla (sin internet), la cuenta ya quedó creada igual.
   try { await enviarCorreoConEnlace((ajustes) => sendEmailVerification(credencial.user, ajustes), "login.html?verificado=1"); } catch { /* opcional */ }
@@ -255,8 +262,15 @@ async function enviarCorreoConEnlace(enviar, paginaRegreso) {
   }
 }
 
-export function loginCliente(correo, contrasena) {
-  return iniciarSesionProtegida(correo, contrasena);
+export async function loginCliente(correo, contrasena) {
+  const cred = await iniciarSesionProtegida(correo, contrasena);
+  // Si la tienda dio de baja esta cuenta, aquí se termina de borrar (ver completarBajaSiCorresponde).
+  if (await completarBajaSiCorresponde(cred.user)) {
+    const err = new Error("Esta cuenta fue dada de baja por la tienda y ya se borró. Si quieres, puedes registrarte de nuevo con el mismo correo.");
+    err.code = "bp/cuenta-dada-de-baja";
+    throw err;
+  }
+  return cred;
 }
 
 export function logoutCliente() {
@@ -2128,6 +2142,17 @@ export async function eliminarDireccion(uid, id, todas = []) {
  */
 export async function asegurarPerfilCliente(user) {
   if (!user) return null;
+  // Mientras registro.js está creando la cuenta, el perfil lo guarda registrarCliente() con todos
+  // sus datos: si aquí también se creara, los dos chocarían y Firebase rechazaría el segundo.
+  let registrando = false;
+  try { registrando = sessionStorage.getItem("bpRegistrando") === "1"; } catch { /* sin almacenamiento */ }
+  if (registrando) return null;
+  // Una cuenta dada de baja desde el panel NO se vuelve a crear: se termina de borrar.
+  if (await completarBajaSiCorresponde(user)) {
+    const err = new Error("Tu cuenta fue dada de baja por la tienda.");
+    err.code = "bp/cuenta-dada-de-baja";
+    throw err;
+  }
   const ref = doc(db, "clientes", user.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return { id: snap.id, ...snap.data() };
@@ -2438,4 +2463,192 @@ async function iniciarSesionProtegida(correo, contrasena) {
     }
     throw err;
   }
+}
+
+
+// =====================================================================
+// ---------- Etapa 4 · Eliminar un cliente por completo (panel) ----------
+// =====================================================================
+// Una página web NO puede borrar la cuenta de acceso (Authentication) de otra persona: solo
+// un servidor con el Admin SDK. Por eso hay dos caminos y el panel usa el que esté disponible:
+//
+//  1) Cloud Function "eliminarClienteCompleto" (carpeta functions/, requiere plan Blaze):
+//     borra AL INSTANTE la cuenta de acceso, la ficha del CRM con sus direcciones, el carrito
+//     y la foto. El correo queda libre para registrarse otra vez.
+//  2) Si la función no está publicada: BAJA. Se borra la ficha del CRM y se guarda
+//     bajas/{uid} con estado "Pendiente". La cuenta ya no puede usar la tienda: en cuanto
+//     intente entrar (o abra la tienda con su sesión), la propia página borra sus datos y su
+//     cuenta de acceso (cada quien sí puede borrar SU cuenta) y le avisa.
+//
+// En los dos casos se CONSERVAN sus ventas, pagos, tickets y movimientos del monedero:
+// son registros del negocio (contabilidad e historial), no datos de la cuenta.
+
+/** Panel: elimina un cliente. Devuelve { modo: "completo" | "baja", cuentaBorrada }. */
+export async function eliminarClienteCompleto(cliente, usuario) {
+  try {
+    const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js");
+    const funcion = httpsCallable(getFunctions(firebaseApp, "us-central1"), "eliminarClienteCompleto", { timeout: 20000 });
+    const r = await funcion({ uid: cliente.id });
+    return { modo: "completo", cuentaBorrada: !!(r.data && r.data.cuentaBorrada) };
+  } catch (err) {
+    const codigo = String(err.code || "").replace("functions/", "");
+    // Errores "de verdad" de la función (sin permiso, cuenta del personal…): se informan tal cual.
+    if (["permission-denied", "unauthenticated", "invalid-argument", "failed-precondition"].includes(codigo)) {
+      throw new Error(err.message || "No se pudo eliminar el cliente.");
+    }
+    // Cualquier otro (función no publicada, plan sin Blaze, sin conexión con la función): se usa la baja.
+  }
+  const lote = writeBatch(db);
+  lote.set(doc(db, "bajas", cliente.id), {
+    clienteId: cliente.id,
+    nombre: String(cliente.nombre || "").slice(0, 120),
+    correo: String(cliente.correo || "").slice(0, 120),
+    estado: "Pendiente",
+    usuarioId: usuario?.uid || "",
+    usuarioNombre: usuario?.nombre || usuario?.correo || "",
+    fecha: serverTimestamp(),
+  });
+  lote.delete(doc(db, "clientes", cliente.id));
+  await lote.commit();
+  return { modo: "baja", cuentaBorrada: false };
+}
+
+/**
+ * Si el cliente con sesión fue dado de baja desde el panel: borra sus datos de cuenta y su
+ * cuenta de acceso (o, si Firebase pide volver a iniciar sesión para eso, cierra la sesión y
+ * se completa cuando vuelva a entrar). Devuelve true si la cuenta estaba dada de baja.
+ */
+export async function completarBajaSiCorresponde(user) {
+  if (!user) return false;
+  let snap;
+  try { snap = await getDoc(doc(db, "bajas", user.uid)); } catch { return false; }
+  if (!snap.exists() || snap.data().estado !== "Pendiente") return false;
+
+  const uid = user.uid;
+  const borrar = (ref) => deleteDoc(ref).catch(() => {});
+  try { for (const d of (await getDocs(collection(db, "clientes", uid, "direcciones"))).docs) await borrar(d.ref); } catch { /* sin datos */ }
+  try { for (const d of (await getDocs(collection(db, "clientes", uid, "favoritos"))).docs) await borrar(d.ref); } catch { /* sin datos */ }
+  try { for (const d of (await getDocs(collection(db, "carritos", uid, "detalle"))).docs) await borrar(d.ref); } catch { /* sin datos */ }
+  await borrar(doc(db, "carritos", uid));
+  await borrar(doc(db, "fotos_perfil", uid));
+  try { localStorage.removeItem("carrito"); localStorage.removeItem("carritoDueno"); } catch { /* sin almacenamiento */ }
+  try {
+    await deleteUser(user);            // cada quien SÍ puede borrar su propia cuenta de acceso
+  } catch {
+    await signOut(auth).catch(() => {});   // p. ej. "requires-recent-login": se completa en su próximo inicio de sesión
+  }
+  return true;
+}
+
+// ============================================
+//  Página de producto: reseñas, preguntas y favoritos
+//
+//    resenas/{productoId}_{uid}  { productoId, uid, nombre, huellitas (1-5), titulo, texto, fecha }
+//        una reseña por cliente y producto (el id lo garantiza)
+//    preguntas/{id}              { productoId, uid, nombre, texto, fecha,
+//                                  respuesta?, respondidoPor?, respondidaEn? }
+//    clientes/{uid}/favoritos/{productoId} { productoId, agregadoEn }
+// ============================================
+
+/** Agrega al catálogo los productos de la lista que todavía no existen (se comparan por nombre). */
+export async function agregarProductosNuevosScm(lista) {
+  const existentes = new Set((await getDocs(scmProductosRef)).docs
+    .map(d => String(d.data().nombre || '').trim().toLowerCase()));
+  let creados = 0;
+  for (const p of lista) {
+    if (existentes.has(p.nombre.trim().toLowerCase())) continue;
+    await addDoc(scmProductosRef, { ...p, creadoEn: serverTimestamp() });
+    creados++;
+  }
+  return creados;
+}
+
+export function escucharResenas(productoId, callback, onError) {
+  const q = query(collection(db, "resenas"), where("productoId", "==", productoId));
+  return onSnapshot(q, (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.fecha) - milisDe(a.fecha));
+    callback(lista);
+  }, onError);
+}
+
+export async function guardarResena(productoId, { nombre, huellitas, titulo, texto }) {
+  const user = auth.currentUser;
+  if (!user) { const e = new Error("Inicia sesión para escribir una reseña."); e.code = "bp/sin-sesion"; throw e; }
+  const ref = doc(db, "resenas", `${productoId}_${user.uid}`);
+  if ((await getDoc(ref)).exists()) {
+    const e = new Error("Ya escribiste una reseña de este producto."); e.code = "bp/resena-repetida"; throw e;
+  }
+  await setDoc(ref, {
+    productoId, uid: user.uid,
+    nombre: String(nombre || 'Cliente').trim().slice(0, 60) || 'Cliente',
+    huellitas: Math.max(1, Math.min(5, Math.round(Number(huellitas) || 0))),
+    titulo: String(titulo || '').trim().slice(0, 100),
+    texto: String(texto || '').trim().slice(0, 1000),
+    fecha: serverTimestamp(),
+  });
+}
+
+export function eliminarResena(id) {
+  return deleteDoc(doc(db, "resenas", id));
+}
+
+export function escucharPreguntas(productoId, callback, onError) {
+  const q = query(collection(db, "preguntas"), where("productoId", "==", productoId));
+  return onSnapshot(q, (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.fecha) - milisDe(a.fecha));
+    callback(lista);
+  }, onError);
+}
+
+export async function crearPregunta(productoId, { nombre, texto }) {
+  const user = auth.currentUser;
+  if (!user) { const e = new Error("Inicia sesión para hacer una pregunta."); e.code = "bp/sin-sesion"; throw e; }
+  return addDoc(collection(db, "preguntas"), {
+    productoId, uid: user.uid,
+    nombre: String(nombre || 'Cliente').trim().slice(0, 60) || 'Cliente',
+    texto: String(texto || '').trim().slice(0, 500),
+    fecha: serverTimestamp(),
+  });
+}
+
+export async function responderPregunta(id, respuesta, nombreQuienResponde) {
+  return updateDoc(doc(db, "preguntas", id), {
+    respuesta: String(respuesta || '').trim().slice(0, 1000),
+    respondidoPor: String(nombreQuienResponde || 'Bigotes y Patitas').trim().slice(0, 60),
+    respondidaEn: serverTimestamp(),
+  });
+}
+
+export function eliminarPregunta(id) {
+  return deleteDoc(doc(db, "preguntas", id));
+}
+
+/** Rol del panel de la cuenta actual ('' si es cliente o no tiene perfil en "usuarios"). */
+export async function rolDelPanelActual() {
+  const user = auth.currentUser;
+  if (!user) return '';
+  try {
+    const snap = await getDoc(doc(db, "usuarios", user.uid));
+    return snap.exists() ? String(snap.data().rol || '') : '';
+  } catch {
+    return '';   // un cliente no puede leer "usuarios": no es personal
+  }
+}
+
+export function escucharFavoritos(uid, callback, onError) {
+  return onSnapshot(collection(db, "clientes", uid, "favoritos"), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.agregadoEn) - milisDe(a.agregadoEn));
+    callback(lista);
+  }, onError);
+}
+
+export function agregarFavorito(uid, productoId) {
+  return setDoc(doc(db, "clientes", uid, "favoritos", productoId), { productoId, agregadoEn: serverTimestamp() });
+}
+
+export function quitarFavorito(uid, productoId) {
+  return deleteDoc(doc(db, "clientes", uid, "favoritos", productoId));
 }

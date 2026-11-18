@@ -11,19 +11,82 @@
   <div id="header"></div>
   <div id="toast-container"></div>
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="left" style="background-color:#f6e4c9; color:#b8603a;">
-      <div class="icon">
-        <img src="Imagenes/Mascotas/logo-huella.svg" alt="Icono" style="width:40px; height:40px;" />
-      </div>
-      <p>Ropa y accesorios pensados para tu mejor amigo</p>
-      <h2>Su estilo,<br>tu cariño,<br>su comodidad.</h2>
-      <button type="button" onclick="window.location.href='shop.html'">Ver productos</button>
+  <!-- HERO (carrusel) -->
+  <section class="hero-carrusel" aria-roledescription="carrusel" aria-label="Novedades de Bigotes y Patitas">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="hc-huella" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="44" rx="15" ry="13"/>
+        <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+        <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+        <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+        <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+      </symbol>
+    </svg>
+
+    <!-- manchas de fondo -->
+    <svg preserveAspectRatio="none" class="hc-mancha hc-mancha-1" viewBox="0 0 200 400" aria-hidden="true"><path d="M0 0 H130 C150 30 140 70 105 95 C70 120 80 170 85 210 C92 260 60 300 0 330 Z"/></svg>
+    <svg preserveAspectRatio="none" class="hc-mancha hc-mancha-2" viewBox="0 0 300 260" aria-hidden="true"><path d="M0 0 C40 10 50 90 110 130 C170 170 230 170 270 220 L300 260 H0 Z"/></svg>
+    <svg preserveAspectRatio="none" class="hc-mancha hc-mancha-3" viewBox="0 0 160 700" aria-hidden="true"><path d="M160 0 H110 C95 40 120 80 110 120 C95 190 40 230 40 300 C40 380 115 420 110 500 C105 570 60 620 70 700 H160 Z"/></svg>
+
+    <!-- huellitas -->
+    <div class="hc-huellas" aria-hidden="true">
+      <svg class="hc-huella" style="top:9%;left:12%;width:30px" aria-hidden="true"><use href="#hc-huella"/></svg>
+      <svg class="hc-huella" style="top:13%;left:29%;width:40px" aria-hidden="true"><use href="#hc-huella"/></svg>
+      <svg class="hc-huella" style="top:57%;left:5%;width:50px" aria-hidden="true"><use href="#hc-huella"/></svg>
+      <svg class="hc-huella" style="top:79%;left:38%;width:38px" aria-hidden="true"><use href="#hc-huella"/></svg>
+      <svg class="hc-huella" style="top:84%;left:58%;width:44px" aria-hidden="true"><use href="#hc-huella"/></svg>
+      <svg class="hc-huella" style="top:12%;right:12%;width:50px" aria-hidden="true"><use href="#hc-huella"/></svg>
+      <svg class="hc-huella" style="top:47%;left:56%;width:24px" aria-hidden="true"><use href="#hc-huella"/></svg>
     </div>
-    <div class="right">
-      <img src="Imagenes/Mascotas/hero-perro-gato.svg" alt="Perrito y gatito con ropa Estampa-tla Pets"
-        style="width:100%; height:100%; object-fit:cover;" />
+
+    <div class="hc-pista">
+      <article class="hc-slide activo" role="group" aria-roledescription="diapositiva" aria-label="1 de 4">
+        <div class="hc-texto">
+          <p class="hc-sub">Nueva Colección Otoño-Invierno Para Él</p>
+          <h2 class="hc-titulo">Comodidad Y Estilo<br>Para Tu Perrhijo</h2>
+          <a class="hc-boton" href="shop.html?categoria=Perros">Compra Ahora
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.3 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.7" fill="currentColor"/><circle cx="17" cy="19.5" r="1.7" fill="currentColor"/></svg>
+          </a>
+        </div>
+        <div class="hc-imagen"><img src="Imagenes/Mascotas/hero-perro-sudadera.svg" alt="Perrito con sudadera tie-dye" /></div>
+      </article>
+      <article class="hc-slide" role="group" aria-roledescription="diapositiva" aria-label="2 de 4" aria-hidden="true">
+        <div class="hc-texto">
+          <p class="hc-sub">Abriguitos Para Los Michis</p>
+          <h2 class="hc-titulo">Suave, Calientito<br>Y Muy Consentido</h2>
+          <a class="hc-boton" href="shop.html?categoria=Gatos" tabindex="-1">Ver Para Gatos
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.3 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.7" fill="currentColor"/><circle cx="17" cy="19.5" r="1.7" fill="currentColor"/></svg>
+          </a>
+        </div>
+        <div class="hc-imagen"><img src="Imagenes/Mascotas/hero-gato-sueter.svg" alt="Gatito con suéter tejido" /></div>
+      </article>
+      <article class="hc-slide" role="group" aria-roledescription="diapositiva" aria-label="3 de 4" aria-hidden="true">
+        <div class="hc-texto">
+          <p class="hc-sub">Ediciones Limitadas</p>
+          <h2 class="hc-titulo">Piezas Únicas Para<br>Tu Mejor Amigo</h2>
+          <a class="hc-boton" href="shop.html?categoria=Ediciones%20limitadas" tabindex="-1">Descúbrelas
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.3 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.7" fill="currentColor"/><circle cx="17" cy="19.5" r="1.7" fill="currentColor"/></svg>
+          </a>
+        </div>
+        <div class="hc-imagen"><img src="Imagenes/Mascotas/hero-duo.svg" alt="Perrito y gatito con ropa de Bigotes y Patitas" /></div>
+      </article>
+      <article class="hc-slide" role="group" aria-roledescription="diapositiva" aria-label="4 de 4" aria-hidden="true">
+        <div class="hc-texto">
+          <p class="hc-sub">Promos De Temporada</p>
+          <h2 class="hc-titulo">Hasta 30% En La<br>Temporada Pasada</h2>
+          <a class="hc-boton" href="promos.html" tabindex="-1">Ver Promos
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.3 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.7" fill="currentColor"/><circle cx="17" cy="19.5" r="1.7" fill="currentColor"/></svg>
+          </a>
+        </div>
+        <div class="hc-imagen"><img src="Imagenes/Mascotas/hero-perro-sudadera.svg" alt="Perrito con sudadera tie-dye" /></div>
+      </article>
+    </div>
+
+    <div class="hc-puntos">
+      <button type="button" class="hc-punto activo" aria-label="Ir a la diapositiva 1" aria-current="true"></button>
+      <button type="button" class="hc-punto" aria-label="Ir a la diapositiva 2"></button>
+      <button type="button" class="hc-punto" aria-label="Ir a la diapositiva 3"></button>
+      <button type="button" class="hc-punto" aria-label="Ir a la diapositiva 4"></button>
     </div>
   </section>
 
@@ -60,11 +123,37 @@
     </div>
   </section>
 
-  <!-- DISEÑOS POPULARES -->
-  <section class="popular-designs">
-    <h2>DISEÑOS POPULARES</h2>
-    <div id="estadoPopulares" style="text-align:center; padding:20px 0; color:var(--gray);">Cargando…</div>
-    <div class="products-grid" id="gridPopulares"></div>
+  <!-- DISEÑOS POPULARES: productos destacados para ellas y para ellos -->
+  <section class="destacados dest-ellas" aria-labelledby="titEllas">
+    <p class="dest-antetitulo">Productos destacados</p>
+    <svg class="dest-huella" aria-hidden="true"><use href="#hc-huella"/></svg>
+    <h2 class="dest-titulo" id="titEllas">Para ellas</h2>
+    <div class="dest-carrusel">
+      <button type="button" class="dest-flecha dest-izq" aria-label="Ver anteriores" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="dest-pista" id="pistaEllas" tabindex="0" aria-label="Productos para ellas"></div>
+      <button type="button" class="dest-flecha dest-der" aria-label="Ver más" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <p class="dest-estado" id="estadoEllas">Cargando…</p>
+  </section>
+
+  <section class="destacados dest-ellos" aria-labelledby="titEllos">
+    <p class="dest-antetitulo">Productos destacados</p>
+    <svg class="dest-huella" aria-hidden="true"><use href="#hc-huella"/></svg>
+    <h2 class="dest-titulo" id="titEllos">Para ellos</h2>
+    <div class="dest-carrusel">
+      <button type="button" class="dest-flecha dest-izq" aria-label="Ver anteriores" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="dest-pista" id="pistaEllos" tabindex="0" aria-label="Productos para ellos"></div>
+      <button type="button" class="dest-flecha dest-der" aria-label="Ver más" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <p class="dest-estado" id="estadoEllos">Cargando…</p>
   </section>
 
   <!-- INFO PERSONALIZACIÓN -->
@@ -111,6 +200,7 @@
   <div id="footer"></div>
 
   <script src="components.js"></script>
+  <script src="hero-carrusel.js"></script>
   <script type="module">
     import { escucharProductosScm } from './firebase-db.js';
 
@@ -205,16 +295,115 @@
       });
     }
 
+
+    // ─── Productos destacados: "Para ellas" y "Para ellos" ───
+    // En el panel (SCM → Productos) cada producto puede marcarse "Para ellas", "Para ellos"
+    // o "Para ambos", y "Mostrar en Productos destacados". Los destacados salen primero.
+    // Los de "ambos" se reparten entre las dos filas para que no se repitan.
+    const MAX_DESTACADOS = 8;
+    const PALABRAS_ELLAS = /\b(gata|gatita|perrita|vestido|falda|moño|tutú|tutu)\b/i;
+
+    function paraQuien(p) {
+      if (p.paraQuien === 'Ellas' || p.paraQuien === 'Ellos' || p.paraQuien === 'Ambos') return p.paraQuien;
+      // Productos viejos que aún no tienen el dato: se adivina por el nombre
+      return PALABRAS_ELLAS.test(String(p.nombre || '')) ? 'Ellas' : 'Ambos';
+    }
+
+    // Las imágenes de ejemplo traen un cuadro de color; aquí se usan sin fondo.
+    function imagenDestacada(u) {
+      const url = urlImagen(u);
+      const m = /^Imagenes\/Mascotas\/(prod-[\w-]+\.svg)$/.exec(url);
+      return m ? `Imagenes/Mascotas/sinfondo/${m[1]}` : url;
+    }
+
+    function itemDestacado(p) {
+      const agotado = (Number(p.stock) || 0) <= 0;
+      const url = `Producto.html?id=${encodeURIComponent(p.id)}`;
+      return `
+        <article class="dest-item${agotado ? ' agotado' : ''}">
+          <a class="dest-foto" href="${url}" tabindex="-1" aria-hidden="true">
+            ${agotado ? '<span class="dest-agotado">Agotado</span>' : ''}
+            <img src="${esc(imagenDestacada(p.img))}" data-original="${esc(urlImagen(p.img))}" alt="" loading="lazy" />
+          </a>
+          <h3 class="dest-nombre"><a href="${url}">${esc(p.nombre)}</a></h3>
+          <p class="dest-precio">$${(Number(p.precio) || 0).toFixed(2)}</p>
+          <button type="button" class="dest-agregar" ${agotado ? 'disabled' : ''} onclick="agregarAlCarrito('${esc(p.id)}')">
+            ${agotado ? 'Agotado' : 'Agregar al carrito'}
+          </button>
+        </article>`;
+    }
+
+    function pintarDestacados(lista) {
+      const ordenados = [...lista].sort((a, b) =>
+        (b.destacado === true) - (a.destacado === true) ||
+        ((Number(b.stock) || 0) > 0) - ((Number(a.stock) || 0) > 0));
+      const filas = { Ellas: [], Ellos: [] };
+      for (const p of ordenados) {
+        const q = paraQuien(p);
+        if (q === 'Ambos') {
+          const destino = filas.Ellas.length <= filas.Ellos.length ? 'Ellas' : 'Ellos';
+          const otro = destino === 'Ellas' ? 'Ellos' : 'Ellas';
+          if (filas[destino].length < MAX_DESTACADOS) filas[destino].push(p);
+          else if (filas[otro].length < MAX_DESTACADOS) filas[otro].push(p);
+        } else if (filas[q].length < MAX_DESTACADOS) {
+          filas[q].push(p);
+        }
+      }
+      for (const clave of ['Ellas', 'Ellos']) {
+        const pista = document.getElementById('pista' + clave);
+        const estado = document.getElementById('estado' + clave);
+        const items = filas[clave];
+        if (items.length === 0) {
+          pista.innerHTML = '';
+          estado.style.display = '';
+          estado.textContent = 'Pronto tendremos productos aquí.';
+        } else {
+          estado.style.display = 'none';
+          pista.innerHTML = items.map(itemDestacado).join('');
+          pista.querySelectorAll('img').forEach(img => {
+            img.addEventListener('error', () => {
+              const original = img.dataset.original;
+              if (original && img.getAttribute('src') !== original) img.src = original;
+              else img.src = IMG_VACIA;
+            });
+          });
+        }
+        actualizarFlechas(pista);
+      }
+    }
+
+    function actualizarFlechas(pista) {
+      const caja = pista.parentElement;
+      const izq = caja.querySelector('.dest-izq');
+      const der = caja.querySelector('.dest-der');
+      const max = pista.scrollWidth - pista.clientWidth;
+      izq.hidden = pista.scrollLeft <= 4;
+      der.hidden = pista.scrollLeft >= max - 4;
+    }
+
+    document.querySelectorAll('.dest-carrusel').forEach(caja => {
+      const pista = caja.querySelector('.dest-pista');
+      const paso = () => {
+        const item = pista.querySelector('.dest-item');
+        return item ? item.getBoundingClientRect().width + parseFloat(getComputedStyle(pista).columnGap || 0) : pista.clientWidth;
+      };
+      caja.querySelector('.dest-izq').addEventListener('click', () => pista.scrollBy({ left: -paso(), behavior: 'smooth' }));
+      caja.querySelector('.dest-der').addEventListener('click', () => pista.scrollBy({ left: paso(), behavior: 'smooth' }));
+      pista.addEventListener('scroll', () => actualizarFlechas(pista), { passive: true });
+      window.addEventListener('resize', () => actualizarFlechas(pista));
+    });
+
     escucharProductosScm(
       (lista) => {
         productos = lista;
         // "Populares" y "Nuevos" se reparten el catálogo para no repetir productos
         // (en un catálogo más grande, esto se podría afinar con datos de ventas reales).
-        pintarSeccion('gridPopulares', 'estadoPopulares', lista.slice(0, 8));
+        pintarDestacados(lista);
         pintarSeccion('gridNuevos', 'estadoNuevos', lista.slice(8, 12));
       },
       (err) => {
-        document.getElementById('estadoPopulares').textContent = 'No se pudo cargar el catálogo.';
+        document.getElementById('estadoEllas').textContent = 'No se pudo cargar el catálogo.';
+        document.getElementById('estadoEllos').textContent = 'No se pudo cargar el catálogo.';
         document.getElementById('estadoNuevos').textContent = 'No se pudo cargar el catálogo.';
       }
     );

@@ -67,3 +67,71 @@ export const EJEMPLOS_PRODUCTOS = [
     descripcion: 'Disfraz de temporada, edición limitada mientras dura el stock.',
     img: 'Imagenes/Mascotas/prod-disfraz-perro.svg' },
 ];
+
+// Colección Otoño-Invierno (fotos reales en Imagenes/Productos/).
+// Se agregan desde el panel: SCM → Productos → "Agregar colección Otoño-Invierno".
+// Solo se crean las que todavía no existen (se comparan por nombre).
+const INTRO_OTONO = 'El otoño ya llegó y también el momento de renovar el guardarropa de tu mejor amigo. ' +
+  'La colección Fall Apparel cuenta con suéteres, chamarras, sudaderas, chalecos y accesorios únicos, como gorras, ' +
+  'sombreros, bandanas y lentes, para que disfruten de esta temporada con mucho estilo. Porque no hay nada mejor que ' +
+  'salir a pasear entre hojas secas, sentir el aire fresco y crear recuerdos juntos con el outfit perfecto.';
+
+const fotos = (slug, n) => Array.from({ length: n }, (_, i) => `Imagenes/Productos/${slug}-${i + 1}.jpg`);
+
+export const COLECCION_OTONO = [
+  {
+    nombre: 'Petco Fall Apparel Chaleco Modelo Polar Beige para Perro, Mediano',
+    marca: 'Petco', talla: 'Mediano', categoria: 'Perros', paraQuien: 'Ellos', destacado: true,
+    stock: 15, stockMin: 5, estrategia: 'PUSH', costo: 270, precio: 449,
+    descripcion: INTRO_OTONO,
+    beneficios: [
+      'Cierres de velcro que permiten ponerlo y quitarlo fácilmente.',
+      'El chaleco se abre por completo para facilitar su colocación.',
+      'Pequeña abertura en la parte superior para pasar la correa del arnés.',
+      'Resorte en la parte media que permite un mejor ajuste.',
+      'Se ajusta a perros con un largo de espalda de 41 a 46 cm.',
+      'Recomendado para perros de razas pequeñas y medianas.',
+    ],
+    imagenes: fotos('chaleco-polar-beige', 6),
+  },
+  {
+    nombre: 'Petco Fall Apparel Chamarra Rosa Modelo Borrego para Perro, Grande',
+    marca: 'Petco', talla: 'Grande', categoria: 'Perros', paraQuien: 'Ellas', destacado: true,
+    stock: 12, stockMin: 4, estrategia: 'PUSH', costo: 360, precio: 599,
+    descripcion: INTRO_OTONO,
+    beneficios: [
+      'Fácil de colocar y quitar gracias a su cierre de cremallera.',
+      'Cuenta con bolsas laterales decorativas.',
+      'Exterior tipo borrega que lo hace más cómodo y suave.',
+      'Se ajusta a perros con un largo de espalda de 43 a 48 cm.',
+      'Recomendado para perros de razas medianas.',
+    ],
+    imagenes: fotos('chamarra-borrego-rosa', 4),
+  },
+  {
+    nombre: 'Petco Fall Apparel Suéter Tejido Rojo con Moños Rosas para Perro, Chico',
+    marca: 'Petco', talla: 'Chico', categoria: 'Perros', paraQuien: 'Ellas', destacado: true,
+    stock: 18, stockMin: 5, estrategia: 'PUSH', costo: 240, precio: 399,
+    descripcion: INTRO_OTONO,
+    beneficios: [
+      'Suéter tejido color rojo con moños rosas.',
+      'Pequeña abertura en la parte superior para pasar la correa al arnés.',
+      'Se ajusta a perros con un largo de espalda de 33 a 38 cm.',
+      'Recomendado para perros de razas pequeñas.',
+    ],
+    imagenes: fotos('sueter-rojo-monos', 4),
+  },
+  {
+    nombre: 'Petco Fall Apparel Suéter Tejido Blanco con Moño de Lentejuela para Perro, Mediano',
+    marca: 'Petco', talla: 'Mediano', categoria: 'Perros', paraQuien: 'Ellas', destacado: true,
+    stock: 15, stockMin: 5, estrategia: 'PUSH', costo: 300, precio: 499,
+    descripcion: INTRO_OTONO,
+    beneficios: [
+      'Suéter tejido con moño bordado de lentejuela.',
+      'Pequeña abertura en la parte superior para pasar la correa al arnés.',
+      'Se ajusta a perros con un largo de espalda de 41 a 46 cm.',
+      'Recomendado para perros de razas pequeñas y medianas.',
+    ],
+    imagenes: fotos('sueter-blanco-lentejuela', 3),
+  },
+].map((p) => ({ ...p, img: p.imagenes[0], proveedor: '', proveedorId: '' }));
