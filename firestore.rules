@@ -130,6 +130,36 @@ service cloud.firestore {
       }
     }
 
+    // ---- Comunidad Peluda: muro público de fotos y opiniones de clientes.
+    function meGustaValido() {
+      let antes = resource.data.likes.toSet();
+      let despues = request.resource.data.likes.toSet();
+      let yo = [request.auth.uid].toSet();
+      return request.resource.data.likes is list
+        && request.resource.data.likes.size() == despues.size()
+        && ((despues.difference(antes) == yo && antes.difference(despues).size() == 0)
+            || (antes.difference(despues) == yo && despues.difference(antes).size() == 0));
+    }
+    match /comunidad/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['uid', 'nombre', 'mascota', 'texto', 'huellitas', 'foto', 'likes', 'fecha'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 60
+        && (!('mascota' in request.resource.data) || (request.resource.data.mascota is string && request.resource.data.mascota.size() <= 40))
+        && request.resource.data.texto is string && request.resource.data.texto.size() > 0 && request.resource.data.texto.size() <= 600
+        && request.resource.data.huellitas is int && request.resource.data.huellitas >= 1 && request.resource.data.huellitas <= 5
+        && (!('foto' in request.resource.data) || (request.resource.data.foto is string
+              && request.resource.data.foto.size() <= 200000
+              && request.resource.data.foto.matches('^data:image/jpeg;base64,[A-Za-z0-9+/=]+$')))
+        && request.resource.data.likes == []
+        && request.resource.data.fecha == request.time;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+        && meGustaValido();
+      allow delete: if (request.auth != null && resource.data.uid == request.auth.uid) || esStaff() || esSoporte();
+    }
+
     // ---- Reseñas y preguntas de la página de producto (lectura pública).
     // Reseña: una por cliente y producto; el id es "{productoId}_{uid}". No se edita.
     match /resenas/{resenaId} {

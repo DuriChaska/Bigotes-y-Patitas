@@ -69,7 +69,7 @@ import {
   collection, doc,
   addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
   onSnapshot, query, where, orderBy, limit, serverTimestamp, writeBatch, runTransaction,
-  arrayUnion, increment,
+  arrayUnion, arrayRemove, increment,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const clientesRef = collection(db, "clientes");
@@ -2679,4 +2679,46 @@ export function escucharTodasLasResenas(callback, onError) {
   return onSnapshot(collection(db, "resenas"), (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, onError);
+}
+
+
+// ============================================
+//  Comunidad Peluda (comunidad.html)
+//    comunidad/{id} { uid, nombre, mascota?, texto, huellitas (1-5), foto? (JPEG en data URL),
+//                     likes: [uid...], fecha }
+//  Lectura pública; publica quien tiene sesión; cada quien da/quita SU "me gusta";
+//  borra el autor o el personal (ventas o soporte).
+// ============================================
+
+export function escucharComunidad(callback, onError) {
+  return onSnapshot(collection(db, "comunidad"), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.fecha) - milisDe(a.fecha));
+    callback(lista);
+  }, onError);
+}
+
+export async function publicarEnComunidad({ nombre, mascota, texto, huellitas, foto }) {
+  const user = auth.currentUser;
+  if (!user) { const e = new Error("Inicia sesión para publicar."); e.code = "bp/sin-sesion"; throw e; }
+  const datos = {
+    uid: user.uid,
+    nombre: String(nombre || "Cliente").trim().slice(0, 60) || "Cliente",
+    texto: String(texto || "").trim().slice(0, 600),
+    huellitas: Math.max(1, Math.min(5, Math.round(Number(huellitas) || 0))),
+    likes: [],
+    fecha: serverTimestamp(),
+  };
+  const m = String(mascota || "").trim().slice(0, 40);
+  if (m) datos.mascota = m;
+  if (foto) datos.foto = foto;
+  return addDoc(collection(db, "comunidad"), datos);
+}
+
+export function darMeGusta(id, uid, meGusta) {
+  return updateDoc(doc(db, "comunidad", id), { likes: meGusta ? arrayUnion(uid) : arrayRemove(uid) });
+}
+
+export function eliminarDeComunidad(id) {
+  return deleteDoc(doc(db, "comunidad", id));
 }

@@ -3088,3 +3088,83 @@ body.pd-con-barra #bp-notificacion { bottom: 96px !important; }
   .pr-cupon-info { padding: 16px; }
   .pr-pagina { padding: 10px 14px 20px; }
 }
+
+/* ===========================
+   Comunidad Peluda (comunidad.html)
+=========================== */
+.cm-body { background: #fbf8f4; }
+.cm-stats { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+.cm-stats div { background: #fff; border-radius: 14px; padding: 12px 18px; box-shadow: 0 4px 12px rgba(74,56,38,.08); text-align: center; min-width: 110px; }
+.cm-stats strong { display: block; font-family: 'Fredoka', 'DM Sans', sans-serif; font-size: 1.7rem; color: #d93359; line-height: 1.1; }
+.cm-stats span { font-size: .8rem; color: #6d6259; }
+.cm-collage { position: relative; justify-self: center; width: min(440px, 100%); height: 360px; }
+.cm-collage img { position: absolute; width: 210px; height: 210px; object-fit: cover; background: #fff; border-radius: 18px; border: 8px solid #fff; box-shadow: 0 12px 28px rgba(74,56,38,.18); }
+.cm-collage img:nth-child(1) { left: 0; top: 10px; transform: rotate(-7deg); }
+.cm-collage img:nth-child(2) { right: 0; top: 0; transform: rotate(6deg); }
+.cm-collage img:nth-child(3) { left: 50%; bottom: 0; transform: translateX(-50%) rotate(-2deg); z-index: 2; }
+.cm-collage .cp-deco.d1 { left: auto; right: 4%; top: auto; bottom: 8%; }
+
+.cm-pagina { max-width: 1180px; margin: 0 auto; padding: 10px 28px 60px; }
+.cm-publicar { background: #fff; border-radius: 20px; box-shadow: 0 6px 26px rgba(74,56,38,.1); padding: 26px 28px; margin-bottom: 26px; }
+.cm-pub-titulo { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.9rem; color: #2f4858; display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.cm-pub-titulo svg { width: 30px; height: 30px; fill: #d93359; transform: rotate(-12deg); }
+.cm-sin-sesion { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; background: #fcf7f1; border-radius: 14px; padding: 18px 20px; }
+.cm-sin-sesion p { color: #4b4038; flex: 1 1 320px; }
+.cm-sin-sesion > div { display: flex; align-items: center; gap: 16px; }
+.cm-link { color: #b8603a; font-weight: 700; text-decoration: underline; }
+.cm-texto { height: auto; min-height: 96px; padding: 14px 18px; resize: vertical; line-height: 1.6; }
+.cm-vista-foto { position: relative; width: 180px; margin-top: 12px; }
+.cm-vista-foto img { width: 180px; height: 180px; object-fit: cover; border-radius: 14px; }
+.cm-vista-foto button { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 1.2rem; line-height: 1; }
+.cm-form-fila { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 14px; }
+.cm-btn-foto { display: inline-flex; align-items: center; gap: 8px; border: 1.5px dashed #c9b39a; border-radius: 12px; padding: 10px 16px; color: #2f4858; font-weight: 600; cursor: pointer; background: #fffaf6; }
+.cm-btn-foto:hover { border-color: #b8603a; color: #b8603a; }
+.cm-btn-foto svg { width: 22px; height: 22px; }
+.cm-mascota { flex: 1 1 200px; height: 46px; border: 1px solid #e8e1d8; border-radius: 12px; padding: 0 14px; font: inherit; }
+.cm-mascota:focus { outline: none; border-color: #b8603a; }
+.cm-calificar { display: flex; align-items: center; gap: 8px; color: #4b4038; font-size: .92rem; }
+.cm-calificar .pd-elegir-huellas button svg { width: 28px; height: 28px; }
+.cm-form-pie { display: flex; align-items: center; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+.cm-contador { color: #a39a91; font-size: .82rem; }
+.cm-form-pie .ac-error { flex: 1; margin: 0; }
+.cm-form-pie .cp-btn { margin-left: auto; min-width: 170px; }
+
+.cm-filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.cm-filtros button { border: 1px solid #e3d6c8; background: #fff; color: #2f4858; border-radius: 999px; padding: 9px 18px; font-weight: 600; }
+.cm-filtros button.activa { background: #2f4858; color: #fff; border-color: #2f4858; }
+.cm-filtros button[hidden] { display: none; }
+
+.cm-muro { columns: 3 300px; column-gap: 22px; }
+.cm-cargando { color: var(--gray); text-align: center; padding: 30px 0; column-span: all; }
+.cm-vacio { column-span: all; text-align: center; background: #fff; border-radius: 18px; padding: 40px 20px; }
+.cm-vacio svg { width: 54px; height: 54px; fill: #d4bfa9; }
+.cm-vacio p { color: #4b4038; margin-top: 8px; font-size: 1.05rem; }
+.cm-post { break-inside: avoid; background: #fff; border-radius: 18px; box-shadow: 0 4px 18px rgba(74,56,38,.09); overflow: hidden; margin-bottom: 22px; display: inline-block; width: 100%; }
+.cm-post-foto { width: 100%; display: block; aspect-ratio: 1; object-fit: cover; }
+.cm-post-cuerpo { padding: 16px 18px 12px; }
+.cm-post-cab { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cm-avatar { width: 40px; height: 40px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: 'Fredoka', 'DM Sans', sans-serif; font-size: 1.1rem; flex: 0 0 auto; }
+.cm-post-cab strong { display: block; color: #2f4858; }
+.cm-post-cab small { color: #8d857c; font-size: .82rem; }
+.cm-post-cab b { color: #b8603a; font-weight: 600; }
+.cm-post-huellas { display: flex; gap: 3px; margin-bottom: 6px; }
+.cm-h { width: 18px; height: 18px; fill: #ddd6cd; }
+.cm-h.llena { fill: #f2b631; }
+.cm-post-texto { color: #3d3a37; line-height: 1.65; white-space: pre-line; word-break: break-word; }
+.cm-post-pie { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1ebe3; }
+.cm-like { display: inline-flex; align-items: center; gap: 6px; color: #8c8079; font-weight: 600; padding: 4px 8px; border-radius: 999px; }
+.cm-like svg { width: 22px; height: 22px; fill: none; stroke: currentColor; transition: transform .15s; }
+.cm-like:hover svg { transform: scale(1.15); }
+.cm-like.activo { color: #d93359; }
+.cm-like.activo svg { fill: currentColor; }
+.cm-borrar { color: #a3322a; font-size: .82rem; text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .cm-collage { height: 260px; order: -1; }
+  .cm-collage img { width: 150px; height: 150px; border-width: 6px; }
+  .cm-stats { justify-content: center; }
+  .cm-pagina { padding: 10px 14px 40px; }
+  .cm-publicar { padding: 20px 16px; }
+  .cm-form-pie .cp-btn { width: 100%; margin-left: 0; }
+}
+.cm-sin-sesion[hidden], .cm-form[hidden], .cm-vista-foto[hidden] { display: none; }
