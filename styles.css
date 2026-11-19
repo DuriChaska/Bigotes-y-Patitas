@@ -2882,3 +2882,65 @@ body.pd-con-barra #bp-notificacion { bottom: 96px !important; }
   .cp-pagina { padding: 10px 14px 40px; }
 }
 @media (max-width: 480px) { .cp-botones { grid-template-columns: 1fr; } }
+
+/* ===========================
+   Nosotros (about.html)
+=========================== */
+.ns-body { background: #fff; }
+.ns-hero-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; align-items: center; padding-top: 10px; }
+.ns-hero .franja-titulo { margin-bottom: 18px; }
+.ns-texto { font-size: 1.08rem; line-height: 1.85; color: #4b4038; font-weight: 300; margin-bottom: 14px; }
+.ns-texto strong, .ns-bloque strong { font-weight: 600; color: #3d3530; }
+.ns-lema { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; font-size: 1.7rem; color: #8c1c2e; margin-top: 8px; }
+.ns-hero .cp-hero-foto img { width: 74%; height: 74%; }
+
+.ns-pagina { max-width: 1180px; margin: 0 auto; padding: 40px 28px 20px; }
+.ns-fila { display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px; align-items: center; margin-bottom: 70px; }
+.ns-fila.invertida .ns-foto { order: 2; }
+.ns-foto { position: relative; }
+.ns-foto img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 46% 54% 42% 58% / 52% 44% 56% 48%; box-shadow: 0 14px 34px rgba(74,56,38,.16); }
+.ns-foto::after { content: ''; position: absolute; z-index: -1; inset: 8% -4% -6% 6%; border-radius: 50% 46% 54% 44% / 46% 52% 48% 54%; background: #f2dec5; }
+.ns-fila.invertida .ns-foto::after { inset: 8% 6% -6% -4%; background: #e6efe5; }
+.ns-bloque p:not(.franja-ante) { font-size: 1.08rem; line-height: 1.85; color: #4b4038; font-weight: 300; }
+.ns-titulo { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: clamp(2.3rem, 4.5vw, 3.4rem); line-height: 1.08; color: #d93359; margin-bottom: 18px; }
+.ns-centro { text-align: center; }
+
+.ns-ofrecemos { margin: 10px 0 40px; }
+.ns-ofrecemos-dentro { max-width: 1180px; margin: 0 auto; padding: 0 6%; }
+.ns-ofrecemos-cab { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; margin-bottom: 30px; }
+.ns-ofrecemos-foto { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 18px; box-shadow: 0 12px 30px rgba(74,56,38,.18); }
+.ns-tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; }
+.ns-tarjeta { background: #fff; border-radius: 16px; padding: 24px 22px; box-shadow: 0 4px 16px rgba(74,56,38,.08); transition: transform .2s, box-shadow .2s; }
+.ns-tarjeta:hover { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(74,56,38,.14); }
+.ns-tarjeta svg { width: 38px; height: 38px; fill: #d93359; margin-bottom: 10px; transform: rotate(-12deg); }
+.ns-tarjeta h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.45rem; color: #2f4858; line-height: 1.15; margin-bottom: 8px; }
+.ns-tarjeta p { color: #4b4038; line-height: 1.7; font-weight: 300; }
+
+.ns-equipo { text-align: center; padding: 30px 20px 60px; max-width: 1100px; margin: 0 auto; }
+.ns-huella-titulo { --dest-color: #d93359; fill: #d93359; }
+.ns-equipo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 34px; margin-top: 30px; }
+.ns-persona img { width: 190px; height: 190px; border-radius: 50%; object-fit: cover; border: 6px solid #fff; box-shadow: 0 0 0 3px #f2dec5, 0 12px 26px rgba(74,56,38,.15); margin-bottom: 18px; transition: transform .25s; }
+.ns-persona:hover img { transform: scale(1.04) rotate(-2deg); }
+.ns-persona h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.5rem; color: #2f4858; line-height: 1.2; }
+.ns-persona p { color: #b8603a; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: .85rem; margin-top: 4px; }
+
+.ns-contacto { padding: 0 20px 70px; }
+.ns-contacto-caja { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1.2fr; gap: 0; background: #fcf7f1; border-radius: 22px; overflow: hidden; box-shadow: 0 6px 26px rgba(74,56,38,.1); }
+.ns-contacto-texto { padding: 40px 40px 36px; }
+.ns-dato { margin-bottom: 14px; color: #4b4038; line-height: 1.6; }
+.ns-dato strong { display: block; color: #2f4858; font-weight: 700; margin-bottom: 2px; }
+.ns-dato a { color: #d93359; font-weight: 500; }
+.ns-btn { margin-top: 8px; }
+.ns-mapa iframe { width: 100%; height: 100%; min-height: 380px; border: 0; display: block; }
+
+@media (max-width: 900px) {
+  .ns-hero-grid { grid-template-columns: 1fr; text-align: center; }
+  .ns-hero .franja-linea { margin-left: auto; margin-right: auto; }
+  .ns-hero .cp-hero-foto { order: -1; width: min(260px, 75%); }
+  .ns-fila, .ns-fila.invertida { grid-template-columns: 1fr; gap: 26px; margin-bottom: 46px; }
+  .ns-fila.invertida .ns-foto { order: 0; }
+  .ns-ofrecemos-cab { grid-template-columns: 1fr; }
+  .ns-contacto-caja { grid-template-columns: 1fr; }
+  .ns-contacto-texto { padding: 28px 22px; }
+  .ns-pagina { padding: 26px 18px 10px; }
+}
