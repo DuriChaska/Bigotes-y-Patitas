@@ -2944,3 +2944,64 @@ body.pd-con-barra #bp-notificacion { bottom: 96px !important; }
   .ns-contacto-texto { padding: 28px 22px; }
   .ns-pagina { padding: 26px 18px 10px; }
 }
+
+/* ===========================
+   Contáctanos (contact.html)
+=========================== */
+.ct-body { background: #fff; }
+.ct-hero-foto { position: relative; justify-self: center; width: min(520px, 100%); }
+.ct-hero-foto img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 46% 54% 42% 58% / 52% 44% 56% 48%; box-shadow: 0 16px 40px rgba(74,56,38,.18); border: 8px solid #fff; }
+.ct-redes-titulo { font-weight: 600; color: #3d3530; margin: 6px 0 10px; }
+.ct-redes { display: flex; gap: 12px; }
+.ct-redes a { width: 48px; height: 48px; border-radius: 50%; background: #fff; color: #2f4858; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(74,56,38,.12); transition: background .2s, color .2s, transform .2s; }
+.ct-redes a svg { width: 22px; height: 22px; }
+.ct-redes a:hover { background: #d93359; color: #fff; transform: translateY(-3px); }
+
+.ct-pagina { max-width: 1180px; margin: 0 auto; padding: 20px 28px 60px; }
+.ct-datos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 50px; }
+.ct-dato { display: flex; gap: 14px; align-items: flex-start; background: #fcf7f1; border: 1px solid #f0e4d6; border-radius: 16px; padding: 20px 18px; }
+.ct-dato > svg { width: 30px; height: 30px; color: #d93359; flex: 0 0 auto; }
+.ct-dato strong { display: block; color: #2f4858; margin-bottom: 4px; }
+.ct-dato a, .ct-dato span { color: #4b4038; font-size: .93rem; line-height: 1.5; word-break: break-word; }
+.ct-dato a:hover { color: #d93359; }
+
+.ct-form-caja { display: grid; grid-template-columns: .85fr 1.15fr; gap: 50px; background: #fff; border-radius: 22px; box-shadow: 0 6px 30px rgba(74,56,38,.1); padding: 42px; margin-bottom: 60px; }
+.ct-nota { color: #4b4038; line-height: 1.75; font-weight: 300; margin-bottom: 12px; }
+.ct-nota strong { font-weight: 600; }
+.ct-nota a { color: #d93359; font-weight: 500; text-decoration: underline; }
+.ct-form .ac-label:first-child { margin-top: 0; }
+.ct-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ct-fila .ac-label { margin-top: 0; }
+.ct-select { border: 1px solid #e8e1d8; border-radius: 14px; overflow: hidden; }
+.ct-select select { height: 58px; }
+.ct-texto { height: auto; min-height: 150px; padding: 14px 18px; resize: vertical; line-height: 1.6; }
+.ct-contador { text-align: right; color: #a39a91; font-size: .8rem; margin-top: 4px; }
+.ct-enviar { margin: 18px 0 0 auto; width: 260px; background: #8c1c2e; }
+.ct-enviar:hover:not(:disabled) { background: #6d1422; }
+.ct-exito { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; }
+.ct-exito > svg { width: 60px; height: 60px; fill: #d93359; transform: rotate(-12deg); }
+.ct-exito h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 2.2rem; color: #2f4858; }
+.ct-exito p { color: #4b4038; }
+.ct-exito .ac-btn { margin-top: 14px; display: inline-flex; align-items: center; justify-content: center; }
+.ct-otro { color: #b8603a; font-weight: 600; text-decoration: underline; margin-top: 10px; }
+
+.ct-faq { max-width: 860px; margin: 0 auto; text-align: center; }
+.ct-faq details { text-align: left; background: #fcf7f1; border: 1px solid #f0e4d6; border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+.ct-faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 22px; font-weight: 600; color: #2f4858; font-size: 1.05rem; }
+.ct-faq summary::-webkit-details-marker { display: none; }
+.ct-faq summary svg { width: 22px; height: 22px; color: #d93359; flex: 0 0 auto; transition: transform .2s; }
+.ct-faq details[open] summary svg { transform: rotate(180deg); }
+.ct-faq details p { padding: 0 22px 18px; color: #4b4038; line-height: 1.75; }
+
+@media (max-width: 960px) {
+  .ct-datos { grid-template-columns: repeat(2, 1fr); }
+  .ct-form-caja { grid-template-columns: 1fr; padding: 26px 20px; gap: 18px; }
+}
+@media (max-width: 560px) {
+  .ct-datos { grid-template-columns: 1fr; }
+  .ct-fila { grid-template-columns: 1fr; }
+  .ct-fila > div + div .ac-label { margin-top: 18px; }
+  .ct-enviar { width: 100%; }
+  .ct-pagina { padding: 10px 16px 40px; }
+  .ct-hero .ct-redes { justify-content: center; }
+}

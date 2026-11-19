@@ -1579,7 +1579,7 @@ export async function cargarPromocionesEjemplo(usuario) {
 
 const ticketsRef = collection(db, "tickets");
 
-export const ASUNTOS_TICKET = ["Duda sobre mi pedido", "Cambio de producto", "Facturación", "Problema con monedero"];
+export const ASUNTOS_TICKET = ["Duda sobre mi pedido", "Cambio de producto", "Facturación", "Problema con monedero", "Otra duda o comentario"];
 export const ESTADOS_TICKET = ["En proceso", "Solucionado", "Cerrado"];
 
 function milisTicket(t) {

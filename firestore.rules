@@ -443,7 +443,7 @@ service cloud.firestore {
       return d.folio == ticketId && ticketId.matches('T-[0-9]+')
         && d.clienteId == request.auth.uid
         && d.clienteNombre is string && d.clienteNombre.size() <= 120
-        && d.asunto in ['Duda sobre mi pedido', 'Cambio de producto', 'Facturación', 'Problema con monedero']
+        && d.asunto in ['Duda sobre mi pedido', 'Cambio de producto', 'Facturación', 'Problema con monedero', 'Otra duda o comentario']
         && d.mensaje is string && d.mensaje.size() > 0 && d.mensaje.size() <= 2000
         && d.estado == 'En proceso'
         && d.esperaSoporte == true
