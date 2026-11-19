@@ -106,6 +106,6 @@ observarSesionCliente(async (user) => {
   }
   if (recuperarBorrador()) {
     $('formError').hidden = true;
-    window.bpNotificar?.('Recuperamos tu mensaje. Revísalo y dale "Enviar mensaje".', 'ok');
+    window.bpNotificar?.('Recuperamos tu mensaje. Revísalo y dale "Enviar mensaje".', 'exito');
   }
 });
