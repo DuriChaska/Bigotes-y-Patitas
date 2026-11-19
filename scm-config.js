@@ -135,3 +135,29 @@ export const COLECCION_OTONO = [
     imagenes: fotos('sueter-blanco-lentejuela', 3),
   },
 ].map((p) => ({ ...p, img: p.imagenes[0], proveedor: '', proveedorId: '' }));
+
+// Producto de la página "Carpeta" (colección exclusiva). Se agrega con el mismo botón del panel.
+// carpeta: true → aparece en carpeta.html. Precio, stock y talla son de ejemplo: cámbialos en el panel.
+export const COLECCION_CARPETA = [
+  {
+    nombre: 'Vestido Picnic de Cuadros Rojos con Moños para Perrita, Chico',
+    marca: 'Bigotes y Patitas', talla: 'Chico', categoria: 'Ediciones limitadas', paraQuien: 'Ellas',
+    destacado: true, carpeta: true,
+    stock: 10, stockMin: 3, estrategia: 'PUSH', costo: 260, precio: 459,
+    descripcion: 'Un vestido coqueto para los días de paseo y de picnic. Combina tela de cuadros rojos con blanco, ' +
+      'holanes rojos y delicados detalles de encaje de florecitas, rematado con dos moños blancos en la cintura. ' +
+      'Una pieza de edición limitada para que tu perrita sea la más elegante de la reunión.',
+    beneficios: [
+      'Tela de cuadros (vichy) rojo con blanco y holanes rojos en falda y mangas.',
+      'Encaje blanco de florecitas en mangas y falda.',
+      'Dos moños blancos decorativos en la cintura.',
+      'Forro interior blanco, suave al contacto con su pelaje.',
+      'Cierre de velcro en la panza para ponerlo y quitarlo fácilmente.',
+      'Abertura en la espalda para pasar la correa del arnés.',
+    ],
+    imagenes: ['Imagenes/Productos/vestido-picnic-rojo-1.jpg', 'Imagenes/Productos/vestido-picnic-rojo-2.jpg'],
+  },
+].map((p) => ({ ...p, img: p.imagenes[0], proveedor: '', proveedorId: '' }));
+
+// Todo lo que el botón del panel puede agregar
+export const PRODUCTOS_DE_COLECCIONES = [...COLECCION_OTONO, ...COLECCION_CARPETA];

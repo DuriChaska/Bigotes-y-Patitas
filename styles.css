@@ -2800,3 +2800,85 @@ body.pd-con-barra #bp-notificacion { bottom: 96px !important; }
   .cat-agregar { height: 42px; font-size: .88rem; }
   .cat-grid.lista .cat-card { flex-direction: column; }
 }
+
+/* ===========================
+   Carpeta (colección exclusiva)
+=========================== */
+.cp-body { background: #fff; }
+.cp-hero { background: #f2dec5; --franja: #f2dec5; --franja-clara: #f8ece0; --franja-rojo: #d93359; position: relative; }
+.cp-hero-dentro { max-width: 1240px; margin: 0 auto; padding: 22px 28px 0; }
+.cp-hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 30px; align-items: center; padding: 10px 0 0; }
+.cp-hero-titulo { margin-bottom: 18px; }
+.cp-hero-texto { font-size: 1.15rem; line-height: 1.8; color: #4b4038; font-weight: 300; max-width: 520px; margin-bottom: 24px; }
+.cp-hero-btn { display: inline-flex; align-items: center; gap: 8px; background: #8c1c2e; color: #fff; font-weight: 600; font-size: 1.05rem; padding: 14px 30px; border-radius: 999px; box-shadow: 0 8px 20px rgba(140,28,46,.25); transition: background .2s, transform .2s; }
+.cp-hero-btn svg { width: 20px; height: 20px; }
+.cp-hero-btn:hover { background: #6d1422; transform: translateY(-2px); }
+.cp-hero-foto { position: relative; justify-self: center; width: min(420px, 100%); aspect-ratio: 1; border-radius: 50%; background: #fff; box-shadow: 0 16px 40px rgba(74,56,38,.15); display: flex; align-items: center; justify-content: center; }
+.cp-hero-foto img { width: 68%; height: 68%; object-fit: contain; }
+.cp-deco { position: absolute; fill: #d4bfa9; }
+.cp-deco.d1 { width: 54px; height: 54px; top: 2%; left: -4%; transform: rotate(-15deg); }
+.cp-deco.d2 { width: 38px; height: 38px; bottom: 4%; right: -2%; transform: rotate(18deg); }
+.cp-ola { margin-top: 30px; background: #fff; }
+.cp-ola .ola-fondo { fill: #f2dec5; }
+.cp-ola .ola-clara { fill: #f8ece0; }
+
+.cp-pagina { max-width: 1240px; margin: 0 auto; padding: 10px 28px 60px; }
+.cp-cargando { text-align: center; color: var(--gray); padding: 40px 0; }
+.cp-tarjeta { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; background: #fff; border-radius: 18px; box-shadow: 0 6px 30px rgba(74,56,38,.1); padding: 34px; scroll-margin-top: 100px; }
+.cp-pieza { scroll-margin-top: 90px; }
+.cp-foto { position: relative; aspect-ratio: 1; border-radius: 14px; background: #fff; border: 1px solid #f0e8de; overflow: hidden; }
+.cp-foto img { width: 100%; height: 100%; object-fit: contain; }
+.cp-sello { position: absolute; top: 16px; left: 14px; z-index: 2; background: #8c1c2e; color: #fff; font-weight: 800; font-size: .8rem; text-transform: uppercase; border-radius: 999px; padding: 6px 13px; display: inline-flex; align-items: center; gap: 6px; transform: rotate(-6deg); }
+.cp-sello svg { width: 15px; height: 15px; fill: #f6c0cb; }
+.cp-fav { position: absolute; top: 14px; right: 14px; }
+.cp-minis { display: flex; gap: 12px; margin-top: 14px; }
+.cp-mini { width: 86px; height: 86px; border: 1px solid #ebe3d8; border-radius: 10px; overflow: hidden; background: #fff; }
+.cp-mini img { width: 100%; height: 100%; object-fit: contain; }
+.cp-mini.activa { border: 2px solid #b8603a; }
+.cp-marca { color: #b8603a; font-weight: 600; margin-bottom: 4px; }
+.cp-nombre { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: clamp(1.9rem, 3vw, 2.6rem); line-height: 1.12; color: #2f4858; margin-bottom: 10px; }
+.cp-cal { display: inline-flex; align-items: center; gap: 3px; color: #7b746d; font-size: .9rem; margin-bottom: 10px; }
+.cp-cal span { margin-left: 6px; }
+.cp-h { width: 20px; height: 20px; fill: #ddd6cd; }
+.cp-h.llena { fill: #f2b631; }
+.cp-precio { font-size: 2rem; font-weight: 700; color: #2b2724; margin-bottom: 4px; }
+.cp-stock { color: #5f8a68; font-weight: 600; font-size: .92rem; margin-bottom: 12px; }
+.cp-stock.bajo { color: #b8603a; }
+.cp-stock.agotado { color: #a3322a; }
+.cp-talla { font-size: .95rem; margin-bottom: 14px; }
+.cp-talla a, .cp-detalles { color: #b8603a; font-weight: 600; text-decoration: underline; }
+.cp-desc { line-height: 1.8; color: #4b4038; margin-bottom: 12px; }
+.cp-beneficios { padding-left: 20px; line-height: 1.85; color: #4b4038; margin-bottom: 20px; }
+.cp-beneficios li::marker { color: #d93359; }
+.cp-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.cp-btn { display: inline-flex; align-items: center; justify-content: center; height: 54px; padding: 0 22px; border-radius: 10px; color: #fff; font-weight: 700; font-size: 1rem; transition: background .2s, transform .15s; }
+.cp-btn-carrito { background: #b8603a; }
+.cp-btn-carrito:hover:not(:disabled) { background: #9a4c2c; }
+.cp-btn-comprar { background: #8c1c2e; }
+.cp-btn-comprar:hover:not(:disabled) { background: #6d1422; }
+.cp-btn:disabled { background: #cfc6bc; cursor: not-allowed; }
+.cp-vacio { text-align: center; padding: 50px 20px; }
+.cp-vacio p { color: #6d6259; margin: 10px 0 20px; }
+
+.cp-titulo { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: clamp(2.2rem, 4.5vw, 3.2rem); color: #d93359; text-align: center; line-height: 1.1; }
+.cp-resenas { margin-top: 60px; text-align: center; }
+.cp-resenas .dest-antetitulo { margin-bottom: 4px; }
+.cp-resenas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; margin-top: 28px; text-align: left; }
+.cp-resena { background: #fcf7f1; border-radius: 14px; padding: 22px 24px; border: 1px solid #f0e4d6; }
+.cp-resena h3 { font-weight: 700; color: #2f4858; margin: 8px 0 4px; font-size: 1.02rem; }
+.cp-resena p { line-height: 1.7; color: #4b4038; font-style: italic; margin: 6px 0 10px; }
+.cp-resena span { color: #8d857c; font-size: .88rem; }
+.cp-resena-vacia { grid-column: 1 / -1; text-align: center; max-width: 520px; margin: 0 auto; }
+.cp-resena-vacia p { font-style: normal; }
+.cp-todas { grid-column: 1 / -1; text-align: center; }
+.cp-mas { margin-top: 30px; }
+
+@media (max-width: 900px) {
+  .cp-hero-grid { grid-template-columns: 1fr; text-align: center; }
+  .cp-hero-grid .franja-linea { margin-left: auto; margin-right: auto; }
+  .cp-hero-texto { margin-left: auto; margin-right: auto; }
+  .cp-hero-foto { width: min(280px, 80%); order: -1; }
+  .cp-tarjeta { grid-template-columns: 1fr; padding: 18px; gap: 22px; }
+  .cp-pagina { padding: 10px 14px 40px; }
+}
+@media (max-width: 480px) { .cp-botones { grid-template-columns: 1fr; } }
