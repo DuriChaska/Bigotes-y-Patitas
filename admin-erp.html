@@ -116,7 +116,7 @@
       <!-- ── Métricas rápidas ── -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px;">
 
-        <div class="admin-panel">
+        <a class="admin-panel admin-panel-liga oculto-logistica" href="admin-erp-clientes.html" title="Ver clientes">
           <div class="admin-stat-card">
             <div class="admin-stat-icon" data-bp-icon="users"></div>
             <div>
@@ -124,9 +124,9 @@
               <p class="stat-label">Clientes activos</p>
             </div>
           </div>
-        </div>
+        </a>
 
-        <div class="admin-panel">
+        <a class="admin-panel admin-panel-liga" href="admin-erp-ordenes.html" title="Ver órdenes">
           <div class="admin-stat-card">
             <div class="admin-stat-icon blue" data-bp-icon="clipboard"></div>
             <div>
@@ -134,9 +134,9 @@
               <p class="stat-label">Órdenes de clientes</p>
             </div>
           </div>
-        </div>
+        </a>
 
-        <div class="admin-panel">
+        <a class="admin-panel admin-panel-liga" href="admin-erp-reportes.html" title="Ver reportes">
           <div class="admin-stat-card">
             <div class="admin-stat-icon green" data-bp-icon="trending_up"></div>
             <div>
@@ -144,9 +144,9 @@
               <p class="stat-label">Ventas totales</p>
             </div>
           </div>
-        </div>
+        </a>
 
-        <div class="admin-panel">
+        <a class="admin-panel admin-panel-liga" href="admin-erp-ordenes.html" title="Ver órdenes en proceso">
           <div class="admin-stat-card">
             <div class="admin-stat-icon yellow" data-bp-icon="clock"></div>
             <div>
@@ -154,7 +154,7 @@
               <p class="stat-label">Órdenes en proceso</p>
             </div>
           </div>
-        </div>
+        </a>
 
       </div>
 
@@ -202,8 +202,8 @@
           <div class="admin-panel-head"><h2>Indicadores operativos</h2></div>
           <div class="erp-ind">
             <div><span>Órdenes entregadas / procesadas</span><strong id="i-entregadas">—</strong></div>
-            <div><span>Órdenes canceladas</span><strong id="i-canceladas">—</strong></div>
-            <div><span>Productos en stock bajo</span><strong id="i-stock-bajo">—</strong></div>
+            <div><span><a class="admin-liga" href="admin-erp-ordenes.html?estado=Cancelada">Órdenes canceladas</a></span><strong id="i-canceladas">—</strong></div>
+            <div><span><a class="admin-liga" href="admin-erp-inventario.html">Productos en stock bajo</a></span><strong id="i-stock-bajo">—</strong></div>
             <div><span>Valor del inventario (a costo)</span><strong id="i-valor">—</strong></div>
             <div><span>Piezas vendidas</span><strong id="i-vendidas">—</strong></div>
           </div>
@@ -230,7 +230,7 @@
   <script src="admin-components.js"></script>
   <script src="admin-charts.js"></script>
   <script type="module">
-    import { calcularMetricasErp, escucharOperacionesErp } from './firebase-db.js';
+    import { calcularMetricasErp, escucharOperacionesErp, alCambiarColecciones } from './firebase-db.js';
 
     const $ = id => document.getElementById(id);
 
@@ -286,7 +286,8 @@
       }
       wrap.innerHTML = lista.slice(0, 6).map(o => {
         const f = o.creadoEn && o.creadoEn.toDate ? o.creadoEn.toDate().toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }) : '';
-        return `<div class="erp-act-item">${esc(o.descripcion)}<small>${esc(o.usuarioNombre || '')}${f ? ' · ' + f : ''}</small></div>`;
+        const texto = o.ordenId ? `<a class="admin-liga" href="admin-erp-ordenes.html?ver=${encodeURIComponent(o.ordenId)}">${esc(o.descripcion)}</a>` : esc(o.descripcion);
+        return `<div class="erp-act-item">${texto}<small>${esc(o.usuarioNombre || '')}${f ? ' · ' + f : ''}</small></div>`;
       }).join('');
     }
 
@@ -340,7 +341,8 @@
     function iniciar(sesion) {
       if (iniciado || !sesion) return;
       iniciado = true;
-      cargar();
+      // Las métricas se recalculan solas cuando cambia una orden, un producto o un cliente.
+      alCambiarColecciones(['ventas', 'scm_productos', 'clientes'], cargar);
       escucharOperacionesErp(pintarActividad, (err) => {
         $('actividad-reciente').innerHTML = '<p style="color:var(--gray);font-size:.85rem;">No se pudo cargar la actividad.</p>';
       });

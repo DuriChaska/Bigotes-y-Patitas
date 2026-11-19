@@ -141,15 +141,21 @@
         const color = e === 'Normal' ? 'var(--admin-green)' : (e === 'Stock bajo' ? 'var(--yellow)' : 'var(--admin-danger)');
         return `
         <tr>
-          <td><strong>${esc(p.nombre)}</strong></td>
+          <td><strong>${ligaProducto(p, 'admin-scm-inventario.html')}</strong></td>
           <td>${esc(p.categoria || '—')}</td>
-          <td>${stock}</td>
+          <td>${ligaMovs(p, stock)}</td>
           <td>${min}</td>
           <td style="min-width:120px;"><div style="background:var(--border);height:8px;border-radius:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${color};"></div></div></td>
           <td><span class="admin-tag ${CLASE[e]}">${e}</span></td>
         </tr>`;
       }).join('');
     }
+
+    // Ligas a los módulos de origen (SCM): quién puede abrir cada página.
+    const rolActual = () => window.BP_SESION?.rol || '';
+    const ligaProducto = (p, pagina) => `<a class="admin-liga" href="${pagina}?q=${encodeURIComponent(p.nombre || '')}">${esc(p.nombre)}</a>`;
+    const ligaMovs = (p, texto) => ['administrador', 'logistica'].includes(rolActual())
+      ? `<a class="admin-liga" href="admin-scm-movimientos.html?producto=${encodeURIComponent(p.id)}" title="Ver entradas y salidas">${texto}</a>` : texto;
 
     $('buscar').addEventListener('input', pintar);
     $('filtroEstado').addEventListener('change', pintar);

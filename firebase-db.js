@@ -717,6 +717,99 @@ export function escucharVentasDeCliente(uid, callback, onError) {
   }, onError);
 }
 
+/**
+ * Resumen de compras de un cliente calculado con sus órdenes REALES (tienda + ERP).
+ * Así el panel nunca depende de un contador que se pudo quedar atrás:
+ *   - Las órdenes canceladas no cuentan.
+ *   - Las que esperan pago (OXXO / SPEI pendientes) se cuentan aparte y no suman al gastado.
+ */
+export function resumenComprasCliente(ventas) {
+  const lista = Array.isArray(ventas) ? ventas : [];
+  const validas = lista.filter(v => v.estado !== "Cancelada");
+  const pagadas = validas.filter(v => v.estadoPago !== "Pendiente");
+  const fechaDe = (v) => {
+    const ms = milisDe(v.creadoEn);
+    return ms ? new Date(ms).toISOString().slice(0, 10) : "";
+  };
+  const msDe = (v) => (v && v.creadoEn ? milisDe(v.creadoEn) : 0);
+  const ultima = validas.reduce((max, v) => (!max || msDe(v) > msDe(max) ? v : max), null);
+  return {
+    numCompras: pagadas.length,
+    totalGastado: Math.round(pagadas.reduce((s, v) => s + (Number(v.total) || 0), 0) * 100) / 100,
+    entregadas: validas.filter(v => v.estado === "Entregada").length,
+    enCurso: validas.filter(v => !["Entregada"].includes(v.estado)).length,
+    pendientesPago: validas.filter(v => v.estadoPago === "Pendiente").length,
+    canceladas: lista.length - validas.length,
+    ultimaCompra: ultima ? fechaDe(ultima) : "",
+    ultimaVentaId: ultima ? ultima.id : "",
+  };
+}
+
+/** Agrupa todas las órdenes por cliente: { clienteId: resumenComprasCliente(...) }. */
+export function resumenComprasPorCliente(ventas) {
+  const grupos = {};
+  (ventas || []).forEach(v => {
+    if (!v.clienteId) return;
+    (grupos[v.clienteId] = grupos[v.clienteId] || []).push(v);
+  });
+  const res = {};
+  Object.keys(grupos).forEach(id => { res[id] = resumenComprasCliente(grupos[id]); });
+  return res;
+}
+
+/**
+ * Deja los contadores guardados del cliente (numCompras, totalComprado, ultimaCompra, etapa)
+ * igual que sus órdenes reales. Solo escribe si algo cambió. Lo usan las páginas del CRM/ERP
+ * (administrador y ventas) para que soporte y los reportes vean siempre lo mismo.
+ */
+export async function sincronizarComprasCliente(cliente, resumen) {
+  if (!cliente || !cliente.id || !resumen) return false;
+  const iguales = (Number(cliente.numCompras) || 0) === resumen.numCompras
+    && Math.abs((Number(cliente.totalComprado) || 0) - resumen.totalGastado) < 0.005
+    && (cliente.ultimaCompra || "") === (resumen.ultimaCompra || cliente.ultimaCompra || "");
+  if (iguales) return false;
+  const cambios = {
+    numCompras: resumen.numCompras,
+    totalComprado: resumen.totalGastado,
+    actualizadoEn: serverTimestamp(),
+  };
+  if (resumen.ultimaCompra) cambios.ultimaCompra = resumen.ultimaCompra;
+  if (["Prospecto", "Activo", "Frecuente"].includes(cliente.etapa) || !cliente.etapa) {
+    cambios.etapa = resumen.numCompras ? etapaTrasCompra(cliente.etapa, resumen.numCompras) : (cliente.etapa || "Prospecto");
+  }
+  await updateDoc(doc(db, "clientes", cliente.id), cambios);
+  return true;
+}
+
+/** Vuelve a calcular las compras de UN cliente con sus órdenes y deja sus contadores al día. */
+export async function resincronizarComprasCliente(clienteId) {
+  if (!clienteId) return false;
+  const [cSnap, vSnap] = await Promise.all([
+    getDoc(doc(db, "clientes", clienteId)),
+    getDocs(query(ventasRef, where("clienteId", "==", clienteId))),
+  ]);
+  if (!cSnap.exists()) return false;
+  const ventas = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return sincronizarComprasCliente({ id: cSnap.id, ...cSnap.data() }, resumenComprasCliente(ventas));
+}
+
+/**
+ * Panel siempre al día: llama a `callback` cada vez que cambia algo en esas colecciones
+ * (ventas, clientes, productos…), con una pequeña pausa para juntar varios cambios.
+ * Si un rol no puede leer alguna colección, esa simplemente no se escucha.
+ * Devuelve una función para dejar de escuchar.
+ */
+export function alCambiarColecciones(nombres, callback, espera = 400) {
+  let temporizador = null;
+  const programar = () => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => { Promise.resolve().then(callback).catch(() => {}); }, espera);
+  };
+  const cancelar = (nombres || []).map(n => onSnapshot(collection(db, n), programar, () => {}));
+  programar();
+  return () => { clearTimeout(temporizador); cancelar.forEach(c => c()); };
+}
+
 // ---------- Impuestos (Etapa 4): configuración del IVA ----------
 //    impuestos/iva { nombre: "IVA", tasa: 16, activo: true, incluidoEnPrecio: false,
 //                    actualizadoPor, actualizadoPorId, actualizadoEn }
@@ -1274,6 +1367,11 @@ export async function cambiarEstadoOrdenErp(orden, estadoNuevo, usuario) {
   });
 
   await lote.commit();
+  // Al cancelar, el total gastado del cliente baja enseguida (solo administrador y ventas
+  // pueden escribir en clientes; si lo hace logística, se empareja al abrir el CRM).
+  if (estadoNuevo === "Cancelada" && orden.clienteId && ["administrador", "vendedor"].includes(usuario?.rol)) {
+    resincronizarComprasCliente(orden.clienteId).catch(() => {});
+  }
 }
 
 /**

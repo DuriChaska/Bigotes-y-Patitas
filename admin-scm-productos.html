@@ -390,6 +390,8 @@
       }
     }
 
+    // ?q=nombre llega desde el ERP (Productos): se abre ya filtrado.
+    { const q = new URLSearchParams(location.search).get('q'); if (q) $('buscar').value = q; }
     $('buscar').addEventListener('input', pintar);
     $('filtroCategoria').addEventListener('change', pintar);
 

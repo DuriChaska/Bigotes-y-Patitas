@@ -111,7 +111,7 @@
   <script src="admin-components.js"></script>
   <script src="admin-charts.js"></script>
   <script type="module">
-    import { calcularMetricas } from './firebase-db.js';
+    import { calcularMetricas, alCambiarColecciones } from './firebase-db.js';
 
     async function cargarDashboard() {
       const m = await calcularMetricas();
@@ -154,7 +154,10 @@
           `).join('');
     }
 
-    cargarDashboard();
+    // Se vuelve a calcular solo cuando cambian clientes, interacciones u órdenes.
+    const iniciarDashboard = () => alCambiarColecciones(['clientes', 'interacciones', 'ventas'], cargarDashboard);
+    if (window.BP_SESION) iniciarDashboard();
+    else document.addEventListener('bp-sesion-lista', iniciarDashboard, { once: true });
   </script>
 </body>
 </html>

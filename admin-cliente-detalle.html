@@ -13,7 +13,7 @@
     <div id="admin-sidebar"></div>
 
     <main class="admin-main">
-      <a href="admin-clientes.html" class="admin-volver"><span data-bp-icon="arrow_left" style="margin-right:4px;"></span>Volver a clientes</a>
+      <a href="admin-clientes.html" class="admin-volver" id="cd-volver"><span data-bp-icon="arrow_left" style="margin-right:4px;"></span>Volver a clientes</a>
 
       <div class="admin-topbar">
         <div>
@@ -42,20 +42,42 @@
           <div><span style="color:var(--gray); display:inline-block; width:120px;">Estado</span><span class="admin-tag ok" id="cd-estado2">Activo</span></div>
         </div>
 
+        <!-- Compras: se calculan con las órdenes reales del cliente (tienda + ERP), en vivo -->
+        <h3 style="font-size:1rem;margin-bottom:10px;">Compras</h3>
+        <div class="admin-compras-kpis">
+          <div><small>Total gastado</small><strong id="cd-gastado">—</strong></div>
+          <div><small>Compras pagadas</small><strong id="cd-num">—</strong></div>
+          <div><small>Entregadas</small><strong id="cd-entregadas">—</strong></div>
+          <div><small>En curso</small><strong id="cd-encurso">—</strong></div>
+          <div><small>Última compra</small><strong id="cd-ultima" style="font-size:1.05rem;">—</strong></div>
+        </div>
+
         <!-- Botones de Acción -->
         <div class="admin-quick" style="margin-bottom:24px;">
           <a href="#" class="secondary" id="cd-btn-editar"><span data-bp-icon="pencil" style="margin-right:6px;"></span>Editar cliente</a>
           <a href="#" class="primary" id="cd-btn-etapa">Cambiar etapa CRM</a>
+          <a href="#" class="secondary" id="cd-btn-ordenes"><span data-bp-icon="clipboard" style="margin-right:6px;"></span>Ver sus órdenes en el ERP</a>
+          <a href="admin-erp-nueva-orden.html" class="secondary" id="cd-btn-nueva"><span data-bp-icon="plus" style="margin-right:6px;"></span>Nueva orden</a>
         </div>
 
         <!-- Pestañas de Navegación -->
         <div style="display:flex; gap:24px; border-bottom:1px solid #e6ddd0;">
-          <button class="admin-tab-btn active" data-tab="info">Información</button>
+          <button class="admin-tab-btn active" data-tab="compras">Historial de compras</button>
+          <button class="admin-tab-btn" data-tab="info">Información</button>
           <button class="admin-tab-btn" data-tab="inter">Interacciones</button>
           <button class="admin-tab-btn" data-tab="eval">Evaluaciones</button>
         </div>
 
-        <div class="admin-tab-panel" id="tab-info" style="padding-top:18px;">
+        <div class="admin-tab-panel" id="tab-compras" style="padding-top:18px;">
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Folio</th><th>Fecha</th><th>Productos</th><th>Total</th><th>Pago</th><th>Estado</th></tr></thead>
+              <tbody id="cd-compras"><tr><td colspan="6" style="color:var(--gray);">Cargando compras…</td></tr></tbody>
+            </table>
+          </div>
+          <p class="admin-sinc-nota">El total gastado suma las compras pagadas que no se cancelaron. Se actualiza solo cuando cambia una orden.</p>
+        </div>
+        <div class="admin-tab-panel" id="tab-info" style="padding-top:18px; display:none;">
           <p style="color:var(--gray);">Información general y de contacto del cliente, mostrada arriba.</p>
         </div>
         <div class="admin-tab-panel" id="tab-inter" style="padding-top:18px; display:none;">
@@ -72,52 +94,96 @@
   <script src="admin-icons.js"></script>
   <script src="admin-components.js"></script>
   <script type="module">
-    import { obtenerCliente } from './firebase-db.js';
+    import { escucharClienteUno, escucharVentasDeCliente, resumenComprasCliente, sincronizarComprasCliente } from './firebase-db.js';
 
+    const $ = (id) => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
     const tagClase = { "Activo": "ok", "Frecuente": "warn", "Prospecto": "info", "Inactivo": "muted" };
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('cliente');
+    const tagEstado = { "Entregada": "ok", "Cancelada": "danger", "Enviada": "info", "En proceso": "info", "Confirmada": "warn" };
+    const id = new URLSearchParams(window.location.search).get('cliente');
 
-    async function cargar() {
-      if (!id) {
-        document.getElementById('cd-titulo').textContent = 'Cliente no encontrado';
-        return;
-      }
-      const c = await obtenerCliente(id);
-      if (!c) {
-        document.getElementById('cd-titulo').textContent = 'Cliente no encontrado';
-        return;
-      }
+    // Desde el ERP se regresa a "Clientes" del ERP.
+    let modoErp = false;
+    try { modoErp = localStorage.getItem('bpModoErp') === '1'; } catch { /* sin almacenamiento */ }
+    if (modoErp) {
+      $('cd-volver').href = 'admin-erp-clientes.html';
+      $('cd-volver').lastChild.textContent = 'Volver a clientes (ERP)';
+    }
 
-      const iniciales = c.nombre.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    let cliente = null;
+    let ventas = null;
 
-      document.getElementById('cd-titulo').textContent = c.nombre;
-      document.getElementById('cd-nombre').textContent = c.nombre;
-      document.getElementById('cd-avatar').textContent = iniciales;
-      document.getElementById('cd-mascota').textContent = c.mascota;
-      document.getElementById('cd-correo').textContent = c.correo;
-      document.getElementById('cd-telefono').textContent = c.telefono;
-      document.getElementById('cd-fecha').textContent = c.fechaRegistro || '—';
+    function pintarCliente(c) {
+      const nombre = c.nombre || 'Cliente';
+      const iniciales = nombre.split(' ').filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+      $('cd-titulo').textContent = nombre;
+      $('cd-nombre').textContent = nombre;
+      $('cd-avatar').textContent = iniciales;
+      $('cd-mascota').textContent = c.mascota || '—';
+      $('cd-correo').textContent = c.correo || '—';
+      $('cd-telefono').textContent = c.telefono || '—';
+      $('cd-fecha').textContent = c.fechaRegistro || '—';
 
-      const etapaEl = document.getElementById('cd-etapa');
-      etapaEl.textContent = c.etapa;
+      const etapaEl = $('cd-etapa');
+      etapaEl.textContent = c.etapa || '—';
       etapaEl.className = 'admin-tag ' + (tagClase[c.etapa] || 'muted');
 
       ['cd-estado', 'cd-estado2'].forEach(elId => {
-        const el = document.getElementById(elId);
-        const activo = c.estado === 'Activo';
-        el.textContent = c.estado;
-        el.className = 'admin-tag ' + (activo ? 'ok' : 'muted');
+        const el = $(elId);
+        el.textContent = c.estado || '—';
+        el.className = 'admin-tag ' + (c.estado === 'Activo' ? 'ok' : 'muted');
       });
 
-      document.getElementById('cd-btn-etapa').href = 'admin-cliente-etapa.html?cliente=' + encodeURIComponent(id);
-      document.getElementById('cd-link-historial').href = 'admin-interacciones.html?cliente=' + encodeURIComponent(id) + '&nombre=' + encodeURIComponent(c.nombre);
-      document.getElementById('cd-btn-editar').addEventListener('click', (e) => {
-        e.preventDefault();
-        window.location.href = 'admin-clientes.html?editar=' + encodeURIComponent(id);
+      $('cd-btn-etapa').href = 'admin-cliente-etapa.html?cliente=' + encodeURIComponent(id);
+      $('cd-btn-ordenes').href = 'admin-erp-ordenes.html?q=' + encodeURIComponent(c.correo || nombre);
+      $('cd-btn-nueva').href = 'admin-erp-nueva-orden.html?cliente=' + encodeURIComponent(id);
+      $('cd-link-historial').href = 'admin-interacciones.html?cliente=' + encodeURIComponent(id) + '&nombre=' + encodeURIComponent(nombre);
+    }
+
+    function pintarCompras() {
+      if (!ventas) return;
+      const r = resumenComprasCliente(ventas);
+      $('cd-gastado').textContent = fmt.format(r.totalGastado);
+      $('cd-num').textContent = r.numCompras;
+      $('cd-entregadas').textContent = r.entregadas;
+      $('cd-encurso').textContent = r.enCurso;
+      $('cd-ultima').textContent = r.ultimaCompra ? new Date(r.ultimaCompra + 'T12:00:00').toLocaleDateString('es-MX', { dateStyle: 'medium' }) : '—';
+
+      $('cd-compras').innerHTML = ventas.length ? ventas.map(v => {
+        const ts = v.creadoEn?.toDate ? v.creadoEn.toDate() : (v.creadoEn ? new Date(v.creadoEn) : null);
+        const piezas = (v.items || []).reduce((s, it) => s + (Number(it.cantidad) || 0), 0);
+        const pago = v.estadoPago === 'Pendiente' ? '<span class="admin-tag warn">Pendiente</span>' : '<span class="admin-tag ok">Pagado</span>';
+        return `<tr>
+          <td><a class="admin-liga" href="admin-erp-ordenes.html?ver=${encodeURIComponent(v.id)}">${esc(v.folio || v.id.slice(0, 8))}</a></td>
+          <td>${ts ? ts.toLocaleDateString('es-MX') : '—'}</td>
+          <td>${piezas} pieza${piezas === 1 ? '' : 's'}</td>
+          <td><strong style="${v.estado === 'Cancelada' ? 'text-decoration:line-through;color:var(--gray);' : ''}">${fmt.format(Number(v.total) || 0)}</strong></td>
+          <td>${v.estado === 'Cancelada' ? '<span class="admin-tag muted">—</span>' : pago}</td>
+          <td><span class="admin-tag ${tagEstado[v.estado] || 'muted'}">${esc(v.estado || 'Confirmada')}</span></td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="6" style="color:var(--gray);">Este cliente todavía no tiene compras.</td></tr>';
+
+      // Los contadores guardados del CRM se emparejan con las órdenes reales.
+      if (cliente) sincronizarComprasCliente(cliente, r).catch(() => { /* solo lectura: no pasa nada */ });
+    }
+
+    function iniciar() {
+      if (!id) { $('cd-titulo').textContent = 'Cliente no encontrado'; return; }
+      escucharClienteUno(id, (c) => {
+        if (!c) { $('cd-titulo').textContent = 'Cliente no encontrado'; return; }
+        cliente = { id, ...c };
+        pintarCliente(cliente);
+        pintarCompras();
+      }, () => { $('cd-titulo').textContent = 'No se pudo cargar el cliente'; });
+
+      escucharVentasDeCliente(id, (lista) => { ventas = lista; pintarCompras(); }, () => {
+        $('cd-compras').innerHTML = '<tr><td colspan="6" style="color:var(--gray);">No se pudieron cargar las compras.</td></tr>';
       });
     }
-    cargar();
+
+    if (window.BP_SESION) iniciar();
+    else document.addEventListener('bp-sesion-lista', iniciar, { once: true });
 
     // Pestañas
     document.querySelectorAll('.admin-tab-btn').forEach(btn => {

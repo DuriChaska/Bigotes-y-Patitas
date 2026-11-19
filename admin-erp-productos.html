@@ -66,7 +66,7 @@
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr>
-              <th>Producto</th><th>Categoría</th><th>Proveedor</th><th>Precio</th><th>Stock</th><th>Estrategia</th>
+              <th>Producto</th><th>Categoría</th><th>Proveedor</th><th>Precio</th><th>Stock</th><th>Vendidos</th><th>Estrategia</th>
             </tr></thead>
             <tbody id="cuerpo"></tbody>
           </table>
@@ -81,7 +81,7 @@
   <script src="admin-components.js"></script>
   <script src="admin-charts.js"></script>
   <script type="module">
-    import { escucharProductosScm } from './firebase-db.js';
+    import { escucharProductosScm, escucharOrdenesErp } from './firebase-db.js';
     const $ = (id) => document.getElementById(id);
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
@@ -120,14 +120,31 @@
         const bajo = Number(p.stock) <= Number(p.stockMin);
         return `
         <tr>
-          <td><strong>${esc(p.nombre)}</strong></td>
+          <td><strong>${ligaProducto(p, 'admin-scm-productos.html')}</strong></td>
           <td>${esc(p.categoria || '—')}</td>
           <td>${esc(p.proveedor || '—')}</td>
           <td>${fmt.format(Number(p.precio) || 0)}</td>
-          <td><span class="admin-tag ${bajo ? 'warn' : 'ok'}">${Number(p.stock) || 0}</span></td>
+          <td>${ligaMovs(p, `<span class="admin-tag ${bajo ? 'warn' : 'ok'}">${Number(p.stock) || 0}</span>`)}</td>
+          <td>${vendidos ? vendidos[p.id] || 0 : '—'}</td>
           <td><span class="admin-tag ${ESTRATEGIA[p.estrategia] || 'muted'}">${esc(p.estrategia || '—')}</span></td>
         </tr>`;
       }).join('');
+    }
+
+    // Ligas a los módulos de origen (SCM): quién puede abrir cada página.
+    const rolActual = () => window.BP_SESION?.rol || '';
+    const ligaProducto = (p, pagina) => `<a class="admin-liga" href="${pagina}?q=${encodeURIComponent(p.nombre || '')}">${esc(p.nombre)}</a>`;
+    const ligaMovs = (p, texto) => ['administrador', 'logistica'].includes(rolActual())
+      ? `<a class="admin-liga" href="admin-scm-movimientos.html?producto=${encodeURIComponent(p.id)}" title="Ver entradas y salidas">${texto}</a>` : texto;
+
+    // Piezas vendidas de cada producto (órdenes no canceladas), en vivo.
+    let vendidos = null;
+    function contarVendidos(ordenes) {
+      vendidos = {};
+      ordenes.filter(o => o.estado !== 'Cancelada').forEach(o => (o.items || []).forEach(it => {
+        if (it.productoId) vendidos[it.productoId] = (vendidos[it.productoId] || 0) + (Number(it.cantidad) || 0);
+      }));
+      pintar();
     }
 
     $('buscar').addEventListener('input', pintar);
@@ -138,6 +155,7 @@
       if (iniciado || !sesion) return;
       iniciado = true;
       pintar();
+      escucharOrdenesErp(contarVendidos, () => { /* sin órdenes: la columna queda en — */ });
       escucharProductosScm((lista) => { productos = lista; cargado = true; pintar(); }, () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error'));
     }
     if (window.BP_SESION) iniciar(window.BP_SESION);

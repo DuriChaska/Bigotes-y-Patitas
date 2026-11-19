@@ -3342,3 +3342,86 @@ body.pd-con-barra #bp-notificacion { bottom: 96px !important; }
   body.cr-con-barra { padding-bottom: 72px; }
   body.cr-con-barra #toast-container { bottom: 86px; }
 }
+
+/* ===========================
+   Publicar / Mis publicaciones / Editar publicación (pb-*)
+=========================== */
+.pb-pagina { max-width: 1100px; margin: 0 auto; padding: 0 28px 70px; }
+.pb-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 28px; align-items: start; }
+.pb-tarjeta { background: #fff; border-radius: 22px; padding: 26px; box-shadow: 0 10px 28px rgba(74,56,38,.1); color: #2f4858; }
+.pb-tarjeta h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.8rem; color: #2f4858; margin-bottom: 4px; }
+.pb-nota { color: #8a7d6b; font-size: .92rem; margin-bottom: 6px; }
+.pb-foto { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; aspect-ratio: 1; border: 2px dashed #dccfbf; border-radius: 18px; background: #fdf8f0; cursor: pointer; overflow: hidden; position: relative; color: #8a7d6b; text-align: center; padding: 20px; transition: border-color .2s, background .2s; }
+.pb-foto:hover, .pb-foto:focus-within { border-color: #b8603a; background: #f8ece0; }
+.pb-foto svg { width: 54px; height: 54px; fill: #b8603a; }
+.pb-foto strong { color: #2f4858; font-size: 1.05rem; }
+.pb-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pb-foto input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.pb-foto.con-foto { border-style: solid; border-color: #efe4d6; padding: 0; }
+.pb-cambiar { position: absolute; right: 12px; bottom: 12px; background: rgba(47,72,88,.88); color: #fff; font-size: .85rem; font-weight: 600; padding: 7px 14px; border-radius: 999px; pointer-events: none; }
+.pb-foto:not(.con-foto) .pb-cambiar { display: none; }
+.pb-error { color: #8c1c2e; font-size: .9rem; margin-top: 10px; min-height: 1.2em; }
+.pb-form textarea.ac-input { height: 130px; padding: 14px 18px; resize: vertical; line-height: 1.5; }
+.pb-precio { position: relative; }
+.pb-precio::before { content: '$'; position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #8a7d6b; font-weight: 600; }
+.pb-precio .ac-input { padding-left: 34px; }
+.pb-acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.pb-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 26px; border: none; border-radius: 999px; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background .2s, transform .15s; }
+.pb-btn svg { width: 18px; height: 18px; }
+.pb-btn-vino { background: #8c1c2e; color: #fff; box-shadow: 0 8px 20px rgba(140,28,46,.22); }
+.pb-btn-vino:hover { background: #6d1422; transform: translateY(-1px); }
+.pb-btn-claro { background: #fff; color: #2f4858; box-shadow: 0 3px 12px rgba(74,56,38,.12); }
+.pb-btn-claro:hover { background: #fdf8f0; }
+.pb-btn:disabled { opacity: .6; cursor: wait; transform: none; }
+
+.pb-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
+.pb-barra p { color: #6b5d50; }
+.pb-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 22px; }
+.pb-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(74,56,38,.1); display: flex; flex-direction: column; }
+.pb-card img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #f8ece0; }
+.pb-card-info { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.pb-card h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.4rem; line-height: 1.15; color: #2f4858; }
+.pb-card p { color: #6b5d50; font-size: .92rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.pb-card-precio { font-size: 1.25rem; font-weight: 700; color: #8c1c2e; }
+.pb-card-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 8px; }
+.pb-card-botones button { height: 42px; border-radius: 10px; border: none; font: inherit; font-weight: 700; cursor: pointer; transition: background .2s; }
+.pb-editar { background: #2f4858; color: #fff; }
+.pb-editar:hover { background: #22384a; }
+.pb-eliminar { background: #f8e1e4; color: #8c1c2e; }
+.pb-eliminar:hover { background: #f1cbd1; }
+.pb-vacio { text-align: center; background: #fff; border-radius: 22px; padding: 46px 20px; box-shadow: 0 10px 28px rgba(74,56,38,.08); color: #6b5d50; }
+.pb-vacio svg { width: 60px; height: 60px; fill: #e6cdae; margin-bottom: 8px; }
+.pb-vacio h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.7rem; color: #2f4858; margin-bottom: 6px; }
+.pb-vacio .pb-btn { margin-top: 16px; }
+
+@media (max-width: 820px) {
+  .pb-grid { grid-template-columns: 1fr; }
+  .pb-pagina { padding: 0 16px 50px; }
+  .pb-tarjeta { padding: 20px 18px; }
+  .pb-foto { max-width: 360px; width: 100%; margin: 0 auto; }
+  .pb-acciones .pb-btn { flex: 1 1 100%; }
+}
+.pb-form input.ac-input, .pb-form textarea.ac-input { border: 1px solid #e8e1d8; background: #fff; box-shadow: none; margin: 0; }
+.pb-form input.ac-input:focus, .pb-form textarea.ac-input:focus { border-color: #b8603a; box-shadow: 0 0 0 3px rgba(184,96,58,.15); }
+
+/* ===========================
+   Panel: menú lateral con desplazamiento propio
+   (en pantallas bajas ya se alcanzan todas las opciones)
+=========================== */
+.admin-sidebar { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.28) transparent; }
+.admin-sidebar::-webkit-scrollbar { width: 6px; }
+.admin-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); border-radius: 6px; }
+.admin-sidebar .admin-nav { flex: 1 0 auto; }
+.admin-sidebar-foot { flex-shrink: 0; }
+.admin-modo-erp[hidden] { display: none !important; }
+
+/* Enlaces entre módulos del panel (ERP ↔ CRM ↔ SCM) */
+.admin-liga { color: inherit; font-weight: 600; text-decoration: underline; text-decoration-color: rgba(36,64,47,.3); text-underline-offset: 3px; }
+.admin-liga:hover { color: var(--admin-sidebar, #24402f); text-decoration-color: currentColor; }
+a.admin-panel-liga { display: block; color: inherit; transition: transform .15s, box-shadow .15s; }
+a.admin-panel-liga:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(36,64,47,.12); }
+.admin-compras-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 4px 0 22px; }
+.admin-compras-kpis div { background: #f7f3ec; border-radius: 12px; padding: 14px 16px; }
+.admin-compras-kpis small { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--gray); margin-bottom: 4px; }
+.admin-compras-kpis strong { font-size: 1.35rem; color: var(--text); }
+.admin-sinc-nota { font-size: .78rem; color: var(--gray); margin-top: 10px; }

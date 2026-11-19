@@ -137,7 +137,7 @@
   <script src="admin-components.js"></script>
   <script src="admin-charts.js"></script>
   <script type="module">
-    import { calcularMetricasErp, escucharOperacionesErp } from './firebase-db.js';
+    import { calcularMetricasErp, escucharOperacionesErp, alCambiarColecciones } from './firebase-db.js';
 
     const $ = id => document.getElementById(id);
     const fmt    = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
@@ -223,7 +223,8 @@
     function iniciar(sesion) {
       if (iniciado || !sesion) return;
       iniciado = true;
-      cargar();
+      // Las métricas se recalculan solas cuando cambia una orden, un producto o un cliente.
+      alCambiarColecciones(['ventas', 'scm_productos', 'clientes'], cargar);
       escucharOperacionesErp(pintarActividad, err => {
         $('rep-actividad').innerHTML = '<p style="color:var(--gray);font-size:.85rem;">No se pudo cargar la actividad.</p>';
       }, 8);

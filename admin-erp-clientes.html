@@ -84,7 +84,7 @@
   <script src="admin-components.js"></script>
   <script src="admin-charts.js"></script>
   <script type="module">
-    import { escucharClientes } from './firebase-db.js';
+    import { escucharClientes, escucharOrdenesErp, resumenComprasPorCliente, sincronizarComprasCliente } from './firebase-db.js';
     const $ = (id) => document.getElementById(id);
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
@@ -93,6 +93,13 @@
     const ETAPA = { Prospecto: 'warn', Activo: 'ok', Frecuente: 'info', Inactivo: 'muted' };
     let clientes = [];
     let cargado = false;
+    // Compras de cada cliente calculadas con las órdenes reales (tienda + ERP), en vivo.
+    let compras = null;
+    const sincronizados = new Set();
+    const comprasDe = (c) => (compras && compras[c.id]) || null;
+    const numDe = (c) => comprasDe(c) ? comprasDe(c).numCompras : (Number(c.numCompras) || 0);
+    const gastadoDe = (c) => comprasDe(c) ? comprasDe(c).totalGastado : (Number(c.totalComprado) || 0);
+    const ultimaDe = (c) => (comprasDe(c) && comprasDe(c).ultimaCompra) || c.ultimaCompra || '';
 
     function pintar() {
       const texto = norm($('buscar').value.trim());
@@ -104,7 +111,7 @@
       $('k-total').textContent = clientes.length;
       $('k-activos').textContent = clientes.filter(c => c.etapa === 'Activo').length;
       $('k-frecuentes').textContent = clientes.filter(c => c.etapa === 'Frecuente').length;
-      $('k-comprado').textContent = fmt.format(clientes.reduce((s, c) => s + (Number(c.totalComprado) || 0), 0));
+      $('k-comprado').textContent = fmt.format(clientes.reduce((s, c) => s + gastadoDe(c), 0));
       $('contador').textContent = `${lista.length} cliente${lista.length === 1 ? '' : 's'}`;
 
       const vacio = $('vacio');
@@ -117,15 +124,26 @@
       vacio.classList.add('hidden');
       $('cuerpo').innerHTML = lista.map(c => `
         <tr>
-          <td><strong>${esc(c.nombre)}</strong><div style="color:var(--gray);font-size:.78rem;">${esc(c.correo || '')}</div></td>
+          <td><a class="admin-liga" href="admin-cliente-detalle.html?cliente=${encodeURIComponent(c.id)}"><strong>${esc(c.nombre)}</strong></a><div style="color:var(--gray);font-size:.78rem;">${esc(c.correo || '')}</div></td>
           <td>${esc(c.mascota || '—')}</td>
           <td>${esc(c.telefono || '—')}</td>
           <td><span class="admin-tag ${ETAPA[c.etapa] || 'muted'}">${esc(c.etapa || '—')}</span></td>
-          <td>${Number(c.numCompras) || 0}</td>
-          <td>${fmt.format(Number(c.totalComprado) || 0)}</td>
-          <td>${esc(c.ultimaCompra || '—')}</td>
+          <td>${numDe(c) ? `<a class="admin-liga" href="admin-erp-ordenes.html?q=${encodeURIComponent(c.correo || c.nombre || '')}">${numDe(c)}</a>` : 0}</td>
+          <td>${fmt.format(gastadoDe(c))}</td>
+          <td>${esc(ultimaDe(c) || '—')}</td>
         </tr>`).join('');
       if (typeof pintarIconosBP === 'function') pintarIconosBP();
+    }
+
+    // Empareja una vez por visita los contadores guardados del CRM con las órdenes reales.
+    function sincronizar() {
+      if (!compras || !cargado) return;
+      clientes.forEach(c => {
+        if (sincronizados.has(c.id)) return;
+        sincronizados.add(c.id);
+        const r = compras[c.id] || { numCompras: 0, totalGastado: 0, ultimaCompra: '' };
+        sincronizarComprasCliente(c, r).catch(() => {});
+      });
     }
 
     $('buscar').addEventListener('input', pintar);
@@ -136,7 +154,8 @@
       if (iniciado || !sesion) return;
       iniciado = true;
       pintar();
-      escucharClientes((lista) => { clientes = lista; cargado = true; pintar(); });
+      escucharClientes((lista) => { clientes = lista; cargado = true; pintar(); sincronizar(); });
+      escucharOrdenesErp((ordenes) => { compras = resumenComprasPorCliente(ordenes); pintar(); sincronizar(); }, () => { /* sin órdenes: se usan los datos guardados */ });
     }
     if (window.BP_SESION) iniciar(window.BP_SESION);
     else document.addEventListener('bp-sesion-lista', (e) => iniciar(e.detail), { once: true });

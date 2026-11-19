@@ -2,92 +2,125 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Publicar producto</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Publicar producto - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css">
   <script src="dialogos.js"></script>
 </head>
 <body>
 
 <div id="header"></div>
-
-<section class="seller-interface">
-
-  <!-- PREVIEW -->
-  <label>Subir foto:</label>
-<input id="fotoFile" type="file" accept="image/*">
-
-  <!-- FORM -->
-  <form id="formProducto" class="product-form">
-    <h2>PUBLICA TU PRODUCTO</h2>
-
-    <label>Nombre del producto:</label>
-    <input id="nombre" type="text" required placeholder="Playera aesthetic..." />
-
-    <label>Precio:</label>
-    <input id="precio" type="number" required placeholder="$" />
-
-    <label>Descripción:</label>
-    <textarea id="descripcion" required placeholder="Describe tu producto..."></textarea>
-
-    <button type="submit" class="submit-product btn-pro">
-      Publicar producto
-    </button>
-
-  </form>
-
+<section class="cp-hero">
+  <div class="cp-hero-dentro">
+    <nav class="pd-ruta" aria-label="Ruta de navegación">
+      <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+      <span>/</span><a href="Interfaz Cliente - Perfil.html">Mi cuenta</a>
+      <span>/</span><strong>Publicar producto</strong>
+    </nav>
+    <p class="franja-ante">Vende lo que ya no usa</p>
+    <h1 class="franja-titulo">Publica tu producto</h1>
+    <span class="franja-linea" aria-hidden="true"></span>
+    <p class="ns-texto" style="max-width:620px">¿Tu peludito ya creció o tiene ropa que no usa? Súbela aquí con una foto, su precio y una descripción.</p>
+  </div>
+  <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+    <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+    <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+  </svg>
 </section>
+
+<main class="pb-pagina">
+  <form id="formProducto" class="pb-grid pb-form" novalidate>
+    <div class="pb-tarjeta">
+      <h2>Foto</h2>
+      <p class="pb-nota">Una foto clara y con buena luz ayuda a que se venda más rápido.</p>
+      <label class="pb-foto" id="pbFoto">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>
+        <strong>Elige una foto</strong>
+        <span>JPG o PNG · se recorta en cuadro</span>
+        <img id="previewImg" alt="" hidden>
+        <span class="pb-cambiar">Cambiar foto</span>
+        <input id="fotoFile" type="file" accept="image/*" aria-label="Foto del producto">
+      </label>
+      <p class="pb-error" id="errorFoto" role="alert"></p>
+    </div>
+
+    <div class="pb-tarjeta">
+      <h2>Datos del producto</h2>
+      <label class="ac-label" for="nombre">Nombre del producto</label>
+      <input class="ac-input" id="nombre" type="text" required maxlength="80" placeholder="Ej. Suéter tejido talla M" />
+
+      <label class="ac-label" for="precio">Precio (MXN)</label>
+      <div class="pb-precio"><input class="ac-input" id="precio" type="number" required min="1" step="1" placeholder="0" /></div>
+
+      <label class="ac-label" for="descripcion">Descripción</label>
+      <textarea class="ac-input" id="descripcion" required maxlength="500" placeholder="Talla, estado, para qué mascota es…"></textarea>
+
+      <p class="pb-error" id="errorForm" role="alert"></p>
+      <div class="pb-acciones">
+        <button type="submit" class="pb-btn pb-btn-vino" id="btnGuardar">Publicar producto</button>
+        <a class="pb-btn pb-btn-claro" href="mis-publicaciones.html">Ver mis publicaciones</a>
+      </div>
+    </div>
+  </form>
+</main>
 
 <div id="footer"></div>
 
 <script src="components.js"></script>
-
-<script>
-let imagenBase64 = "";
-
-const inputFile = document.getElementById("fotoFile");
-const preview = document.getElementById("previewImg");
-const mini = document.getElementById("miniPreview");
-
-// Convertir imagen a base64
-inputFile.addEventListener("change", function () {
-  const file = this.files[0];
-
-  if (file) {
-    const reader = new FileReader();
-
-    reader.onload = function (e) {
-      imagenBase64 = e.target.result;
-
-      // preview en pantalla
-      preview.src = imagenBase64;
-      mini.src = imagenBase64;
-    };
-
-    reader.readAsDataURL(file);
+<script type="module">
+  import { reducirFoto } from './foto-perfil.js';
+  const $ = (id) => document.getElementById(id);
+  let imagen = '';
+  function verFoto(src) {
+    imagen = src || '';
+    $('previewImg').hidden = !imagen;
+    if (imagen) $('previewImg').src = imagen;
+    $('pbFoto').classList.toggle('con-foto', !!imagen);
   }
-});
+  $('fotoFile').addEventListener('change', async function () {
+    const archivo = this.files[0];
+    $('errorFoto').textContent = '';
+    if (!archivo) return;
+    try {
+      verFoto(await reducirFoto(archivo, 600));
+    } catch (err) {
+      $('errorFoto').textContent = err.message;
+    }
+    this.value = '';
+  });
 
-// Guardar producto
-document.getElementById("formProducto").addEventListener("submit", async function(e){
-  e.preventDefault();
+  ['nombre', 'precio', 'descripcion'].forEach((id) => $(id).addEventListener('input', () => { $('errorForm').textContent = ''; }));
 
-  const producto = {
-    id: Date.now(),
-    nombre: nombre.value,
-    precio: precio.value,
-    descripcion: descripcion.value,
-    foto: imagenBase64 || "Imagenes/Colecciones.png"
-  };
+  function leerFormulario() {
+    const datos = { nombre: $('nombre').value.trim(), precio: $('precio').value.trim(), descripcion: $('descripcion').value.trim() };
+    let error = '';
+    if (!datos.nombre) error = 'Escribe el nombre del producto.';
+    else if (!(Number(datos.precio) > 0)) error = 'Escribe un precio mayor a $0.';
+    else if (!datos.descripcion) error = 'Agrega una descripción.';
+    $('errorForm').textContent = error;
+    return error ? null : datos;
+  }
 
-  let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
-  productos.push(producto);
+  function guardarLista(productos) {
+    try {
+      localStorage.setItem('misProductos', JSON.stringify(productos));
+      return true;
+    } catch (err) {
+      $('errorForm').textContent = 'Ya no cabe otra foto en este navegador. Elimina alguna publicación vieja e inténtalo de nuevo.';
+      return false;
+    }
+  }
 
-  localStorage.setItem("misProductos", JSON.stringify(productos));
-
-  await bpAlerta("✨ Producto publicado con imagen", { tipo: 'exito' });
-
-  window.location.href = "mis-publicaciones.html";
-});
+  $('formProducto').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const datos = leerFormulario();
+    if (!datos) return;
+    const productos = JSON.parse(localStorage.getItem('misProductos') || '[]');
+    productos.push({ id: Date.now(), ...datos, foto: imagen || 'Imagenes/Colecciones.png' });
+    if (!guardarLista(productos)) return;
+    await bpAlerta('Tu producto ya está publicado.', { tipo: 'exito', titulo: '¡Listo!' });
+    window.location.href = 'mis-publicaciones.html';
+  });
 </script>
 
 </body>

@@ -4,270 +4,268 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bigotes y Patitas</title>
-
-  <!-- Google Fonts -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Playfair+Display:wght@600&display=swap"
-    rel="stylesheet ">
+  <title>Bienvenido - Bigotes y Patitas</title>
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="Imagenes/Iconos/favicon-32.png" />
+  <link rel="apple-touch-icon" href="Imagenes/Iconos/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
 
   <style>
     :root {
-      --pink-fuerte: #b62694;
-      --pink-medio: #b3488f;
-      --bg: #f0d8e8;
+      --beige: #f2dec5;
+      --beige-claro: #f8ece0;
+      --crema: #fdf8f0;
+      --rojo: #d93359;
+      --vino: #8c1c2e;
+      --terracota: #b8603a;
+      --pizarra: #2f4858;
+      --texto: #4b4038;
     }
 
-    /* RESET */
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
       min-height: 100vh;
-      font-family: 'DM Sans', Arial, sans-serif;
-      display: grid;
-      grid-template-columns: 55% 45%;
-      grid-template-rows: auto 1fr auto;
-      background: var(--bg);
-    }
-
-    /* NAV */
-    .landing-nav {
-      grid-column: 1;
-      grid-row: 1;
-      padding: 30px 40px;
-      display: flex;
-      align-items: center;
-    }
-
-    /* BOTONES (GLOBAL) */
-    .btn {
-      padding: 12px 26px;
-      background: linear-gradient(135deg, var(--pink-fuerte), var(--pink-medio));
-      border: none;
-      color: white;
-      font-size: 15px;
-      font-weight: 600;
-      border-radius: 999px;
-      cursor: pointer;
-      transition: all .25s ease;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
-    }
-
-    /* IMAGEN */
-    .landing-img {
-      grid-column: 2;
-      grid-row: 1 / 3;
-      background: url("Imagenes/fondo1.png") no-repeat right center;
-      background-size: cover;
-      /* vuelve a llenar */
-      min-height: 80vh;
-      position: relative;
-    }
-
-    /* MAIN */
-    .landing-main {
-      grid-column: 1;
-      grid-row: 2;
-      padding: 0 50px 40px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      gap: 20px;
-      max-width: 520px;
+      font-family: 'DM Sans', Arial, sans-serif;
+      color: var(--texto);
+      background: var(--crema);
     }
 
-    h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(2rem, 4vw, 3rem);
-      color: var(--pink-fuerte);
-      margin: 0;
+    a { color: inherit; text-decoration: none; }
+
+    /* ---------- Portada ---------- */
+    .bv-portada { background: var(--beige); position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .bv-huellas { position: absolute; inset: 0; pointer-events: none; }
+    .bv-huellas svg { position: absolute; fill: #e6cdae; }
+
+    .bv-barra {
+      position: relative; z-index: 2;
+      max-width: 1240px; width: 100%; margin: 0 auto;
+      padding: 24px 28px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .bv-marca { display: flex; align-items: center; gap: 12px; font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.55rem; color: var(--pizarra); }
+    .bv-marca span.bv-logo { width: 52px; height: 52px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 4px 14px rgba(74,56,38,.12); }
+    .bv-marca img { width: 40px; height: 40px; object-fit: contain; }
+
+    .bv-sesion {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 24px; border-radius: 999px;
+      background: #fff; color: var(--pizarra); font-weight: 600; font-size: .98rem;
+      box-shadow: 0 4px 14px rgba(74,56,38,.1);
+      white-space: nowrap;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .bv-sesion svg { width: 18px; height: 18px; }
+    .bv-sesion:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(74,56,38,.16); }
+
+    .bv-contenido {
+      position: relative; z-index: 2;
+      max-width: 1240px; width: 100%; margin: 0 auto; flex: 1;
+      padding: 10px 28px 40px;
+      display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center;
     }
 
-    h2 {
-      font-size: clamp(1.5rem, 3vw, 2.2rem);
-      color: #222;
-      margin: 0;
+    .bv-ante { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.15rem; letter-spacing: .22em; text-transform: uppercase; color: var(--terracota); margin-bottom: 10px; }
+    .bv-titulo { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: clamp(3rem, 7vw, 5.2rem); line-height: 1; color: var(--rojo); margin-bottom: 16px; }
+    .bv-linea { display: block; width: 62px; height: 1.5px; background: #3d3530; margin-bottom: 22px; }
+    .bv-sub { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; font-size: clamp(1.5rem, 2.6vw, 2rem); color: var(--vino); margin-bottom: 12px; }
+    .bv-texto { font-size: 1.12rem; line-height: 1.75; font-weight: 300; max-width: 500px; margin-bottom: 28px; }
+
+    .bv-form { display: flex; gap: 10px; max-width: 500px; background: #fff; padding: 7px; border-radius: 999px; box-shadow: 0 8px 24px rgba(74,56,38,.1); }
+    .bv-form input { flex: 1; min-width: 0; border: none; background: transparent; padding: 0 18px; font: inherit; font-size: 1rem; color: var(--texto); }
+    .bv-form input:focus { outline: none; }
+    .bv-form button {
+      border: none; cursor: pointer; font: inherit; font-weight: 600; font-size: 1rem;
+      padding: 13px 26px; border-radius: 999px; background: var(--vino); color: #fff;
+      transition: background .2s;
+      white-space: nowrap;
     }
+    .bv-form button:hover { background: #6d1422; }
+    .bv-form:focus-within { box-shadow: 0 0 0 3px rgba(184,96,58,.25), 0 8px 24px rgba(74,56,38,.1); }
+    .bv-error { color: var(--vino); font-size: .9rem; margin: 10px 0 0 18px; min-height: 1.2em; }
 
-    p {
-      font-size: 1rem;
-      color: #555;
-      margin: 0;
+    .bv-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 18px; }
+    .bv-tienda {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 13px 28px; border-radius: 999px; background: var(--terracota); color: #fff; font-weight: 600;
+      box-shadow: 0 8px 20px rgba(184,96,58,.25); transition: background .2s, transform .2s;
     }
+    .bv-tienda svg { width: 19px; height: 19px; }
+    .bv-tienda:hover { background: #9a4c2c; transform: translateY(-2px); }
+    .bv-admin { font-size: .92rem; color: #7a6c5d; text-decoration: underline; text-underline-offset: 3px; }
+    .bv-admin:hover { color: var(--pizarra); }
 
-    /* FORM */
-    .landing-form {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+    .bv-ventajas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; list-style: none; }
+    .bv-ventajas li { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,.65); padding: 8px 14px; border-radius: 999px; font-size: .9rem; color: var(--pizarra); }
+    .bv-ventajas svg { width: 16px; height: 16px; fill: var(--terracota); }
+
+    /* Fotos */
+    .bv-fotos { position: relative; justify-self: center; width: min(470px, 100%); aspect-ratio: 1; }
+    .bv-circulo { position: absolute; inset: 6%; border-radius: 50%; background: #fff; box-shadow: 0 18px 44px rgba(74,56,38,.16); overflow: hidden; }
+    .bv-circulo img { width: 100%; height: 100%; object-fit: cover; }
+    .bv-mini { position: absolute; width: 34%; aspect-ratio: 1; border-radius: 50%; border: 6px solid #fff; overflow: hidden; box-shadow: 0 10px 26px rgba(74,56,38,.18); background: #fff; }
+    .bv-mini img { width: 100%; height: 100%; object-fit: cover; }
+    .bv-mini.m1 { right: -2%; bottom: 2%; }
+    .bv-mini.m2 { left: -4%; top: 4%; width: 26%; }
+    .bv-sello {
+      position: absolute; left: 0; bottom: 12%;
+      background: var(--vino); color: #fff; border-radius: 16px; padding: 10px 16px;
+      font-size: .88rem; line-height: 1.3; box-shadow: 0 10px 24px rgba(140,28,46,.28);
     }
+    .bv-sello strong { display: block; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.35rem; }
 
-    .landing-form input {
-      padding: 12px 16px;
-      flex: 1;
-      min-width: 200px;
-      border: 1px solid #ddd;
-      border-radius: 999px;
-      font-size: 15px;
-      outline: none;
+    .bv-ola { display: block; width: 100%; height: 70px; position: relative; z-index: 2; margin-bottom: -1px; }
+    .bv-ola .clara { fill: #8fae93; }
+    .bv-ola .fondo { fill: #6b8f71; }
+
+    /* ---------- Pie ---------- */
+    .bv-pie { background: #6b8f71; color: #fff; padding: 22px 28px; font-size: .9rem; }
+    .bv-pie-dentro { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 30px; }
+    .bv-pie strong { font-weight: 700; letter-spacing: .04em; }
+    .bv-redes { display: flex; gap: 14px; }
+    .bv-redes a { width: 36px; height: 36px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+    .bv-redes img { width: 20px; height: 20px; transition: transform .2s; }
+    .bv-redes a:hover img { transform: scale(1.15); }
+    .bv-nota { width: 100%; text-align: center; font-size: .78rem; color: rgba(255,255,255,.85); border-top: 1px solid rgba(255,255,255,.3); padding-top: 10px; }
+
+    .sr-solo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    /* ---------- Celular ---------- */
+    @media (max-width: 860px) {
+      .bv-contenido { grid-template-columns: 1fr; text-align: center; gap: 26px; padding-top: 0; }
+      .bv-fotos { order: -1; width: min(300px, 82%); }
+      .bv-linea, .bv-texto, .bv-form { margin-left: auto; margin-right: auto; }
+      .bv-acciones, .bv-ventajas { justify-content: center; }
+      .bv-sello { font-size: .78rem; padding: 8px 12px; }
+      .bv-sello strong { font-size: 1.1rem; }
+      .bv-pie-dentro { flex-direction: column; text-align: center; }
     }
-
-    .landing-form input:focus {
-      border-color: var(--pink-fuerte);
-    }
-
-    /* ADMIN BUTTON CENTER */
-    .admin-container {
-      display: flex;
-      justify-content: center;
-      margin-top: 10px;
-    }
-
-    /* FOOTER */
-    .landing-footer {
-      grid-column: 1 / -1;
-      grid-row: 3;
-      background: var(--pink-medio);
-      color: white;
-      padding: 15px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 13px;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-
-    .lf-left,
-    .lf-center,
-    .lf-right {
-      flex: 1;
-    }
-
-    .lf-center {
-      display: flex;
-      justify-content: center;
-      gap: 14px;
-    }
-
-    .lf-center img {
-      width: 22px;
-      height: 22px;
-      transition: transform .2s;
-    }
-
-    .lf-center img:hover {
-      transform: scale(1.2);
-    }
-
-    .lf-bottom {
-      width: 100%;
-      text-align: center;
-      font-size: 11px;
-      margin-top: 8px;
-      border-top: 1px solid rgba(255, 255, 255, .3);
-      padding-top: 8px;
-      color: rgba(255, 255, 255, .8);
-    }
-
-    /* RESPONSIVE */
-    @media (max-width: 768px) {
-      body {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto auto;
-      }
-
-      .landing-img {
-        grid-column: 1;
-        grid-row: 1;
-        min-height: 280px;
-        background-position: center;
-        background-size: cover;
-      }
-
-      .landing-nav {
-        grid-row: 2;
-        justify-content: center;
-      }
-
-      .landing-main {
-        grid-row: 3;
-        padding: 20px;
-        align-items: center;
-        text-align: center;
-      }
-
-      .landing-footer {
-        grid-row: 4;
-      }
+    @media (max-width: 480px) {
+      .bv-barra { padding: 18px 16px; }
+      .bv-marca { font-size: 1.15rem; line-height: 1.1; }
+      .bv-marca span.bv-logo { width: 44px; height: 44px; }
+      .bv-sesion { padding: 9px 16px; font-size: .9rem; }
+      .bv-contenido { padding: 0 18px 30px; }
+      .bv-form { flex-direction: column; border-radius: 22px; }
+      .bv-form input { padding: 12px 14px; text-align: center; }
+      .bv-ola { height: 40px; }
     }
   </style>
 </head>
 
 <body>
 
-  <!-- NAV -->
-  <nav class="landing-nav">
-    <button class="btn" onclick="window.location.href='login.html'">
-      Iniciar sesión
-    </button>
-  </nav>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="bv-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13" />
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)" />
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)" />
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)" />
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)" />
+    </symbol>
+  </svg>
 
-  <!-- IMAGEN -->
-  <div class="landing-img"></div>
-
-  <!-- MAIN -->
-  <main class="landing-main">
-    <h1>Cotton Candy Clothing Store</h1>
-    <h2>Ropa que amas, sin límites</h2>
-    <p>Outfits para cada mood. Moda que se adapta a tu estilo.</p>
-
-    <div class="landing-form">
-      <input type="email" placeholder="Ingresa tu email" />
-      <button class="btn" onclick="window.location.href='Interfaz Usuario - Registro .html'">
-        Comenzar ahora
-      </button>
+  <section class="bv-portada">
+    <div class="bv-huellas" aria-hidden="true">
+      <svg style="width:70px;height:70px;left:50%;bottom:22%;transform:rotate(-18deg)"><use href="#bv-huella" /></svg>
+      <svg style="width:46px;height:46px;left:4%;bottom:14%;transform:rotate(14deg)"><use href="#bv-huella" /></svg>
+      <svg style="width:56px;height:56px;right:5%;top:12%;transform:rotate(22deg)"><use href="#bv-huella" /></svg>
     </div>
 
-    <div class="admin-container">
-      <button class="btn" onclick="window.location.href='admin-login.html'">
-        Panel de administración
-      </button>
-    </div>
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="landing-footer">
-    <div class="lf-left">
-      <p><strong>Cotton Candy Clothing Store</strong></p>
-      <p>www.cottoncandy.com</p>
+    <div class="bv-barra">
+      <a class="bv-marca" href="index.html">
+        <span class="bv-logo"><img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="" /></span>
+        Bigotes y Patitas
+      </a>
+      <a class="bv-sesion" href="login.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z" /></svg>
+        Iniciar sesión
+      </a>
     </div>
 
-    <div class="lf-center">
-      <a href="#"><img src="Imagenes/Iconos/Facebook.png" alt="Facebook"></a>
-      <a href="#"><img src="Imagenes/Iconos/Twitter.png" alt="Twitter"></a>
-      <a href="#"><img src="Imagenes/Iconos/Instagram.png" alt="Instagram"></a>
+    <div class="bv-contenido">
+      <div>
+        <p class="bv-ante">Ropa y accesorios</p>
+        <h1 class="bv-titulo">Bigotes y Patitas</h1>
+        <span class="bv-linea" aria-hidden="true"></span>
+        <p class="bv-sub">Para que tu peludito luzca y se sienta increíble</p>
+        <p class="bv-texto">Suéteres, chamarras, vestidos y accesorios hechos con cariño para perritos y gatitos. Regístrate y
+          recibe nuestras novedades y promociones.</p>
+
+        <form class="bv-form" id="bv-form" novalidate>
+          <label class="sr-solo" for="bv-correo">Tu correo electrónico</label>
+          <input type="email" id="bv-correo" placeholder="Ingresa tu correo" autocomplete="email" />
+          <button type="submit">Crear mi cuenta</button>
+        </form>
+        <p class="bv-error" id="bv-error" role="alert"></p>
+
+        <div class="bv-acciones">
+          <a class="bv-tienda" href="index.html">
+            Entrar a la tienda
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </a>
+          <a class="bv-admin" href="admin-login.html">Soy del equipo · Panel de administración</a>
+        </div>
+
+        <ul class="bv-ventajas">
+          <li><svg><use href="#bv-huella" /></svg>Tallas para cada peludito</li>
+          <li><svg><use href="#bv-huella" /></svg>Envío a todo México</li>
+          <li><svg><use href="#bv-huella" /></svg>Cambios de talla</li>
+        </ul>
+      </div>
+
+      <div class="bv-fotos" aria-hidden="true">
+        <div class="bv-circulo"><img src="Imagenes/Productos/sueter-rojo-monos-1.jpg" alt="" /></div>
+        <div class="bv-mini m1"><img src="Imagenes/Productos/chamarra-borrego-rosa-1.jpg" alt="" /></div>
+        <div class="bv-mini m2"><img src="Imagenes/Productos/chaleco-polar-beige-1.jpg" alt="" /></div>
+        <div class="bv-sello"><strong>¡Nueva colección!</strong>Otoño · Invierno</div>
+      </div>
     </div>
 
-    <div class="lf-right">
-      <p>CottonCandyCS@gmail.com</p>
-      <p>📞 (449) 311 6529</p>
-    </div>
+    <svg class="bv-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V90 H0 Z" />
+      <path class="fondo" d="M0 70 C240 92 520 96 800 80 C1080 62 1260 74 1440 84 V90 H0 Z" />
+    </svg>
+  </section>
 
-    <div class="lf-bottom">
-      Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.<br>
-      © 2026 Cotton Candy Clothing Store
+  <div class="bv-pie">
+    <div class="bv-pie-dentro">
+      <div>
+        <strong>Bigotes y Patitas</strong><br />
+        Ropa y accesorios hechos con cariño para perritos y gatitos.
+      </div>
+      <div class="bv-redes">
+        <a href="#" aria-label="Facebook"><img src="Imagenes/Iconos/Facebook.png" alt="" /></a>
+        <a href="#" aria-label="Twitter"><img src="Imagenes/Iconos/Twitter.png" alt="" /></a>
+        <a href="#" aria-label="Instagram"><img src="Imagenes/Iconos/Instagram.png" alt="" /></a>
+      </div>
+      <div>📞 (449) 311 6529</div>
+      <div class="bv-nota">
+        Algunas imágenes de modelos utilizadas en este sitio fueron generadas con inteligencia artificial.<br />
+        © 2026 Bigotes y Patitas
+      </div>
     </div>
-  </footer>
+  </div>
 
+  <script>
+    // El correo se pasa al formulario de registro (login.html ya lo rellena con ?correo=).
+    document.getElementById('bv-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const correo = document.getElementById('bv-correo').value.trim();
+      const error = document.getElementById('bv-error');
+      if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+        error.textContent = 'Revisa tu correo, parece que le falta algo.';
+        return;
+      }
+      error.textContent = '';
+      window.location.href = 'login.html?modo=registro' + (correo ? '&correo=' + encodeURIComponent(correo) : '');
+    });
+  </script>
 </body>
 
 </html>

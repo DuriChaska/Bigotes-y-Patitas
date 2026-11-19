@@ -89,7 +89,7 @@
   <script src="admin-components.js"></script>
   <script src="admin-charts.js"></script>
   <script type="module">
-    import { calcularMetricas } from './firebase-db.js';
+    import { calcularMetricas, alCambiarColecciones } from './firebase-db.js';
 
     const coloresEtapa = { Activo: 'var(--admin-green)', Frecuente: 'var(--pink-medio)', Prospecto: 'var(--yellow)', Inactivo: 'var(--gray)' };
 
@@ -147,7 +147,9 @@
           `).join('');
     }
 
-    cargarReportes();
+    const iniciarReportes = () => alCambiarColecciones(['clientes', 'interacciones', 'ventas'], cargarReportes);
+    if (window.BP_SESION) iniciarReportes();
+    else document.addEventListener('bp-sesion-lista', iniciarReportes, { once: true });
   </script>
 </body>
 </html>
