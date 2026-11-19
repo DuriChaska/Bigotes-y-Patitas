@@ -3,53 +3,156 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Contacto - Bigotes y Patitas</title>
+  <title>Contáctanos - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
-<body>
+<body class="ct-body">
 
   <div id="header"></div>
+  <div id="toast-container"></div>
 
-  <section class="contact-us">
-    <div class="contact-hero">
-      <div class="contact-info">
-        <div class="icon">
-          <img src="Imagenes/Iconos/Icon1.png" alt="Icono" style="width:40px; height:40px;" />
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ct-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+    <symbol id="ct-correo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></g></symbol>
+    <symbol id="ct-tel" viewBox="0 0 24 24"><path d="M6.6 3.5l2.6.5 1.3 3.6-1.8 1.4a12 12 0 0 0 6.3 6.3l1.4-1.8 3.6 1.3.5 2.6c.1.7-.4 1.4-1.1 1.5A16.5 16.5 0 0 1 5.1 4.6c.1-.7.8-1.2 1.5-1.1z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></symbol>
+    <symbol id="ct-reloj" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></g></symbol>
+    <symbol id="ct-mapa" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></g></symbol>
+    <symbol id="ct-fb" viewBox="0 0 24 24"><path d="M14 8.5V6.8c0-.8.5-1.3 1.3-1.3H17V2.3h-2.6C11.7 2.3 10.5 4 10.5 6.4v2.1H8v3.2h2.5v10h3.5v-10h2.6l.4-3.2z" fill="currentColor"/></symbol>
+    <symbol id="ct-ig" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></g></symbol>
+    <symbol id="ct-x" viewBox="0 0 24 24"><path d="M4 3h4.6l4.1 5.6L17.4 3H20l-6 7 6.6 11H16l-4.4-6.1L6.4 21H3.8l6.6-7.6z" fill="currentColor"/></symbol>
+    <symbol id="ct-flecha" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </svg>
+
+  <!-- Portada -->
+  <section class="cp-hero ct-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong>Contacto</strong>
+      </nav>
+      <div class="ns-hero-grid">
+        <div>
+          <p class="franja-ante">Estamos para ayudarte</p>
+          <h1 class="franja-titulo">Contáctanos</h1>
+          <span class="franja-linea" aria-hidden="true"></span>
+          <p class="ns-texto">¿Tienes dudas sobre una talla, tu pedido o quieres una prenda personalizada? Escríbenos y con gusto te ayudamos
+            a encontrar lo ideal para tu peludito.</p>
+          <p class="ct-redes-titulo">Síguenos en nuestras redes</p>
+          <div class="ct-redes">
+            <a href="https://es-la.facebook.com/" target="_blank" rel="noopener" aria-label="Facebook"><svg><use href="#ct-fb"/></svg></a>
+            <a href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="Instagram"><svg><use href="#ct-ig"/></svg></a>
+            <a href="https://x.com/" target="_blank" rel="noopener" aria-label="X (Twitter)"><svg><use href="#ct-x"/></svg></a>
+          </div>
         </div>
-        <h2>CONTÁCTANOS</h2>
-        <p>______________________________</p>
-        <p>Síguenos en nuestras redes sociales</p>
-        <div class="social-icons">
-          <a href="https://es-la.facebook.com/"><img src="Imagenes/Iconos/Facebook.png" alt="Facebook" class="icon" /></a>
-          <a href="https://x.com/"><img src="Imagenes/Iconos/Twitter.png" alt="Twitter" class="icon" /></a>
-          <a href="https://www.instagram.com/"><img src="Imagenes/Iconos/Instagram.png" alt="Instagram" class="icon" /></a>
+        <div class="ct-hero-foto">
+          <img src="Imagenes/contact us_pets.png" alt="Perritos y gatitos con ropa de colores" />
+          <svg class="cp-deco d1" aria-hidden="true"><use href="#ct-huella"/></svg>
+          <svg class="cp-deco d2" aria-hidden="true"><use href="#ct-huella"/></svg>
         </div>
-      </div>
-      <div class="contact-image">
-        <img src="Imagenes/contact us_pets.png" alt="Playeras sonriendo" />
       </div>
     </div>
-
-    <form class="contact-form" id="contactForm">
-      <div class="input-group">
-        <input type="text" placeholder="Nombre" />
-        <input type="email" placeholder="Email" />
-      </div>
-      <textarea placeholder="Mensaje" rows="5"></textarea>
-      <button type="submit" id="sendBtn">Enviar →</button>
-      <p id="formMessage" class="form-message"></p>
-    </form>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
   </section>
+
+  <main class="ct-pagina">
+    <!-- Datos de contacto -->
+    <section class="ct-datos" aria-label="Datos de contacto">
+      <div class="ct-dato"><svg><use href="#ct-correo"/></svg><div><strong>Correo</strong><a href="mailto:Bigotes_y_Patitas@gmail.com">Bigotes_y_Patitas@gmail.com</a></div></div>
+      <div class="ct-dato"><svg><use href="#ct-tel"/></svg><div><strong>Teléfono</strong><a href="tel:+524493116529">(449) 311 6529</a></div></div>
+      <div class="ct-dato"><svg><use href="#ct-reloj"/></svg><div><strong>Horario</strong><span>Lun a Vie 7:00 am – 11:00 pm<br>Sáb y Dom 9:00 am – 9:00 pm</span></div></div>
+      <div class="ct-dato"><svg><use href="#ct-mapa"/></svg><div><strong>Ubicación</strong><span>Aguascalientes, Ags., México</span></div></div>
+    </section>
+
+    <!-- Formulario -->
+    <section class="ct-form-caja" aria-labelledby="t-form">
+      <div class="ct-form-lado">
+        <p class="franja-ante">Escríbenos</p>
+        <h2 class="ns-titulo" id="t-form">Envíanos un mensaje</h2>
+        <span class="franja-linea" aria-hidden="true"></span>
+        <p class="ct-nota">Tu mensaje le llega a nuestro equipo de <strong>Atención a clientes</strong>. Te respondemos ahí mismo
+          y también puedes seguir la conversación desde <a href="atencion-clientes.html">tu cuenta</a>.</p>
+        <p class="ct-nota" id="aviso-sesion" hidden>Para poder responderte, te pediremos <strong>iniciar sesión</strong> al enviar.
+          No te preocupes: tu mensaje no se pierde.</p>
+      </div>
+
+      <form class="ct-form" id="contactForm" novalidate>
+        <div class="ct-fila">
+          <div>
+            <label class="ac-label" for="c-nombre">Nombre*</label>
+            <input class="ac-input" type="text" id="c-nombre" maxlength="80" autocomplete="name" placeholder="Tu nombre" />
+          </div>
+          <div>
+            <label class="ac-label" for="c-correo">Correo electrónico*</label>
+            <input class="ac-input" type="email" id="c-correo" maxlength="120" autocomplete="email" placeholder="nombre@correo.com" />
+          </div>
+        </div>
+        <label class="ac-label" for="c-asunto">Asunto*</label>
+        <div class="pd-select ct-select">
+          <select id="c-asunto">
+            <option value="Otra duda o comentario">Duda o comentario general</option>
+            <option value="Duda sobre mi pedido">Duda sobre mi pedido</option>
+            <option value="Cambio de producto">Cambio de talla o de producto</option>
+            <option value="Facturación">Facturación</option>
+            <option value="Problema con monedero">Problema con monedero</option>
+          </select>
+          <svg><use href="#ct-flecha"/></svg>
+        </div>
+        <label class="ac-label" for="c-mensaje">Mensaje*</label>
+        <textarea class="ac-input ct-texto" id="c-mensaje" maxlength="1800" rows="6" placeholder="Cuéntanos en qué te podemos ayudar…"></textarea>
+        <p class="ct-contador" id="contador">0 / 1800</p>
+        <p class="ac-error" id="formError" role="alert" hidden></p>
+        <button type="submit" class="ac-btn ct-enviar" id="sendBtn">Enviar mensaje</button>
+      </form>
+
+      <div class="ct-exito" id="exito" hidden>
+        <svg aria-hidden="true"><use href="#ct-huella"/></svg>
+        <h3>¡Mensaje enviado!</h3>
+        <p>Tu folio es <strong id="folio"></strong>. Te responderemos lo antes posible.</p>
+        <a class="ac-btn" href="atencion-clientes.html">Ver mis mensajes</a>
+        <button type="button" class="ct-otro" id="otroMensaje">Enviar otro mensaje</button>
+      </div>
+    </section>
+
+    <!-- Preguntas frecuentes -->
+    <section class="ct-faq" aria-labelledby="t-faq">
+      <p class="dest-antetitulo">Antes de escribirnos</p>
+      <h2 class="ns-titulo ns-centro" id="t-faq">Preguntas frecuentes</h2>
+      <details>
+        <summary>¿Hacen envíos a todo México?<svg><use href="#ct-flecha"/></svg></summary>
+        <p>Sí. Enviamos a domicilio a toda la República; normalmente llega en 3 a 5 días hábiles. También puedes recoger en nuestra tienda de Aguascalientes.</p>
+      </details>
+      <details>
+        <summary>¿Cómo sé qué talla elegir?<svg><use href="#ct-flecha"/></svg></summary>
+        <p>En cada producto encontrarás la <strong>Guía de tallas</strong> y el botón <strong>¿Cuál es la talla correcta?</strong>, que te dice cuál le queda con solo medir el largo de su espalda.</p>
+      </details>
+      <details>
+        <summary>¿Puedo cambiar una prenda si no le quedó?<svg><use href="#ct-flecha"/></svg></summary>
+        <p>Sí. Escríbenos con el asunto <strong>Cambio de talla o de producto</strong> y te ayudamos a cambiarla por otra talla.</p>
+      </details>
+      <details>
+        <summary>¿Qué formas de pago aceptan?<svg><use href="#ct-flecha"/></svg></summary>
+        <p>PayPal, tarjeta de crédito o débito, OXXO / SPEI y el saldo de tu monedero.</p>
+      </details>
+      <details>
+        <summary>¿Hacen prendas personalizadas?<svg><use href="#ct-flecha"/></svg></summary>
+        <p>¡Sí! Puedes elegir talla, color y estampado. Escríbenos aquí con la idea que tienes y te decimos cómo hacerla.</p>
+      </details>
+    </section>
+  </main>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script>
-    document.getElementById("contactForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-      document.getElementById("formMessage").textContent = "¡Mensaje enviado!";
-      document.getElementById("sendBtn").disabled = true;
-    });
-  </script>
+  <script type="module" src="contacto.js"></script>
 </body>
 </html>

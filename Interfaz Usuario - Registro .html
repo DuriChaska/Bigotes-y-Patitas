@@ -4,42 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Registro - Bigotes y Patitas</title>
-  <link rel="stylesheet" href="styles.css" />
+  <!-- El registro ahora vive en login.html (pestaña "Registrarme", 4 pasos).
+       Esta página se conserva para que los enlaces viejos sigan funcionando. -->
+  <script>
+    (function () {
+      var p = new URLSearchParams(window.location.search);
+      p.set('modo', 'registro');
+      window.location.replace('login.html?' + p.toString());
+    })();
+  </script>
+  <noscript><meta http-equiv="refresh" content="0; url=login.html?modo=registro" /></noscript>
 </head>
 <body>
-
-  <div id="header"></div>
-
-  <section class="client-interface registration">
-    <h2>Registro Usuario</h2>
-    <!-- novalidate: las revisiones las hace registro.js para mostrar los mensajes en español y en un solo lugar -->
-    <form class="registration-form" id="registerForm" novalidate>
-      <div class="input-group">
-        <input type="text" id="reg-nombre" placeholder="Nombre" autocomplete="given-name" maxlength="60" required />
-        <input type="text" id="reg-apellidos" placeholder="Apellidos" autocomplete="family-name" maxlength="60" required />
-      </div>
-      <input type="email" id="reg-correo" placeholder="Correo" autocomplete="email" maxlength="120" required />
-      <input type="tel" id="reg-telefono" placeholder="Teléfono (10 dígitos)" autocomplete="tel" inputmode="numeric" required />
-      <input type="text" id="reg-mascota" placeholder="Nombre de tu mascota (opcional)" maxlength="60" />
-      <input type="password" id="reg-pass" placeholder="Contraseña (mínimo 6 caracteres)" autocomplete="new-password" minlength="6" required />
-      <input type="password" id="reg-pass2" placeholder="Confirmar Contraseña" autocomplete="new-password" minlength="6" required />
-      <button type="submit">REGISTRARSE</button>
-      <p id="registerError" role="alert" style="display:none; color:#b3261e; margin-top:15px;"></p>
-      <p id="registerMessage" role="status" style="display:none; color:#054704; margin-top:15px;">
-        ¡Cuenta creada! Ya iniciaste sesión, te llevamos a la tienda...
-      </p>
-    </form>
-    <p style="margin-top:1rem; font-size:.9rem;">
-      ¿Ya tienes cuenta?
-      <a href="login.html" id="linkLogin" style="color:var(--pink-medio); font-weight:600;">Inicia sesión aquí</a>
-    </p>
-  </section>
-
-  <div id="footer"></div>
-
-  <script src="components.js"></script>
-  <!-- type="module" es obligatorio: registro.js usa "import" (sin esto el navegador no lo ejecuta
-       y el formulario solo recarga la página sin registrar a nadie). -->
-  <script type="module" src="registro.js"></script>
+  <p style="font-family:sans-serif; text-align:center; margin-top:40px;">
+    Abriendo el registro… <a href="login.html?modo=registro">Da clic aquí si no avanza</a>.
+  </p>
 </body>
 </html>

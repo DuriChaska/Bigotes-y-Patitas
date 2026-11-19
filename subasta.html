@@ -7,82 +7,45 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="dialogos.js"></script>
   <style>
-    .auction-box {
-      background: #fff;
-      border-radius: 15px;
-      padding: 20px;
-      max-width: 600px;
-      margin: auto;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-
-    .profile-pic {
-      width: 100%;
-      height: auto; 
-      object-fit: contain; 
-      border-radius: 10px;
-      margin-bottom: 15px;
-    }
-
-    .timer {
-      font-size: 18px;
-      font-weight: bold;
-      color: #e74c3c;
-      margin: 10px 0;
-    }
-
-    .offer-input {
-      width: 80%;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #ccc;
-      margin-bottom: 10px;
-    }
-
-    .offer-button {
-      background-color: #f7c948;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .offer-button:hover {
-      background-color: #f4b400;
-    }
-
-    .offer-button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-
-    .offers-list {
-      margin-top: 20px;
-      text-align: left;
-    }
-
-    .offer-item {
-      background: #f3e8ff;
-      padding: 10px;
-      border-radius: 10px;
-      margin-bottom: 8px;
-    }
-
-    .rating {
-      margin-top: 10px;
-    }
-
-    .star {
-      font-size: 28px;
-      cursor: pointer;
-      color: #ccc;
-      user-select: none;
-    }
-
-    .star.active {
-      color: #f7c948;
+    .sa-pagina { max-width: 1100px; margin: 0 auto; padding: 0 28px 70px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+    .sa-foto { background: #fff; border-radius: 22px; padding: 14px; box-shadow: 0 10px 28px rgba(74,56,38,.12); position: sticky; top: 100px; }
+    .sa-foto img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 16px; display: block; background: #f8ece0; }
+    .sa-panel { background: #fff; border-radius: 22px; padding: 28px; box-shadow: 0 10px 28px rgba(74,56,38,.1); color: #2f4858; }
+    .sa-etiqueta { display: inline-block; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #b8603a; background: #f8ece0; padding: 4px 10px; border-radius: 999px; margin-bottom: 8px; }
+    .sa-panel h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: clamp(1.9rem, 3.4vw, 2.5rem); line-height: 1.1; color: #2f4858; margin-bottom: 18px; }
+    .sa-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .sa-dato { background: #fdf8f0; border-radius: 14px; padding: 14px; }
+    .sa-dato small { display: block; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: #8a7d6b; font-weight: 700; margin-bottom: 4px; }
+    .sa-dato strong { font-size: 1.45rem; color: #8c1c2e; }
+    .timer { font-size: 1.45rem; font-weight: 700; color: #2f4858; }
+    .timer.fin { color: #8a7d6b; font-size: 1.1rem; }
+    .sa-ofertar { display: flex; gap: 10px; }
+    .offer-input { flex: 1; border: 1px solid #e8e1d8 !important; margin: 0; min-width: 0; height: 54px; border: 1px solid #e8e1d8; border-radius: 14px; padding: 0 16px; font: inherit; font-size: 1rem; color: #2f4858; }
+    .offer-input:focus { outline: none; border-color: #b8603a; box-shadow: 0 0 0 3px rgba(184,96,58,.15); }
+    .offer-button { height: 54px; padding: 0 28px; border: none; border-radius: 14px; background: #8c1c2e; color: #fff; font: inherit; font-weight: 700; cursor: pointer; transition: background .2s; }
+    .offer-button:hover { background: #6d1422; }
+    .offer-button:disabled { background: #cfc6bc; cursor: not-allowed; }
+    #mensajeOferta { margin-top: 10px; font-weight: 600; color: #3f6b46; min-height: 1.3em; }
+    .sa-sub { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.4rem; color: #2f4858; margin: 22px 0 10px; }
+    .offers-list { border-top: 1px solid #efe4d6; }
+    .offer-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px dashed #efe4d6; font-size: .95rem; }
+    .offer-item::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #b8603a; flex: none; }
+    .offer-item.tuya { font-weight: 700; color: #8c1c2e; }
+    .offer-item.tuya::before { background: #8c1c2e; }
+    .rating { margin-top: 22px; background: #fdf8f0; border-radius: 14px; padding: 14px 16px; text-align: center; }
+    .rating p { margin: 0; color: #6b5d50; }
+    .star { font-size: 30px; cursor: pointer; color: #dccfbf; user-select: none; transition: color .15s, transform .15s; }
+    .star:hover { transform: scale(1.12); }
+    .star.active { color: #b8603a; }
+    #ratingMessage { min-height: 1.2em; font-size: .9rem; }
+    .sa-volver { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; color: #2f4858; font-weight: 600; }
+    .sa-volver:hover { color: #b8603a; }
+    @media (max-width: 820px) {
+      .sa-pagina { grid-template-columns: 1fr; padding: 0 16px 50px; }
+      .sa-foto { position: static; }
+      .sa-panel { padding: 22px 18px; }
+      .sa-ofertar { flex-direction: column; }
+      .offer-input { flex: none; width: 100%; }
     }
   </style>
 </head>
@@ -90,26 +53,52 @@
 
   <div id="header"></div>
 
-  <div class="container">
-    <h1 class="section-title">Subasta</h1>
-    <p class="section-subtitle">Participa en nuestra subasta exclusiva</p>
+  <section class="cp-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><a href="subastas.html">Subastas</a>
+        <span>/</span><strong>Subasta en vivo</strong>
+      </nav>
+      <p class="franja-ante">Subasta en vivo</p>
+      <h1 class="franja-titulo">¡Haz tu oferta!</h1>
+    </div>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
+  </section>
 
-    <div class="auction-box">
-      <img src="Imagenes/sudaderajk.png" alt="Producto de subasta" class="profile-pic" id="imagenSubasta" />
+  <main class="sa-pagina">
+    <div class="sa-foto">
+      <img src="Imagenes/Productos/chaleco-polar-beige-1.jpg" alt="Producto de subasta" id="imagenSubasta" />
+    </div>
 
-      <h2 id="tituloSubasta">Sudadera edición limitada</h2>
-      <p>Precio actual: <strong id="precioActual">$250 MXN</strong></p>
+    <section class="sa-panel auction-box">
+      <span class="sa-etiqueta">Edición única</span>
+      <h2 id="tituloSubasta">Chaleco polar beige</h2>
 
-      <div class="timer" id="timer">Tiempo restante: 00:10:00</div>
+      <div class="sa-datos">
+        <div class="sa-dato"><small>Oferta actual</small><strong id="precioActual">$250 MXN</strong></div>
+        <div class="sa-dato"><small>Cierra en</small><div class="timer" id="timer">00:10:00</div></div>
+      </div>
 
-      <input type="number" id="offerInput" class="offer-input" placeholder="Ingresa tu oferta" />
-      <br />
-      <button class="offer-button" id="offerBtn" onclick="hacerOferta()">Ofertar</button>
+      <label class="sr-solo" for="offerInput">Tu oferta en pesos</label>
+      <div class="sa-ofertar">
+        <input type="number" id="offerInput" class="offer-input" placeholder="Tu oferta (MXN)" min="1" />
+        <button class="offer-button" id="offerBtn" onclick="hacerOferta()">Ofertar</button>
+      </div>
+      <p id="mensajeOferta" role="status"></p>
 
-      <p id="mensajeOferta" style="margin-top:10px; font-weight:bold;"></p>
+      <h3 class="sa-sub">Ofertas recientes</h3>
+      <div class="offers-list" id="offersList">
+        <div class="offer-item">Usuario1: $200</div>
+        <div class="offer-item">Usuario2: $220</div>
+        <div class="offer-item">Usuario3: $250</div>
+      </div>
 
       <div class="rating">
-        <p>Califica esta subasta:</p>
+        <p>¿Qué te pareció esta subasta?</p>
         <span class="star" onclick="calificar(1)">★</span>
         <span class="star" onclick="calificar(2)">★</span>
         <span class="star" onclick="calificar(3)">★</span>
@@ -118,14 +107,9 @@
         <p id="ratingMessage"></p>
       </div>
 
-      <div class="offers-list" id="offersList">
-        <h3>Ofertas recientes</h3>
-        <div class="offer-item">Usuario1: $200</div>
-        <div class="offer-item">Usuario2: $220</div>
-        <div class="offer-item">Usuario3: $250</div>
-      </div>
-    </div>
-  </div>
+      <a class="sa-volver" href="subastas.html">← Ver otras subastas</a>
+    </section>
+  </main>
 
   <div id="footer"></div>
 
@@ -143,7 +127,7 @@
       const tiempo = localStorage.getItem("tiempoSubasta");
 
       if (nombre) {
-        document.getElementById("tituloSubasta").textContent = nombre;
+        document.getElementById("tituloSubasta").textContent = nombre.split(" · ")[0];
       }
 
       if (precio) {
@@ -171,11 +155,12 @@
       minutos = minutos < 10 ? "0" + minutos : minutos;
       segundos = segundos < 10 ? "0" + segundos : segundos;
 
-      timer.textContent = `Tiempo restante: ${minutos}:${segundos}`;
+      timer.textContent = `${minutos}:${segundos}`;
 
       if (tiempoRestante <= 0) {
         clearInterval(intervalo);
         timer.textContent = "Subasta finalizada";
+        timer.classList.add("fin");
         btn.disabled = true;
         return;
       }
@@ -216,7 +201,7 @@
 
       // Agregar a la lista
       const nuevaOferta = document.createElement("div");
-      nuevaOferta.classList.add("offer-item");
+      nuevaOferta.classList.add("offer-item", "tuya");
       nuevaOferta.textContent = "Tú: $" + valor;
 
       lista.appendChild(nuevaOferta);

@@ -19,6 +19,7 @@ const ITEMS_CUENTA = [
   { id: 'monedero',    label: 'Mi monedero',         icono: '👛', href: 'mi-monedero.html' },
   { id: 'datos',       label: 'Mis datos',           icono: '🪪', href: 'mis-datos.html' },
   { id: 'direcciones', label: 'Direcciones',         icono: '📍', href: 'mis-direcciones.html' },
+  { id: 'favoritos',   label: 'Mis favoritos',       icono: '♥', href: 'mis-favoritos.html' },
   { id: 'atencion',    label: 'Atención a clientes', icono: '🎧', href: 'atencion-clientes.html' },
 ];
 

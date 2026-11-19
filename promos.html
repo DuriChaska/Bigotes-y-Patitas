@@ -7,87 +7,105 @@
   <link rel="stylesheet" href="styles.css" />
   <script src="dialogos.js"></script>
 </head>
-<body>
+<body class="pr-body">
 
   <div id="header"></div>
+  <div id="toast-container"></div>
 
-  <section class="promo-wrapper">
-    <h2 class="promo-title">Promociones</h2>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="pr-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+    <symbol id="pr-copiar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></g></symbol>
+    <symbol id="pr-camion" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4.5l3.5 3.5V16h-8z"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></g></symbol>
+  </svg>
 
-    <div class="promo-cards">
-      <div class="promo-card">
+  <!-- Portada -->
+  <section class="cp-hero pr-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong>Promociones</strong>
+      </nav>
+      <div class="ns-hero-grid">
         <div>
-          <h3>2 x 1 en Blusas</h3>
-          <p>Llévate dos piezas al precio de una</p>
+          <p class="franja-ante">Ahorra consintiéndolos</p>
+          <h1 class="franja-titulo">Promociones</h1>
+          <span class="franja-linea" aria-hidden="true"></span>
+          <p class="ns-texto">Copia el código de la promoción que más te guste y aplícalo en tu carrito. ¡Así de fácil le compras más
+            cositas a tu peludito por menos!</p>
+          <a href="#pr-cupones" class="cp-hero-btn">Ver cupones <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
         </div>
-        <div class="promo-bottom">
-          <span class="promo-code">CUTECANDY50</span>
-          <span class="promo-value">50%</span>
-        </div>
-      </div>
-
-      <div class="promo-card">
-        <div>
-          <h3>10% en tu tercer prenda</h3>
-          <p>Descuento en toda la línea de productos al llevar la tercer prenda</p>
-        </div>
-        <div class="promo-bottom">
-          <span class="promo-code">CUTECANDY10</span>
-          <span class="promo-value">10%</span>
-        </div>
-      </div>
-
-      <div class="promo-card">
-        <div>
-          <h3>Envío Gratis</h3>
-          <p>En compras mayores a $2000</p>
-        </div>
-        <div class="promo-bottom">
-          <span class="promo-code">CUTENVIO1</span>
-          <span class="promo-value" style="font-size:16px; letter-spacing:4px;">ENVÍO</span>
+        <div class="pr-hero-cupon" aria-hidden="true">
+          <div class="pr-hero-ticket">
+            <svg class="pr-hero-huella"><use href="#pr-huella"/></svg>
+            <span class="pr-hero-hasta">Hasta</span>
+            <span class="pr-hero-valor" id="hero-valor">%</span>
+            <span class="pr-hero-desc">de descuento</span>
+          </div>
+          <img src="Imagenes/Productos/chamarra-borrego-rosa-1.jpg" alt="" class="pr-hero-prenda p1" />
+          <img src="Imagenes/Productos/sueter-rojo-monos-1.jpg" alt="" class="pr-hero-prenda p2" />
         </div>
       </div>
     </div>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
+  </section>
 
-    <div class="coupon-box">
-      <div class="coupon-percent">%</div>
-      <div class="coupon-text">¿Tienes un descuento?</div>
-      <div class="coupon-form">
-        <input type="text" id="codigoPromo" placeholder="INGRESA TU CODIGO" />
-        <button type="button" onclick="aplicarCodigo()">Aplicar</button>
+  <main class="pr-pagina">
+    <!-- Cupones -->
+    <section id="pr-cupones" aria-labelledby="t-cupones">
+      <p class="dest-antetitulo">Cupones vigentes</p>
+      <h2 class="ns-titulo ns-centro" id="t-cupones">Elige tu descuento</h2>
+      <div class="pr-cupones" id="lista-cupones"><p class="pr-cargando">Cargando promociones…</p></div>
+    </section>
+
+    <!-- ¿Tienes un código? -->
+    <section class="pr-codigo" aria-labelledby="t-codigo">
+      <div class="pr-codigo-icono" aria-hidden="true">%</div>
+      <div class="pr-codigo-texto">
+        <h2 id="t-codigo">¿Tienes un código de descuento?</h2>
+        <p>También sirven los cupones especiales que te compartimos por correo o redes.</p>
       </div>
+      <form class="manada-form pr-codigo-form" id="form-codigo" novalidate>
+        <label class="sr-solo" for="codigoPromo">Código de descuento</label>
+        <input type="text" id="codigoPromo" placeholder="ESCRIBE TU CÓDIGO" autocomplete="off" maxlength="30" />
+        <button type="submit" id="btn-aplicar">Aplicar</button>
+      </form>
+      <p class="pr-codigo-msg" id="codigo-msg" role="status" hidden></p>
+    </section>
+
+    <!-- Cómo usarlos -->
+    <section class="pr-pasos" aria-labelledby="t-pasos">
+      <p class="dest-antetitulo">Así de fácil</p>
+      <h2 class="ns-titulo ns-centro" id="t-pasos">¿Cómo uso mi cupón?</h2>
+      <ol class="pr-pasos-lista">
+        <li><span>1</span><h3>Elige tu cupón</h3><p>Dale clic a <strong>“Usar cupón”</strong> o copia el código.</p></li>
+        <li><span>2</span><h3>Agrega tus productos</h3><p>Llena tu carrito con lo que más le guste a tu peludito.</p></li>
+        <li><span>3</span><h3>¡Listo!</h3><p>El descuento se aplica solo en tu carrito y al pagar.</p></li>
+      </ol>
+    </section>
+  </main>
+
+  <!-- Productos para aprovechar -->
+  <section class="destacados pr-productos" id="pr-productos" hidden>
+    <p class="dest-antetitulo">Aprovecha tu descuento</p>
+    <svg class="dest-huella" aria-hidden="true"><use href="#pr-huella"/></svg>
+    <h2 class="dest-titulo">Favoritos de la manada</h2>
+    <div class="dest-carrusel">
+      <div class="dest-pista" id="pista-productos"></div>
     </div>
   </section>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script type="module">
-    import { validarCupon } from './firebase-db.js';
-
-    // Los cupones ya no están escritos aquí: viven en la colección "promociones" de Firebase,
-    // con fecha de vigencia (se administran en el panel: Promociones).
-    async function aplicarCodigo() {
-      const codigo = document.getElementById("codigoPromo").value.trim().toUpperCase();
-
-      if (!codigo) {
-        await bpAlerta("Ingresa un código.", { tipo: 'aviso' });
-        return;
-      }
-
-      try {
-        const r = await validarCupon(codigo);
-        if (!r.ok) {
-          await bpAlerta(r.motivo, { tipo: 'error', titulo: 'Cupón no válido' });
-          return;
-        }
-        localStorage.setItem("cuponAplicado", JSON.stringify(r.cupon));
-        bpAlerta("Cupón aplicado correctamente.", { tipo: 'exito' });
-      } catch (err) {
-        bpAlerta("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.", { tipo: 'error' });
-      }
-    }
-    window.aplicarCodigo = aplicarCodigo;
-  </script>
+  <script type="module" src="promos.js"></script>
 </body>
 </html>

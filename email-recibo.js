@@ -23,12 +23,26 @@
 //   4. Account -> General -> copia tu "Public Key".
 //   5. Pega los 3 valores en EMAILJS_CONFIG de aquí abajo. ¡Listo!
 //  Mientras estén vacíos, la tienda funciona igual, solo no se manda el correo.
+//
+//  CORREO DE BIENVENIDA (Etapa 4, opcional — el plan gratis de EmailJS permite 2 plantillas):
+//   Email Templates -> Create New Template:
+//        To Email:  {{to_email}}
+//        Subject:   ¡Bienvenido(a) a Bigotes y Patitas, {{to_name}}!
+//        Content (HTML), por ejemplo:
+//          <h2>¡Hola, {{to_name}}! 🐾</h2>
+//          <p>Tu cuenta en <b>Bigotes y Patitas</b> se creó con el correo {{to_email}}.</p>
+//          <p>Ya puedes iniciar sesión, guardar tu carrito, usar tu monedero y seguir tus pedidos.</p>
+//          <p><a href="{{link_login}}">Iniciar sesión</a></p>
+//          <p>Si tú no creaste esta cuenta, ignora este correo.</p>
+//   Copia su "Template ID" y pégalo en templateBienvenida. Aunque lo dejes vacío, al registrarse
+//   Firebase manda de todos modos su correo de "confirma tu correo" (ver registrarCliente()).
 // ============================================
 
 export const EMAILJS_CONFIG = {
   publicKey:  "NVwUghzHqOM-2CaC9",
   serviceId:  "service_5i0wsc6",
   templateId: "template_jl19tgn",
+  templateBienvenida: "template_dxc4pol",   // Template ID del correo de bienvenida
 };
 
 const URL_EMAILJS = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
@@ -159,4 +173,20 @@ export async function enviarReciboPorCorreo(recibo, correoDestino) {
     link_pedido: recibo.ventaId ? `${carpeta}factura.html?id=${encodeURIComponent(recibo.ventaId)}` : carpeta,
   };
   await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, parametros, { publicKey: EMAILJS_CONFIG.publicKey });
+}
+
+/**
+ * Correo de bienvenida al crear la cuenta (plantilla templateBienvenida de EmailJS).
+ * Devuelve false si esa plantilla aún no está configurada (no es un error).
+ */
+export async function enviarCorreoBienvenida({ nombre, correo }) {
+  if (!EMAILJS_CONFIG.publicKey || !EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.templateBienvenida) return false;
+  const emailjs = await cargarEmailJs();
+  const carpeta = window.location.href.replace(/[^/]*([?#].*)?$/, "");
+  await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateBienvenida, {
+    to_email: correo,
+    to_name: nombre,
+    link_login: `${carpeta}login.html?correo=${encodeURIComponent(correo)}`,
+  }, { publicKey: EMAILJS_CONFIG.publicKey });
+  return true;
 }

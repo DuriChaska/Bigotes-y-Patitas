@@ -5,46 +5,326 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Detalle del Producto - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
 </head>
-<body>
+<body class="pd-body">
 
   <div id="header"></div>
+  <div id="toast-container"></div>
 
-  <main class="product-page">
-    <div id="toast-container"></div>
+  <!-- Iconos reutilizables -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="pd-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+    <symbol id="pd-corazon" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7.1 4.5c2 0 3.4 1.1 4.9 3 1.5-1.9 2.9-3 4.9-3 3.5 0 5.6 3.5 4.4 6.8-1.8 4.6-9.3 9.2-9.3 9.2z" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="pd-compartir" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></g></symbol>
+    <symbol id="pd-flecha" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="pd-lupa" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8M10.5 7.5v6M7.5 10.5h6"/></g></symbol>
+    <symbol id="pd-cinta" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="11" r="7"/><circle cx="10" cy="11" r="2.2"/><path d="M17 11v7h5M19 15v3M5 7l1.2 1.2M10 4.5V6M15 7l-1.2 1.2"/></g></symbol>
+    <symbol id="pd-gancho" viewBox="0 0 24 24"><path d="M12 7.5a2.3 2.3 0 1 1 2.3-2.3c0 1.3-2.3 1.9-2.3 3.6L3 15.4c-.9.6-.5 2 .6 2h16.8c1.1 0 1.5-1.4.6-2L12 9.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="pd-camion" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4.5l3.5 3.5V16h-8z"/><circle cx="6" cy="17.5" r="1.8" fill="#fff"/><circle cx="17" cy="17.5" r="1.8" fill="#fff"/></g></symbol>
+    <symbol id="pd-tienda" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9M3 9h18v1.5a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0zM4.5 13v7h15v-7M10 20v-4h4v4"/></g></symbol>
+    <symbol id="pd-escudo" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round"/></g></symbol>
+    <symbol id="pd-cambio" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13l-3.5-3.5M20 15H7l3.5 3.5"/></g></symbol>
+    <symbol id="pd-resena" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M8 9h7M8 13h8M8 17h5"/></g></symbol>
+    <symbol id="pd-pregunta" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M10 9a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6 1v.4M12 14.3v.1"/></g></symbol>
+  </svg>
 
-    <section class="producto-detalle">
-      <div class="product-image">
-        <img id="imagen-producto" src="" alt="Producto" />
+  <main class="pd-pagina">
+
+    <!-- Ruta de navegación -->
+    <nav class="pd-ruta" aria-label="Ruta de navegación">
+      <a href="index.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio
+      </a>
+      <span>/</span><a href="shop.html">Catálogo</a>
+      <span>/</span><a id="ruta-categoria" href="shop.html">…</a>
+      <span>/</span><strong id="ruta-nombre">…</strong>
+    </nav>
+
+    <div id="pd-cargando" class="pd-cargando">Cargando producto…</div>
+
+    <section class="pd-principal" id="pd-principal" hidden>
+      <!-- Galería -->
+      <div class="pd-galeria">
+        <div class="pd-miniaturas">
+          <button type="button" class="pd-mini-flecha arriba" id="mini-arriba" aria-label="Imágenes anteriores">
+            <svg><use href="#pd-flecha"/></svg>
+          </button>
+          <div class="pd-mini-lista" id="mini-lista"></div>
+          <button type="button" class="pd-mini-flecha abajo" id="mini-abajo" aria-label="Más imágenes">
+            <svg><use href="#pd-flecha"/></svg>
+          </button>
+        </div>
+        <div>
+          <button type="button" class="pd-foto" id="pd-foto" aria-label="Ampliar imagen">
+            <img id="imagen-producto" src="" alt="" />
+          </button>
+          <p class="pd-ampliar"><svg><use href="#pd-lupa"/></svg> Da clic sobre la imagen para ampliar</p>
+        </div>
       </div>
-      <div class="product-details">
+
+      <!-- Información -->
+      <div class="pd-info">
         <h1 id="nombre-producto"></h1>
-        <div class="price" id="precio-producto"></div>
-        <p id="aviso-stock" style="display:none; font-weight:700; font-size:.85rem; margin-bottom:8px;"></p>
-        <p id="descripcion-producto"></p>
+        <div class="pd-marca-fila">
+          <span class="pd-marca" id="pd-marca"></span>
+          <div class="pd-compartir">
+            <button type="button" class="pd-btn-compartir" id="btn-compartir" aria-haspopup="true" aria-expanded="false">
+              <svg><use href="#pd-compartir"/></svg> Compartir
+            </button>
+            <div class="pd-compartir-menu" id="menu-compartir" hidden>
+              <a id="sh-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+              <a id="sh-facebook" target="_blank" rel="noopener">Facebook</a>
+              <a id="sh-x" target="_blank" rel="noopener">X (Twitter)</a>
+              <button type="button" id="sh-copiar">Copiar enlace</button>
+            </div>
+          </div>
+        </div>
+        <a href="#pd-resenas" class="pd-mini-resumen" id="mini-resumen"></a>
+        <div class="pd-precio" id="precio-producto"></div>
 
-        <div class="quantity-control">
+        <div class="pd-ayudas">
+          <button type="button" class="pd-ayuda" data-abrir="modal-tallas">
+            <span class="pd-ayuda-icono"><svg><use href="#pd-cinta"/></svg></span>Guía de tallas
+          </button>
+          <span class="pd-ayudas-sep"></span>
+          <button type="button" class="pd-ayuda" data-abrir="modal-mi-talla">
+            <span class="pd-ayuda-icono"><svg><use href="#pd-gancho"/></svg></span>¿Cuál es la talla correcta?
+          </button>
+        </div>
+
+        <div class="pd-campo">
+          <label for="variante">Talla:</label>
+          <div class="pd-select">
+            <select id="variante"></select>
+            <svg><use href="#pd-flecha"/></svg>
+          </div>
+        </div>
+        <div class="pd-campo">
           <label for="cantidad">Cantidad:</label>
-          <button class="qty-btn" type="button" onclick="cambiarCantidad(-1)">−</button>
-          <input type="number" id="cantidad" value="1" min="1" />
-          <button class="qty-btn" type="button" onclick="cambiarCantidad(1)">+</button>
+          <div class="pd-cantidad">
+            <button type="button" data-cant="-1" aria-label="Quitar uno">−</button>
+            <input type="number" id="cantidad" value="1" min="1" inputmode="numeric" />
+            <button type="button" data-cant="1" aria-label="Agregar uno">+</button>
+          </div>
         </div>
+      </div>
 
-        <div class="actions">
-          <button class="add-to-cart" type="button" onclick="agregarAlCarrito()">AGREGAR AL CARRITO</button>
-          <button class="buy-now" type="button" onclick="comprarAhora()">COMPRAR AHORA</button>
+      <!-- Caja de compra -->
+      <aside class="pd-compra" id="pd-compra">
+        <p class="pd-disponible" id="aviso-stock"></p>
+        <div class="pd-compra-precio" id="precio-caja"></div>
+        <button type="button" class="pd-btn pd-btn-carrito" id="btn-carrito">Agregar al carrito</button>
+        <button type="button" class="pd-btn pd-btn-comprar" id="btn-comprar">Comprar ahora</button>
+        <button type="button" class="pd-favorito" id="btn-favorito" aria-pressed="false">
+          <svg><use href="#pd-corazon"/></svg><span>Agregar a favoritos</span>
+        </button>
+
+        <div class="pd-entrega">
+          <div class="pd-entrega-op">
+            <svg><use href="#pd-camion"/></svg>
+            <div>
+              <strong>Envío a domicilio</strong>
+              <span id="entrega-envio">Llega en 3 a 5 días hábiles a todo México.</span>
+            </div>
+          </div>
+          <div class="pd-entrega-op">
+            <svg><use href="#pd-tienda"/></svg>
+            <div>
+              <strong>Recoger en tienda</strong>
+              <span id="entrega-tienda">Disponible en: Bigotes y Patitas, Aguascalientes.</span>
+            </div>
+          </div>
         </div>
-        <div class="actions">
-          <button class="regresar" type="button" onclick="window.location.href='shop.html'">← Regresar al catálogo</button>
-        </div>
+      </aside>
+    </section>
+
+    <!-- Garantías -->
+    <section class="pd-garantias" id="pd-garantias" hidden>
+      <p class="pd-garantias-aviso">Si alguna prenda o accesorio no le quedó, <strong>¡la puedes cambiar!</strong></p>
+      <div class="pd-garantias-fila">
+        <div><svg><use href="#pd-cambio"/></svg><p><strong>Cambios fáciles</strong>Si no le quedó la talla, te la cambiamos.</p></div>
+        <div><svg><use href="#pd-camion"/></svg><p><strong>Envío a domicilio</strong>O recógelo en tienda sin costo.</p></div>
+        <div><svg><use href="#pd-escudo"/></svg><p><strong>Compra 100% segura</strong>Paga con tarjeta, OXXO o tu monedero.</p></div>
       </div>
     </section>
 
-    <section class="similares">
-      <h2>Artículos similares</h2>
-      <div id="articulos-similares" class="grid"></div>
+    <!-- Descripción -->
+    <section class="pd-seccion" id="pd-descripcion" hidden>
+      <div class="pd-pestanas"><span class="activa">Descripción</span></div>
+      <p class="pd-texto" id="descripcion-producto"></p>
+      <div id="caja-beneficios" hidden>
+        <h2 class="pd-subtitulo">Beneficios</h2>
+        <ul class="pd-beneficios" id="lista-beneficios"></ul>
+      </div>
+    </section>
+
+    <!-- Reseñas y preguntas -->
+    <section class="pd-seccion" id="pd-resenas" hidden>
+      <h2 class="pd-subtitulo">Reseñas</h2>
+      <p class="pd-resumen-linea" id="resumen-linea"></p>
+
+      <div class="pd-resumen">
+        <div>
+          <h3>Reseñas de clientes</h3>
+          <p class="pd-gris">Da clic en una calificación para filtrar las reseñas</p>
+          <div id="barras"></div>
+        </div>
+        <div class="pd-promedio">
+          <h3>Calificación promedio</h3>
+          <div class="pd-huellas-fila"><span>General</span><span id="huellas-general"></span></div>
+          <div class="pd-circulo" id="circulo"><svg><use href="#pd-huella"/></svg><span id="promedio">0</span></div>
+        </div>
+        <div class="pd-acciones-resena">
+          <button type="button" class="pd-btn-sec" id="btn-escribir"><svg><use href="#pd-resena"/></svg>Escribir una reseña</button>
+          <button type="button" class="pd-btn-sec" id="btn-preguntar"><svg><use href="#pd-pregunta"/></svg>Hacer una pregunta</button>
+        </div>
+      </div>
+
+      <div class="pd-pestanas" role="tablist">
+        <button type="button" role="tab" class="activa" id="tab-resenas" aria-selected="true">Reseñas</button>
+        <button type="button" role="tab" id="tab-preguntas" aria-selected="false">Preguntas</button>
+      </div>
+      <div id="panel-resenas">
+        <p class="pd-filtro" id="filtro-activo" hidden></p>
+        <div id="lista-resenas"></div>
+      </div>
+      <div id="panel-preguntas" hidden>
+        <div id="lista-preguntas"></div>
+      </div>
+    </section>
+
+    <!-- Similares -->
+    <section class="destacados pd-similares" id="pd-similares" hidden>
+      <p class="dest-antetitulo">También te puede gustar</p>
+      <h2 class="dest-titulo">Artículos similares</h2>
+      <div class="dest-carrusel">
+        <div class="dest-pista" id="articulos-similares"></div>
+      </div>
     </section>
   </main>
+
+  <!-- Barra fija al bajar -->
+  <div class="pd-barra" id="pd-barra" aria-hidden="true">
+    <img id="barra-img" src="" alt="" />
+    <p id="barra-nombre"></p>
+    <strong id="barra-precio"></strong>
+    <button type="button" class="pd-btn pd-btn-carrito" id="barra-carrito" tabindex="-1">Agregar al carrito</button>
+  </div>
+
+  <!-- Visor de imágenes -->
+  <div class="pd-visor" id="visor" hidden role="dialog" aria-modal="true" aria-label="Imágenes del producto">
+    <button type="button" class="pd-visor-cerrar" id="visor-cerrar" aria-label="Cerrar">×</button>
+    <button type="button" class="pd-visor-nav izq" id="visor-izq" aria-label="Imagen anterior"><svg><use href="#pd-flecha"/></svg></button>
+    <img id="visor-img" src="" alt="" />
+    <button type="button" class="pd-visor-nav der" id="visor-der" aria-label="Imagen siguiente"><svg><use href="#pd-flecha"/></svg></button>
+    <p class="pd-visor-cont" id="visor-cont"></p>
+  </div>
+
+  <!-- Modal: guía de tallas -->
+  <div class="pd-modal" id="modal-tallas" hidden role="dialog" aria-modal="true" aria-labelledby="t-tallas">
+    <div class="pd-modal-caja gt-caja">
+      <button type="button" class="pd-modal-cerrar" aria-label="Cerrar">×</button>
+      <h3 id="t-tallas" class="gt-h">Guía de tallas</h3>
+      <p class="gt-intro">La guía es aproximada y orientativa: te recomendamos medir a tu peludito cada vez que elijas una prenda.
+        Si no le quedó, puedes cambiarla por otra talla; escríbenos en <strong>Atención a clientes</strong>.
+        Las medidas exactas de cada prenda vienen en sus <strong>Beneficios</strong>.</p>
+      <div class="gt-tabs" id="gt-tabs" role="tablist"></div>
+      <div id="gt-tablas"></div>
+
+      <p class="gt-tip">💡 ¿No sabes cómo medir a tu peludito? <a href="#" id="link-guia-a-medir">Mira cómo hacerlo aquí</a>.
+        Si queda entre dos tallas, elige la más grande.</p>
+    </div>
+  </div>
+
+  <!-- Modal: ¿cuál es la talla correcta? (cómo medir + calculadora) -->
+  <div class="pd-modal" id="modal-mi-talla" hidden role="dialog" aria-modal="true" aria-labelledby="t-mi-talla">
+    <div class="pd-modal-caja gt-caja">
+      <button type="button" class="pd-modal-cerrar" aria-label="Cerrar">×</button>
+      <h3 id="t-mi-talla" class="gt-h">¿Cuál es la talla correcta?</h3>
+      <h4 class="gt-h3" id="como-medir">Tipos de medidas y cómo obtenerlas</h4>
+      <img class="gt-dibujo" src="Imagenes/Mascotas/como-medir.svg" alt="Perrito con las medidas A (espalda), B (pecho), C (cuello), D y E (pata)" />
+      <div class="gt-medidas">
+        <section>
+          <h4>A. Largo de espalda</h4>
+          <ul>
+            <li>Con tu perrito de pie, pon la cinta métrica sobre su columna: desde donde termina el cuello (donde va el collar) hasta donde empieza la cola.</li>
+            <li>En perritos machos, si la prenda no tiene un corte en la panza, réstale un poco a la medida para que no se moje al orinar.</li>
+          </ul>
+        </section>
+        <section>
+          <h4>B. Ancho de pecho</h4>
+          <ul>
+            <li>Rodea la parte más ancha de sus costillas, normalmente justo detrás de las patas delanteras.</li>
+            <li>Mide con tu perrito de pie y deja el espacio de dos dedos entre la cinta y su cuerpo para que le quede cómodo.</li>
+          </ul>
+        </section>
+        <section>
+          <h4>C. Ancho de cuello</h4>
+          <ul>
+            <li>Mide el contorno de su cuello en la parte donde descansa el collar.</li>
+            <li>También aquí deja dos dedos de espacio para que no le apriete.</li>
+          </ul>
+        </section>
+        <section>
+          <h4>D y E. Largo y ancho de pata</h4>
+          <ul>
+            <li>Con tu perrito parado, pon su pata sobre una hoja y marca el contorno.</li>
+            <li>Mide el largo (D) hasta la uña más larga y el ancho (E) en la parte más ancha.</li>
+          </ul>
+        </section>
+      </div>
+      <p class="gt-tip">💡 Si tu peludito queda entre dos tallas, elige la más grande.</p>
+
+      <div class="gt-calc-caja">
+        <h4 class="gt-h3">Calcula su talla de ropa</h4>
+        <p class="pd-gris">Escribe su <strong>largo de espalda (A)</strong> y, si lo sabes, su peso.</p>
+        <div class="pd-calc">
+          <label class="gt-campo">Largo de espalda<span><input type="number" id="medida" min="10" max="90" step="0.5" placeholder="Ej. 42" inputmode="decimal" /> cm</span></label>
+          <label class="gt-campo">Peso (opcional)<span><input type="number" id="peso" min="0.5" max="90" step="0.1" placeholder="Ej. 8" inputmode="decimal" /> kg</span></label>
+          <button type="button" class="pd-btn pd-btn-carrito" id="btn-calcular">Calcular</button>
+        </div>
+        <p class="pd-calc-resultado" id="calc-resultado"></p>
+        <p class="pd-gris" style="margin-top:8px;"><a href="#" id="link-ver-guia">Ver la guía de tallas completa</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: escribir reseña -->
+  <div class="pd-modal" id="modal-resena" hidden role="dialog" aria-modal="true" aria-labelledby="t-resena">
+    <form class="pd-modal-caja" id="form-resena" novalidate>
+      <button type="button" class="pd-modal-cerrar" aria-label="Cerrar">×</button>
+      <h3 id="t-resena">Escribir una reseña</h3>
+      <p class="pd-gris" id="resena-producto"></p>
+      <label>Tu calificación</label>
+      <div class="pd-elegir-huellas" id="elegir-huellas" role="radiogroup" aria-label="Calificación"></div>
+      <label for="r-titulo">Título</label>
+      <input type="text" id="r-titulo" maxlength="100" placeholder="Ej. Le quedó perfecto" />
+      <label for="r-texto">Tu opinión</label>
+      <textarea id="r-texto" maxlength="1000" rows="4" placeholder="¿Cómo le quedó? ¿Qué te gustó?"></textarea>
+      <p class="pd-error" id="r-error"></p>
+      <button type="submit" class="pd-btn pd-btn-carrito" id="r-enviar">Publicar reseña</button>
+    </form>
+  </div>
+
+  <!-- Modal: hacer pregunta -->
+  <div class="pd-modal" id="modal-pregunta" hidden role="dialog" aria-modal="true" aria-labelledby="t-pregunta">
+    <form class="pd-modal-caja" id="form-pregunta" novalidate>
+      <button type="button" class="pd-modal-cerrar" aria-label="Cerrar">×</button>
+      <h3 id="t-pregunta">Hacer una pregunta</h3>
+      <p class="pd-gris">Te respondemos aquí mismo, en la pestaña "Preguntas".</p>
+      <label for="p-texto">Tu pregunta</label>
+      <textarea id="p-texto" maxlength="500" rows="4" placeholder="Ej. ¿Sirve para un perrito de 5 kg?"></textarea>
+      <p class="pd-error" id="p-error"></p>
+      <button type="submit" class="pd-btn pd-btn-carrito" id="p-enviar">Enviar pregunta</button>
+    </form>
+  </div>
 
   <div id="footer"></div>
 

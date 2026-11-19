@@ -128,6 +128,22 @@
     // Cancelar (que devuelve el stock al inventario) solo lo hacen administrador y logística.
     const puedeCambiarEstado = () => ['administrador', 'vendedor', 'logistica'].includes(window.BP_SESION?.rol);
     const puedeCancelar = () => ['administrador', 'logistica'].includes(window.BP_SESION?.rol);
+    // El nombre del cliente lleva a su ficha (con su historial de compras) para quien ve el CRM.
+    const veCrm = () => ['administrador', 'vendedor'].includes(window.BP_SESION?.rol);
+    function ligaCliente(o) {
+      const nombre = esc(o.clienteNombre || o.clienteCorreo || '—');
+      return o.clienteId && veCrm()
+        ? `<a class="admin-liga" href="admin-cliente-detalle.html?cliente=${encodeURIComponent(o.clienteId)}">${nombre}</a>`
+        : nombre;
+    }
+
+    // ?q=texto y ?estado=Entregada llegan desde otras páginas (ficha del cliente, dashboard).
+    {
+      const p = new URLSearchParams(location.search);
+      if (p.get('q')) $('buscar').value = p.get('q');
+      if (p.get('estado')) $('filtroEstado').value = p.get('estado');
+    }
+
     // ── Filtrar ───────────────────────────────────────────────────────────────
     function filtradas() {
       const texto  = $('buscar').value.trim().toLowerCase();
@@ -183,7 +199,7 @@
           <tr data-id="${esc(o.id)}">
             <td><strong>${esc(o.folio || o.id.slice(0, 8))}</strong></td>
             <td>${fecha}</td>
-            <td>${esc(o.clienteNombre || o.clienteCorreo || '—')}</td>
+            <td>${ligaCliente(o)}</td>
             <td style="color:var(--gray);font-size:.82rem;">${nProd} producto${nProd === 1 ? '' : 's'}</td>
             <td><strong>${fmtDec.format(Number(o.total) || 0)}</strong></td>
             <td><span class="admin-tag ${color}">${esc(o.estado || 'Confirmada')}</span></td>
@@ -234,7 +250,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
           <div>
             <p style="font-size:.78rem;font-weight:700;text-transform:uppercase;color:var(--gray);margin-bottom:4px;">Cliente</p>
-            <p style="font-weight:600;">${esc(o.clienteNombre || '—')}</p>
+            <p style="font-weight:600;">${ligaCliente(o)}</p>
             <p style="font-size:.8rem;color:var(--gray);">${esc(o.clienteCorreo || '')}</p>
           </div>
           <div>

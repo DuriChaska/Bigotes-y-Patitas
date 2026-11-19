@@ -5,261 +5,137 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Recibo de compra - Bigotes y Patitas</title>
 
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      color: #333;
+      font-family: 'DM Sans', Arial, sans-serif;
+      background: #f2dec5;
+      color: #4b4038;
     }
 
     .page-container {
       min-height: 100vh;
       display: flex;
       justify-content: center;
-      align-items: center;
-      padding: 30px 20px;
+      align-items: flex-start;
+      padding: 40px 20px 50px;
+      background:
+        radial-gradient(circle at 12% 18%, rgba(255,255,255,.35) 0 120px, transparent 121px),
+        radial-gradient(circle at 88% 82%, rgba(255,255,255,.3) 0 160px, transparent 161px);
     }
 
-    .invoice-wrapper {
-      width: 100%;
-      max-width: 900px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
+    .invoice-wrapper { width: 100%; max-width: 900px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
 
     .invoice-box {
       width: 100%;
-      max-width: 480px;
-      background: white;
-      border-radius: 14px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      max-width: 520px;
+      background: #fff;
+      border-radius: 22px;
+      box-shadow: 0 16px 40px rgba(74, 56, 38, .16);
       overflow: hidden;
-      border: 1px solid #eee;
     }
 
     .invoice-header {
-      background: #b34a8e;
-      color: white;
-      padding: 22px;
+      background: #fdf8f0;
+      padding: 26px 26px 20px;
       text-align: center;
+      border-bottom: 2px dashed #ead9c4;
     }
+    .invoice-logo { width: 62px; height: 62px; border-radius: 50%; background: #fff; display: inline-grid; place-items: center; box-shadow: 0 4px 14px rgba(74,56,38,.12); margin-bottom: 8px; }
+    .invoice-logo img { width: 46px; height: 46px; object-fit: contain; }
+    .invoice-header h1 { margin: 0; font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 2.3rem; color: #d93359; line-height: 1.1; }
+    .invoice-header p { margin: 4px 0 0; font-size: 14px; color: #8a7d6b; letter-spacing: .04em; }
 
-    .invoice-header h1 {
-      margin: 0;
-      font-size: 24px;
-    }
+    .invoice-content { padding: 24px 26px 26px; }
 
-    .invoice-header p {
-      margin: 8px 0 0;
-      font-size: 14px;
-      opacity: 0.95;
-    }
+    .invoice-info { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; margin-bottom: 6px; }
+    .invoice-info p { margin: 0; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+    .invoice-info strong { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: #8a7d6b; font-weight: 700; }
+    .invoice-info span { color: #2f4858; font-weight: 500; }
+    #pedido-numero { font-weight: 700; color: #8c1c2e; }
 
-    .invoice-content {
-      padding: 22px;
-    }
+    .invoice-divider { border: none; border-top: 1px solid #efe4d6; margin: 18px 0; }
 
-    .invoice-info {
-      margin-bottom: 18px;
-    }
+    .product-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.45rem; font-weight: 600; margin-bottom: 12px; color: #2f4858; }
 
-    .invoice-info p {
-      margin: 6px 0;
-      font-size: 14px;
+    .invoice-row, .invoice-subtotal, .invoice-total {
+      display: flex; justify-content: space-between; gap: 15px; font-size: 14px; margin-bottom: 10px;
     }
-
-    .invoice-divider {
-      border: none;
-      border-top: 1px solid #e6e6e6;
-      margin: 18px 0;
-    }
-
-    .product-title {
-      font-size: 15px;
-      font-weight: bold;
-      margin-bottom: 14px;
-      color: #b34a8e;
-    }
-
-    .invoice-row,
-    .invoice-subtotal,
-    .invoice-total {
-      display: flex;
-      justify-content: space-between;
-      gap: 15px;
-      font-size: 14px;
-      margin-bottom: 12px;
-    }
-
-    .invoice-row span:first-child {
-      flex: 1;
-    }
-
-    .invoice-subtotal {
-      margin-top: 10px;
-    }
+    .invoice-row span:first-child { flex: 1; }
+    .invoice-row strong, .invoice-subtotal strong { font-weight: 500; color: #6b5d50; }
+    #productos-factura .invoice-row { padding: 10px 12px; background: #fdf8f0; border-radius: 10px; margin-bottom: 8px; color: #2f4858; }
+    .invoice-subtotal { margin-top: 4px; }
 
     .invoice-total {
-      margin-top: 14px;
-      padding-top: 14px;
-      border-top: 2px solid #b34a8e;
-      font-size: 20px;
-      font-weight: bold;
-      color: #b34a8e;
-      margin-bottom: 0;
+      margin-top: 14px; padding-top: 14px; border-top: 1.5px solid #2f4858;
+      font-size: 21px; font-weight: 700; color: #2f4858; margin-bottom: 0;
     }
+    .invoice-total span:last-child { color: #8c1c2e; }
 
-    .invoice-footer {
-      margin-top: 18px;
-      text-align: center;
-      font-size: 13px;
-      color: #777;
-    }
+    .invoice-footer { margin-top: 20px; text-align: center; font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-size: 1.25rem; color: #8c1c2e; }
 
-    .pago-box {
-      background: #faf6f9;
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 14px;
-    }
+    .pago-box { background: #fdf8f0; border: 1px solid #efe4d6; border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+    .pago-box p { margin: 5px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .pago-box strong { font-weight: 500; color: #6b5d50; }
 
-    .pago-box p {
-      margin: 5px 0;
-    }
-
-    .chip {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    .chip-ok { background: #e3f6e8; color: #1e7b3a; }
-    .chip-pendiente { background: #fff3d6; color: #8a5b00; }
-    .chip-cancelado { background: #fdecea; color: #a52a1f; }
+    .chip { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .chip-ok { background: #e4efe2; color: #3f6b46; }
+    .chip-pendiente { background: #fbefd2; color: #8a5b00; }
+    .chip-cancelado { background: #f8e1e4; color: #8c1c2e; }
 
     .ref-box {
-      background: #fbe9f4;
-      border: 2px dashed #b34a8e;
-      border-radius: 10px;
-      padding: 14px;
-      margin-top: 12px;
-      font-size: 13px;
-      line-height: 1.7;
+      background: #fdf8f0; border: 2px dashed #b8603a; border-radius: 12px;
+      padding: 14px; margin-top: 12px; font-size: 13px; line-height: 1.7;
     }
-
     .ref-box .ref-numero {
-      display: block;
-      text-align: center;
-      font-size: 19px;
-      letter-spacing: 2px;
-      font-weight: bold;
-      color: #b34a8e;
-      margin: 6px 0;
-      word-break: break-all;
+      display: block; text-align: center; font-size: 19px; letter-spacing: 2px; font-weight: 700;
+      color: #b8603a; margin: 6px 0; word-break: break-all;
     }
 
-    .actions {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 
     .btn {
-      background: #b34a8e;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      padding: 13px 22px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.2s ease;
+      background: #8c1c2e; color: #fff; border: none; border-radius: 999px;
+      padding: 13px 24px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+      transition: background .2s, transform .15s;
+      box-shadow: 0 6px 16px rgba(140, 28, 46, .2);
     }
+    .btn:hover { background: #6d1422; transform: translateY(-1px); }
+    .btn:disabled { opacity: .6; cursor: wait; transform: none; }
+    .btn-terracota { background: #b8603a; box-shadow: 0 6px 16px rgba(184, 96, 58, .22); }
+    .btn-terracota:hover { background: #9a4c2c; }
+    .btn-secondary { background: #2f4858; box-shadow: 0 6px 16px rgba(47, 72, 88, .2); }
+    .btn-secondary:hover { background: #22384a; }
+    .btn-outline { background: #fff; color: #2f4858; box-shadow: 0 4px 12px rgba(74, 56, 38, .1); }
+    .btn-outline:hover { background: #fdf8f0; }
 
-    .btn:hover {
-      background: #96387a;
-    }
+    .correo-estado { font-size: 13px; color: #6b5d50; text-align: center; min-height: 18px; margin: 0; }
 
-    .btn:disabled {
-      opacity: .6;
-      cursor: wait;
-    }
+    .empty-message { text-align: center; color: #8a7d6b; font-size: 14px; padding: 20px 0; }
 
-    .btn-secondary {
-      background: #666;
-    }
-
-    .btn-secondary:hover {
-      background: #444;
-    }
-
-    .btn-outline {
-      background: #fff;
-      color: #b34a8e;
-      border: 2px solid #b34a8e;
-    }
-
-    .btn-outline:hover {
-      background: #fbe9f4;
-    }
-
-    .correo-estado {
-      font-size: 13px;
-      color: #666;
-      text-align: center;
-      min-height: 18px;
-    }
-
-    .empty-message {
-      text-align: center;
-      color: #777;
-      font-size: 14px;
-      padding: 20px 0;
-    }
-
-    .hidden {
-      display: none !important;
-    }
+    .hidden { display: none !important; }
 
     @media (max-width: 480px) {
-      .invoice-header h1 {
-        font-size: 21px;
-      }
-
-      .invoice-content {
-        padding: 18px;
-      }
-
-      .invoice-total {
-        font-size: 18px;
-      }
-
-      .btn {
-        width: 100%;
-      }
-
-      .actions {
-        width: 100%;
-      }
+      .page-container { padding: 24px 14px 36px; }
+      .invoice-header h1 { font-size: 2rem; }
+      .invoice-content { padding: 20px 18px; }
+      .invoice-info { grid-template-columns: 1fr; }
+      .invoice-total { font-size: 19px; }
+      .btn { width: 100%; }
+      .actions { width: 100%; }
     }
 
     /* "Descargar PDF" usa la impresión del navegador (Guardar como PDF): solo sale el recibo. */
     @media print {
-      body { background: #fff; }
+      body, .page-container { background: #fff; }
       .page-container { padding: 0; min-height: 0; }
       .actions, .correo-estado { display: none !important; }
-      .invoice-box { box-shadow: none; border: none; max-width: 100%; }
-      .invoice-header, .chip, .ref-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .invoice-box { box-shadow: none; border: 1px solid #eee; max-width: 100%; }
+      .invoice-header, .chip, .ref-box, #productos-factura .invoice-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 <script src="dialogos.js"></script>
@@ -270,16 +146,17 @@
     <div class="invoice-wrapper">
       <div class="invoice-box" id="invoice">
         <div class="invoice-header">
-          <h1>Recibo de Compra</h1>
-          <p>Bigotes y Patitas · Cotton Candy Clothing Store</p>
+          <span class="invoice-logo"><img src="Imagenes/Mascotas/logo_huella_sinfondo.png" alt="" /></span>
+          <h1>Recibo de compra</h1>
+          <p>Bigotes y Patitas · Ropa y accesorios para mascotas</p>
         </div>
 
         <div class="invoice-content">
           <div class="invoice-info">
-            <p><strong>Pedido No.:</strong> <span id="pedido-numero">—</span></p>
-            <p><strong>Fecha:</strong> <span id="fecha-factura">—</span></p>
-            <p><strong>Cliente:</strong> <span id="cliente-factura">—</span></p>
-            <p><strong>Estado del pedido:</strong> <span id="estado-pedido">—</span></p>
+            <p><strong>Pedido</strong> <span id="pedido-numero">—</span></p>
+            <p><strong>Fecha</strong> <span id="fecha-factura">—</span></p>
+            <p><strong>Cliente</strong> <span id="cliente-factura">—</span></p>
+            <p><strong>Estado del pedido</strong> <span id="estado-pedido">—</span></p>
           </div>
 
           <hr class="invoice-divider" />
@@ -325,8 +202,8 @@
 
           <div class="product-title">Pago</div>
           <div class="pago-box">
-            <p><strong>Método de pago:</strong> <span id="metodo-factura">—</span></p>
-            <p><strong>Estado del pago:</strong> <span id="estado-pago">—</span></p>
+            <p><strong>Método de pago</strong> <span id="metodo-factura">—</span></p>
+            <p><strong>Estado del pago</strong> <span id="estado-pago">—</span></p>
           </div>
           <div class="ref-box hidden" id="referencia-factura"></div>
 
@@ -340,7 +217,7 @@
 
       <div class="actions">
         <button class="btn" id="btn-pdf">DESCARGAR PDF</button>
-        <button class="btn" id="btn-correo">ENVIAR A MI CORREO</button>
+        <button class="btn btn-terracota" id="btn-correo">ENVIAR A MI CORREO</button>
         <button class="btn btn-outline" onclick="window.location.href='shop.html'">SEGUIR COMPRANDO</button>
         <button class="btn btn-secondary" onclick="window.location.href='Interfaz Cliente - Perfil.html'">MI CUENTA</button>
       </div>

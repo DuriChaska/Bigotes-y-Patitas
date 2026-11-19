@@ -332,3 +332,69 @@ monederos/{uid}  monedero_movimientos/{id}  clientes/{uid}/direcciones/{id}
 carritos/{uid}  carritos/{uid}/detalle/{productoId}   (carrito guardado en la cuenta, §13)
 ```
 
+
+### Etapa 4 — Correos de la cuenta (bienvenida y cambio de contraseña)
+
+**1. Que los enlaces de los correos abran la página de la tienda** (`cuenta-accion.html`) en vez de
+la de Firebase. Así el mensaje sale en español y explica bien si un enlace ya no sirve:
+
+1. Consola de Firebase → **Authentication → Plantillas**.
+2. En cualquier plantilla, da clic en el **lápiz** y después en **"Personalizar URL de acción"**.
+3. Escribe la dirección de la página. Con Live Server es `http://localhost:5500/cuenta-accion.html`
+   (cámbiala cuando publiquen la tienda en otro dominio) y guarda. Esa URL aplica a TODAS las plantillas.
+4. En **Authentication → Configuración → Dominios autorizados** debe estar `localhost`
+   (viene así de fábrica) y, después, el dominio donde publiquen.
+
+> **Por qué decía "el enlace caducó o ya se usó":** un enlace para cambiar la contraseña sirve **una sola
+> vez** y dura **1 hora**. Además, **cada correo nuevo deja sin valor a los anteriores**. Si pides el enlace
+> dos veces (en el login y en "Mis datos", o le das clic dos veces), solo sirve el **último**, y Gmail
+> suele juntar esos correos en una sola conversación, así que es fácil abrir el viejo. Ahora la tienda no
+> deja pedir otro enlace antes de 60 segundos y avisa que se abra el correo más reciente.
+
+**2. Correo de bienvenida**
+
+- **Ya funciona sin configurar nada:** al registrarse, Firebase manda su correo de **confirmar el correo**
+  (en español). Para que diga "Bienvenido": **Authentication → Plantillas → Verificación de dirección de
+  correo electrónico → lápiz**. Ahí se puede cambiar el nombre del remitente (ej. "Bigotes y Patitas") y el
+  asunto (ej. "¡Bienvenido(a) a Bigotes y Patitas!"). Si Firebase deja editar también el mensaje, pon un
+  texto de bienvenida.
+- **Opcional, con el diseño de la tienda:** crea una 2.ª plantilla en EmailJS (la cuenta gratis permite 2)
+  con el texto que viene en los comentarios de `email-recibo.js` y pega su Template ID en
+  `EMAILJS_CONFIG.templateBienvenida`.
+
+**3. Vuelve a publicar `firestore.rules`.** Son necesarias para el bloqueo por intentos (`intentos_login`)
+y para la foto de perfil (`fotos_perfil`).
+
+### Etapa 4 — Eliminar clientes por completo (Cloud Function)
+
+En el panel, **Clientes → 🗑 Eliminar** ahora intenta borrar también la **cuenta de acceso** del cliente.
+Una página web no puede borrar la cuenta de otra persona (solo un servidor puede), así que funciona de
+dos formas:
+
+| ¿Está publicada la Cloud Function? | Qué pasa al eliminar |
+|---|---|
+| **Sí** (plan Blaze) | Se borra **al instante**: cuenta de acceso, ficha, direcciones, carrito y foto. El correo queda libre. |
+| **No** (plan gratis Spark) | **Baja**: se borra la ficha y la cuenta queda bloqueada. Su cuenta de acceso se borra sola en cuanto la persona intente entrar o abra la tienda; desde ahí el correo queda libre. |
+
+En los dos casos se conservan sus ventas, pagos, tickets y movimientos del monedero, porque son el historial
+del negocio.
+
+**Para publicar la Cloud Function (borrado inmediato):**
+
+1. Consola de Firebase → engrane ⚙️ → **Uso y facturación → Detalles y configuración → Modificar plan → Blaze**.
+   - Pide una tarjeta, pero tiene una cuota gratis mensual muy grande; para un proyecto escolar normalmente
+     el cobro es **$0**.
+   - **Recomendación:** en Google Cloud → Facturación → **Presupuestos y alertas**, crea un presupuesto de $1
+     para que te avise si algo llegara a costar.
+2. En PowerShell, dentro de la carpeta del proyecto. `npm install` necesita una red que no bloquee npm; si no,
+   usa el internet del celular:
+   ```powershell
+   cd functions
+   npm install
+   cd ..
+   firebase deploy --only functions
+   ```
+3. Listo. Desde ese momento, eliminar desde el panel borra al instante (el aviso dice "se eliminó por completo").
+
+Sin Blaze no hay que hacer nada más: el panel usa la **baja** automáticamente. Para borrar una cuenta al
+instante sin Blaze, también se puede hacer a mano en **Authentication → Usuarios → ⋮ → Borrar cuenta**.

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis favoritos - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="dialogos.js"></script>
+</head>
+<body>
+
+  <div id="header"></div>
+  <div id="toast-container"></div>
+
+  <section class="cta-wrap">
+    <aside class="cta-menu" id="cuenta-menu"></aside>
+
+    <div>
+      <div class="cta-head">
+        <h2>Mis favoritos</h2>
+        <p>Las prendas que guardaste con el corazón ♥. Sesión: <strong id="sesion-nombre">…</strong></p>
+      </div>
+
+      <div class="cta-card">
+        <div class="fav-grid" id="lista"><p style="color:var(--gray); font-size:.88rem;">Cargando…</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script src="cuenta-menu.js"></script>
+  <script type="module">
+    import { escucharFavoritos, quitarFavorito, escucharProductosScm } from './firebase-db.js';
+    import { iniciarCuenta, esc, dinero, toast } from './cuenta-comun.js';
+
+    const $ = (id) => document.getElementById(id);
+    let sesion = null;
+    let favoritos = null;
+    let productos = null;
+
+    const IMG_VACIA = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#f1ece1"/>' +
+      '<text x="150" y="155" font-family="sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#8a7d6b">Bigotes y Patitas</text></svg>');
+    const imagen = (p) => (Array.isArray(p.imagenes) && p.imagenes[0]) || p.img || IMG_VACIA;
+
+    function pintar() {
+      if (!favoritos || !productos) return;
+      const porId = new Map(productos.map(p => [p.id, p]));
+      const lista = favoritos.map(f => porId.get(f.productoId || f.id)).filter(Boolean);
+      if (!lista.length) {
+        $('lista').innerHTML = `<div class="fav-vacio">
+          <p>Aún no tienes favoritos.</p>
+          <p style="color:var(--gray); font-size:.9rem;">En la página de cualquier producto da clic en <strong>♥ Agregar a favoritos</strong>.</p>
+          <a href="shop.html" class="cta-btn" style="display:inline-block; width:auto; margin-top:12px; padding:10px 24px;">Ver catálogo</a></div>`;
+        return;
+      }
+      $('lista').innerHTML = lista.map(p => {
+        const agotado = (Number(p.stock) || 0) <= 0;
+        const url = `Producto.html?id=${encodeURIComponent(p.id)}`;
+        return `<article class="fav-item">
+          <a href="${url}" class="fav-foto"><img src="${esc(imagen(p))}" alt="" loading="lazy" /></a>
+          <a href="${url}" class="fav-nombre">${esc(p.nombre)}</a>
+          <p class="fav-precio">${dinero(p.precio)}${agotado ? ' <span>· Agotado</span>' : ''}</p>
+          <div class="fav-acciones">
+            <button type="button" class="cta-btn" data-carrito="${esc(p.id)}" ${agotado ? 'disabled' : ''}>Agregar al carrito</button>
+            <button type="button" class="fav-quitar" data-quitar="${esc(p.id)}" aria-label="Quitar de favoritos" title="Quitar de favoritos">♥</button>
+          </div>
+        </article>`;
+      }).join('');
+      $('lista').querySelectorAll('img').forEach(img => img.addEventListener('error', () => { img.src = IMG_VACIA; }, { once: true }));
+    }
+
+    $('lista').addEventListener('click', async (e) => {
+      const quitar = e.target.closest('[data-quitar]');
+      const carrito = e.target.closest('[data-carrito]');
+      if (quitar) {
+        try { await quitarFavorito(sesion.usuario.uid, quitar.dataset.quitar); toast('Se quitó de tus favoritos'); }
+        catch { toast('No se pudo quitar. Intenta de nuevo.'); }
+      }
+      if (carrito) {
+        const p = productos.find(x => x.id === carrito.dataset.carrito);
+        if (!p) return;
+        const stock = Number(p.stock) || 0;
+        let c = []; try { c = JSON.parse(localStorage.getItem('carrito') || '[]'); } catch {}
+        const existe = c.find(i => i.id === p.id);
+        if ((existe ? existe.cantidad : 0) + 1 > stock) { toast(`Solo quedan ${stock} disponibles`); return; }
+        if (existe) existe.cantidad += 1;
+        else c.push({ id: p.id, nombre: p.nombre, precio: Number(p.precio) || 0, imagen: imagen(p), cantidad: 1 });
+        localStorage.setItem('carrito', JSON.stringify(c));
+        window.dispatchEvent(new Event('actualizarCarrito'));
+        toast(`¡Agregado! 1 × ${p.nombre}`);
+      }
+    });
+
+    (async () => {
+      sesion = await iniciarCuenta('mis-favoritos.html', 'favoritos');
+      if (!sesion) return;
+      escucharProductosScm((l) => { productos = l; pintar(); }, () => {});
+      escucharFavoritos(sesion.usuario.uid, (l) => { favoritos = l; pintar(); }, () => {
+        $('lista').innerHTML = '<p style="color:#b3261e; font-size:.88rem;">No se pudieron cargar tus favoritos.</p>';
+      });
+    })();
+  </script>
+</body>
+</html>

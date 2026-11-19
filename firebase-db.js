@@ -44,7 +44,7 @@
 //    carritos/{uid}/detalle/{productoId} { productoId, nombre, cantidad, precioUnitario, imagen, agregadoEn }
 // ============================================
 
-import { auth, db, firebaseConfig } from "./firebase-config.js";
+import { auth, db, firebaseConfig, firebaseApp } from "./firebase-config.js";
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   signInWithEmailAndPassword,
@@ -59,12 +59,17 @@ import {
   EmailAuthProvider,
   sendPasswordResetEmail,
   verifyBeforeUpdateEmail,
+  sendEmailVerification,
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+  applyActionCode,
+  deleteUser,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import {
   collection, doc,
   addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs,
   onSnapshot, query, where, orderBy, limit, serverTimestamp, writeBatch, runTransaction,
-  arrayUnion, increment,
+  arrayUnion, arrayRemove, increment,
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const clientesRef = collection(db, "clientes");
@@ -74,7 +79,7 @@ const usuariosRef = collection(db, "usuarios");
 // ---------- Autenticación ----------
 
 export function loginAdmin(email, password) {
-  return signInWithEmailAndPassword(auth, email, password);
+  return iniciarSesionProtegida(email, password);
 }
 
 export function logoutAdmin() {
@@ -210,23 +215,70 @@ export function eliminarCliente(id) {
 // cliente en la tienda. El documento de "clientes" se crea con el mismo id
 // que el uid de su cuenta, para poder distinguirlo de los que agrega el CRM.
 
-export async function registrarCliente({ nombre, correo, contrasena, telefono, mascota }) {
+export async function registrarCliente({ nombre, correo, contrasena, telefono, mascota,
+                                         apellidoPaterno, apellidoMaterno, codigoPostal, aceptaPromociones }) {
   const credencial = await createUserWithEmailAndPassword(auth, correo, contrasena);
   await updateProfile(credencial.user, { displayName: nombre });
-  await setDoc(doc(db, "clientes", credencial.user.uid), {
-    nombre, correo,
-    telefono: telefono || "",
-    mascota: mascota || "Sin especificar",
-    etapa: "Prospecto",
-    estado: "Activo",
-    fechaRegistro: new Date().toLocaleDateString('es-MX'),
-    creadoEn: serverTimestamp(),
-  });
+  const refCliente = doc(db, "clientes", credencial.user.uid);
+  // Datos extra del registro por pasos (solo se guardan los que vienen).
+  const extra = {};
+  if (apellidoPaterno) extra.apellidoPaterno = String(apellidoPaterno).slice(0, 60);
+  if (apellidoMaterno) extra.apellidoMaterno = String(apellidoMaterno).slice(0, 60);
+  if (codigoPostal) extra.codigoPostal = String(codigoPostal).slice(0, 5);
+  if (typeof aceptaPromociones === "boolean") extra.aceptaPromociones = aceptaPromociones;
+  if ((await getDoc(refCliente)).exists()) {
+    // Ya la creó otra parte de la página: se completan solo los datos que el cliente sí puede cambiar.
+    await updateDoc(refCliente, { nombre, telefono: telefono || "", mascota: mascota || "Sin especificar", ...extra, actualizadoEn: serverTimestamp() });
+  } else {
+    await setDoc(refCliente, {
+      nombre, correo,
+      telefono: telefono || "",
+      mascota: mascota || "Sin especificar",
+      ...extra,
+      etapa: "Prospecto",
+      estado: "Activo",
+      fechaRegistro: new Date().toLocaleDateString('es-MX'),
+      creadoEn: serverTimestamp(),
+    });
+  }
+  // Correo de bienvenida de Firebase ("confirma tu correo"): siempre funciona, sin configurar nada.
+  // Si falla (sin internet), la cuenta ya quedó creada igual.
+  try { await enviarCorreoConEnlace((ajustes) => sendEmailVerification(credencial.user, ajustes), "login.html?verificado=1"); } catch { /* opcional */ }
   return credencial.user;
 }
 
-export function loginCliente(correo, contrasena) {
-  return signInWithEmailAndPassword(auth, correo, contrasena);
+/**
+ * Dirección completa de una página de esta misma tienda (sirve con Live Server, en una subcarpeta
+ * o ya publicada). Se usa como "continueUrl": a dónde regresa la persona después de usar un enlace.
+ */
+function urlDeLaTienda(pagina) {
+  const carpeta = window.location.href.replace(/[^/]*([?#].*)?$/, "");
+  return carpeta + pagina;
+}
+
+/**
+ * Manda un correo de Firebase con botón para regresar a la tienda. Si el dominio no está
+ * autorizado en Firebase (auth/unauthorized-continue-uri), lo manda sin ese botón.
+ */
+async function enviarCorreoConEnlace(enviar, paginaRegreso) {
+  auth.languageCode = "es";
+  try {
+    await enviar({ url: urlDeLaTienda(paginaRegreso) });
+  } catch (err) {
+    if (["auth/unauthorized-continue-uri", "auth/invalid-continue-uri", "auth/missing-continue-uri"].includes(err.code)) await enviar(undefined);
+    else throw err;
+  }
+}
+
+export async function loginCliente(correo, contrasena) {
+  const cred = await iniciarSesionProtegida(correo, contrasena);
+  // Si la tienda dio de baja esta cuenta, aquí se termina de borrar (ver completarBajaSiCorresponde).
+  if (await completarBajaSiCorresponde(cred.user)) {
+    const err = new Error("Esta cuenta fue dada de baja por la tienda y ya se borró. Si quieres, puedes registrarte de nuevo con el mismo correo.");
+    err.code = "bp/cuenta-dada-de-baja";
+    throw err;
+  }
+  return cred;
 }
 
 export function logoutCliente() {
@@ -663,6 +715,99 @@ export function escucharVentasDeCliente(uid, callback, onError) {
     lista.sort((a, b) => milisDe(b.creadoEn) - milisDe(a.creadoEn));
     callback(lista);
   }, onError);
+}
+
+/**
+ * Resumen de compras de un cliente calculado con sus órdenes REALES (tienda + ERP).
+ * Así el panel nunca depende de un contador que se pudo quedar atrás:
+ *   - Las órdenes canceladas no cuentan.
+ *   - Las que esperan pago (OXXO / SPEI pendientes) se cuentan aparte y no suman al gastado.
+ */
+export function resumenComprasCliente(ventas) {
+  const lista = Array.isArray(ventas) ? ventas : [];
+  const validas = lista.filter(v => v.estado !== "Cancelada");
+  const pagadas = validas.filter(v => v.estadoPago !== "Pendiente");
+  const fechaDe = (v) => {
+    const ms = milisDe(v.creadoEn);
+    return ms ? new Date(ms).toISOString().slice(0, 10) : "";
+  };
+  const msDe = (v) => (v && v.creadoEn ? milisDe(v.creadoEn) : 0);
+  const ultima = validas.reduce((max, v) => (!max || msDe(v) > msDe(max) ? v : max), null);
+  return {
+    numCompras: pagadas.length,
+    totalGastado: Math.round(pagadas.reduce((s, v) => s + (Number(v.total) || 0), 0) * 100) / 100,
+    entregadas: validas.filter(v => v.estado === "Entregada").length,
+    enCurso: validas.filter(v => !["Entregada"].includes(v.estado)).length,
+    pendientesPago: validas.filter(v => v.estadoPago === "Pendiente").length,
+    canceladas: lista.length - validas.length,
+    ultimaCompra: ultima ? fechaDe(ultima) : "",
+    ultimaVentaId: ultima ? ultima.id : "",
+  };
+}
+
+/** Agrupa todas las órdenes por cliente: { clienteId: resumenComprasCliente(...) }. */
+export function resumenComprasPorCliente(ventas) {
+  const grupos = {};
+  (ventas || []).forEach(v => {
+    if (!v.clienteId) return;
+    (grupos[v.clienteId] = grupos[v.clienteId] || []).push(v);
+  });
+  const res = {};
+  Object.keys(grupos).forEach(id => { res[id] = resumenComprasCliente(grupos[id]); });
+  return res;
+}
+
+/**
+ * Deja los contadores guardados del cliente (numCompras, totalComprado, ultimaCompra, etapa)
+ * igual que sus órdenes reales. Solo escribe si algo cambió. Lo usan las páginas del CRM/ERP
+ * (administrador y ventas) para que soporte y los reportes vean siempre lo mismo.
+ */
+export async function sincronizarComprasCliente(cliente, resumen) {
+  if (!cliente || !cliente.id || !resumen) return false;
+  const iguales = (Number(cliente.numCompras) || 0) === resumen.numCompras
+    && Math.abs((Number(cliente.totalComprado) || 0) - resumen.totalGastado) < 0.005
+    && (cliente.ultimaCompra || "") === (resumen.ultimaCompra || cliente.ultimaCompra || "");
+  if (iguales) return false;
+  const cambios = {
+    numCompras: resumen.numCompras,
+    totalComprado: resumen.totalGastado,
+    actualizadoEn: serverTimestamp(),
+  };
+  if (resumen.ultimaCompra) cambios.ultimaCompra = resumen.ultimaCompra;
+  if (["Prospecto", "Activo", "Frecuente"].includes(cliente.etapa) || !cliente.etapa) {
+    cambios.etapa = resumen.numCompras ? etapaTrasCompra(cliente.etapa, resumen.numCompras) : (cliente.etapa || "Prospecto");
+  }
+  await updateDoc(doc(db, "clientes", cliente.id), cambios);
+  return true;
+}
+
+/** Vuelve a calcular las compras de UN cliente con sus órdenes y deja sus contadores al día. */
+export async function resincronizarComprasCliente(clienteId) {
+  if (!clienteId) return false;
+  const [cSnap, vSnap] = await Promise.all([
+    getDoc(doc(db, "clientes", clienteId)),
+    getDocs(query(ventasRef, where("clienteId", "==", clienteId))),
+  ]);
+  if (!cSnap.exists()) return false;
+  const ventas = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return sincronizarComprasCliente({ id: cSnap.id, ...cSnap.data() }, resumenComprasCliente(ventas));
+}
+
+/**
+ * Panel siempre al día: llama a `callback` cada vez que cambia algo en esas colecciones
+ * (ventas, clientes, productos…), con una pequeña pausa para juntar varios cambios.
+ * Si un rol no puede leer alguna colección, esa simplemente no se escucha.
+ * Devuelve una función para dejar de escuchar.
+ */
+export function alCambiarColecciones(nombres, callback, espera = 400) {
+  let temporizador = null;
+  const programar = () => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => { Promise.resolve().then(callback).catch(() => {}); }, espera);
+  };
+  const cancelar = (nombres || []).map(n => onSnapshot(collection(db, n), programar, () => {}));
+  programar();
+  return () => { clearTimeout(temporizador); cancelar.forEach(c => c()); };
 }
 
 // ---------- Impuestos (Etapa 4): configuración del IVA ----------
@@ -1222,6 +1367,11 @@ export async function cambiarEstadoOrdenErp(orden, estadoNuevo, usuario) {
   });
 
   await lote.commit();
+  // Al cancelar, el total gastado del cliente baja enseguida (solo administrador y ventas
+  // pueden escribir en clientes; si lo hace logística, se empareja al abrir el CRM).
+  if (estadoNuevo === "Cancelada" && orden.clienteId && ["administrador", "vendedor"].includes(usuario?.rol)) {
+    resincronizarComprasCliente(orden.clienteId).catch(() => {});
+  }
 }
 
 /**
@@ -1470,6 +1620,18 @@ export async function validarCupon(codigo) {
   };
 }
 
+/**
+ * Promociones que la tienda decidió mostrar en la página "Promos" (publica: true), vigentes.
+ * Las demás siguen siendo secretas: solo funcionan si alguien conoce el código.
+ */
+export function escucharPromocionesPublicas(callback, onError) {
+  return onSnapshot(query(promocionesRef, where("publica", "==", true)), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => promocionVigente(p));
+    lista.sort((a, b) => String(a.vigenciaHasta).localeCompare(String(b.vigenciaHasta)));
+    callback(lista);
+  }, onError);
+}
+
 /** Escucha en tiempo real todas las promociones (solo personal de ventas). */
 export function escucharPromociones(callback, onError) {
   return onSnapshot(query(promocionesRef, orderBy("vigenciaHasta", "desc")), (snap) => {
@@ -1491,6 +1653,7 @@ export function guardarPromocion(datos, usuario, esNuevo = true) {
     minimoCompra: Number(datos.minimoCompra) || 0,
     vigenciaHasta: datos.vigenciaHasta,
     activa: datos.activa !== false,
+    publica: datos.publica === true,
     actualizadoEn: serverTimestamp(),
   };
   if (esNuevo) {
@@ -1519,7 +1682,7 @@ export async function cargarPromocionesEjemplo(usuario) {
     { codigo: "CUTECANDY10", descripcion: "10% en tu tercera prenda", tipo: "tercera_prenda", valor: 10, minimoCompra: 0 },
     { codigo: "CUTENVIO1", descripcion: "Envío gratis en compras mayores a $2000", tipo: "envio_gratis", valor: 0, minimoCompra: 2000 },
   ];
-  await Promise.all(ejemplos.map(p => guardarPromocion({ ...p, vigenciaHasta, activa: true }, usuario)));
+  await Promise.all(ejemplos.map(p => guardarPromocion({ ...p, vigenciaHasta, activa: true, publica: true }, usuario)));
   return ejemplos.length;
 }
 
@@ -1527,7 +1690,7 @@ export async function cargarPromocionesEjemplo(usuario) {
 
 const ticketsRef = collection(db, "tickets");
 
-export const ASUNTOS_TICKET = ["Duda sobre mi pedido", "Cambio de producto", "Facturación", "Problema con monedero"];
+export const ASUNTOS_TICKET = ["Duda sobre mi pedido", "Cambio de producto", "Facturación", "Problema con monedero", "Otra duda o comentario"];
 export const ESTADOS_TICKET = ["En proceso", "Solucionado", "Cerrado"];
 
 function milisTicket(t) {
@@ -2090,12 +2253,49 @@ export async function eliminarDireccion(uid, id, todas = []) {
 
 // ---------- Mis datos y contraseña del cliente ----------
 
+/**
+ * Cuentas que existen en Authentication pero NO tienen su documento en "clientes" (se crearon
+ * cuando el registro estaba roto, o desde el panel): se les crea el perfil con lo que se sabe de
+ * la cuenta. Sin esto, "Mis datos" fallaba con "No document to update" y sus compras no llegaban
+ * al CRM. Devuelve el perfil (existente o nuevo).
+ */
+export async function asegurarPerfilCliente(user) {
+  if (!user) return null;
+  // Mientras registro.js está creando la cuenta, el perfil lo guarda registrarCliente() con todos
+  // sus datos: si aquí también se creara, los dos chocarían y Firebase rechazaría el segundo.
+  let registrando = false;
+  try { registrando = sessionStorage.getItem("bpRegistrando") === "1"; } catch { /* sin almacenamiento */ }
+  if (registrando) return null;
+  // Una cuenta dada de baja desde el panel NO se vuelve a crear: se termina de borrar.
+  if (await completarBajaSiCorresponde(user)) {
+    const err = new Error("Tu cuenta fue dada de baja por la tienda.");
+    err.code = "bp/cuenta-dada-de-baja";
+    throw err;
+  }
+  const ref = doc(db, "clientes", user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return { id: snap.id, ...snap.data() };
+  const nuevo = {
+    nombre: String(user.displayName || (user.email || "Cliente").split("@")[0]).slice(0, 120),
+    correo: user.email || "",
+    telefono: "",
+    mascota: "Sin especificar",
+    etapa: "Prospecto",
+    estado: "Activo",
+    fechaRegistro: new Date().toLocaleDateString("es-MX"),
+    creadoEn: serverTimestamp(),
+  };
+  await setDoc(ref, nuevo);
+  return { id: user.uid, ...nuevo };
+}
+
 /** El cliente cambia sus datos de contacto (y su nombre también en Authentication). */
 export async function actualizarDatosCliente(uid, { nombre, telefono, mascota }) {
   const n = String(nombre || "").trim();
   const tel = String(telefono || "").replace(/\D/g, "");
   if (n.length < 3 || !/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/.test(n)) throw new Error("Escribe tu nombre completo (solo letras).");
   if (tel && tel.length !== 10) throw new Error("El teléfono debe tener 10 dígitos.");
+  if (auth.currentUser && auth.currentUser.uid === uid) await asegurarPerfilCliente(auth.currentUser);
   await updateDoc(doc(db, "clientes", uid), {
     nombre: n.slice(0, 120),
     telefono: tel,
@@ -2131,10 +2331,43 @@ export function cambiarContrasenaCliente(contrasenaNueva, contrasenaActual) {
   return cambiarContrasenaPropia(contrasenaNueva, contrasenaActual);
 }
 
-/** "¿Olvidaste tu contraseña?": Firebase manda un correo con el enlace para crear una nueva. */
-export function enviarCorreoRecuperacion(correo) {
-  auth.languageCode = "es";
-  return sendPasswordResetEmail(auth, String(correo || "").trim());
+/**
+ * "¿Olvidaste tu contraseña?": Firebase manda un correo con el enlace para crear una nueva.
+ * IMPORTANTE: cada correo nuevo deja SIN VALOR a los anteriores, y el enlace dura 1 hora y sirve una
+ * sola vez. Por eso aquí no se deja pedir otro hasta pasados 60 segundos (lanza code
+ * "bp/espera-reenvio" con segundos), para que nadie termine abriendo un enlace viejo.
+ */
+export async function enviarCorreoRecuperacion(correo) {
+  const c = String(correo || "").trim().toLowerCase();
+  const clave = "bpUltimoReset:" + c;
+  let ultimo = 0;
+  try { ultimo = Number(localStorage.getItem(clave)) || 0; } catch { /* sin almacenamiento */ }
+  const espera = 60000 - (Date.now() - ultimo);
+  if (espera > 0) {
+    const err = new Error(`Ya te enviamos un enlace hace un momento. Usa ese correo (el más reciente) o espera ${Math.ceil(espera / 1000)} segundos para pedir otro.`);
+    err.code = "bp/espera-reenvio";
+    throw err;
+  }
+  await enviarCorreoConEnlace((ajustes) => sendPasswordResetEmail(auth, c, ajustes), "login.html?restablecida=1");
+  try { localStorage.setItem(clave, String(Date.now())); } catch { /* sin almacenamiento */ }
+}
+
+// ---------- Página propia para los enlaces de los correos (cuenta-accion.html) ----------
+
+/** Revisa que el enlace de "crear contraseña nueva" siga sirviendo. Devuelve el correo de la cuenta. */
+export function revisarEnlaceContrasena(codigo) {
+  return verifyPasswordResetCode(auth, codigo);
+}
+
+/** Guarda la contraseña nueva usando el código del enlace (aquí es donde el enlace se "gasta"). */
+export function guardarContrasenaNueva(codigo, contrasenaNueva) {
+  if (String(contrasenaNueva || "").length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
+  return confirmPasswordReset(auth, codigo, contrasenaNueva);
+}
+
+/** Confirma el correo (enlace del correo de bienvenida) o un cambio de correo. */
+export function aplicarEnlaceCorreo(codigo) {
+  return applyActionCode(auth, codigo);
 }
 
 // =====================================================================
@@ -2244,4 +2477,346 @@ export async function guardarFotoPerfil(uid, dataUrl) {
 /** Quita la foto: vuelve a verse el ícono genérico. */
 export function quitarFotoPerfil(uid) {
   return deleteDoc(doc(db, "fotos_perfil", uid));
+}
+
+
+// =====================================================================
+// ---------- Etapa 4 · Seguridad: bloqueo tras 5 intentos fallidos ----------
+// =====================================================================
+// Protocolo de seguridad contra adivinar contraseñas (fuerza bruta):
+//   - Cada intento fallido de iniciar sesión con un correo suma 1 en intentos_login/{id}.
+//   - Al 5.º fallo la cuenta queda BLOQUEADA 5 minutos: ni con la contraseña correcta se entra.
+//   - Al entrar bien, el contador se borra. Si pasan 15 min sin fallos, vuelve a empezar en 1.
+//   - El {id} del documento es el SHA-256 del correo (en mayúsculas hex): en la base de datos
+//     no queda escrito ningún correo, solo su "huella".
+// Lo usan el login de la tienda (loginCliente) y el del panel (loginAdmin).
+//
+// Sobre las CONTRASEÑAS: este proyecto nunca las guarda. Firebase Authentication las guarda
+// con hash (algoritmo scrypt modificado, con "sal" distinta por usuario); ni el equipo ni la
+// base de datos pueden verlas. Por eso solo se pueden RESTABLECER, nunca "recuperar".
+
+export const BLOQUEO_LOGIN = Object.freeze({ intentos: 5, minutosBloqueo: 5, minutosReinicio: 15 });
+const ERRORES_CREDENCIAL = ["auth/invalid-credential", "auth/wrong-password", "auth/user-not-found", "auth/invalid-login-credentials"];
+
+/** SHA-256 del correo en hexadecimal MAYÚSCULAS (igual que hashing.sha256(...).toHexString() en las reglas). */
+export async function huellaCorreo(correo) {
+  const texto = String(correo || "").trim().toLowerCase();
+  if (!globalThis.crypto?.subtle) return null;   // sin contexto seguro (https/localhost) no hay bloqueo
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+  return [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+function errorBloqueado(restanteMs) {
+  const min = Math.max(1, Math.ceil(restanteMs / 60000));
+  const err = new Error(`Por seguridad, la cuenta está bloqueada por ${min} minuto${min === 1 ? "" : "s"} después de ${BLOQUEO_LOGIN.intentos} intentos fallidos.`);
+  err.code = "bp/cuenta-bloqueada";
+  err.restanteMs = restanteMs;
+  return err;
+}
+
+function leerEstadoIntentos(d) {
+  if (!d) return { fallidos: 0, bloqueado: false, restanteMs: 0 };
+  const desde = d.bloqueadoDesde ? milisDe(d.bloqueadoDesde) : 0;
+  const fin = desde + BLOQUEO_LOGIN.minutosBloqueo * 60000;
+  const bloqueado = Number(d.fallidos) >= BLOQUEO_LOGIN.intentos && desde > 0 && Date.now() < fin;
+  return { fallidos: Number(d.fallidos) || 0, bloqueado, restanteMs: bloqueado ? fin - Date.now() : 0, finMs: fin, ultimo: milisDe(d.actualizadoEn) };
+}
+
+/** ¿Está bloqueado este correo? -> { bloqueado, restanteMs, fallidos } (si no se puede revisar, no bloquea). */
+export async function estadoBloqueoLogin(correo) {
+  const id = await huellaCorreo(correo);
+  if (!id) return { bloqueado: false, restanteMs: 0, fallidos: 0 };
+  const snap = await getDoc(doc(db, "intentos_login", id));
+  return leerEstadoIntentos(snap.exists() ? snap.data() : null);
+}
+
+/** Suma un intento fallido. Devuelve { restantes, bloqueado, restanteMs }. */
+async function registrarIntentoFallido(correo) {
+  const id = await huellaCorreo(correo);
+  if (!id) return null;
+  const ref = doc(db, "intentos_login", id);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const est = leerEstadoIntentos(snap.exists() ? snap.data() : null);
+    if (est.bloqueado) return { restantes: 0, bloqueado: true, restanteMs: est.restanteMs };
+    const reiniciar = !snap.exists()
+      || est.fallidos >= BLOQUEO_LOGIN.intentos                                   // ya pasó un bloqueo
+      || Date.now() - est.ultimo > BLOQUEO_LOGIN.minutosReinicio * 60000;           // fallos viejos
+    if (reiniciar) {
+      tx.set(ref, { fallidos: 1, bloqueadoDesde: null, actualizadoEn: serverTimestamp() });
+      return { restantes: BLOQUEO_LOGIN.intentos - 1, bloqueado: false, restanteMs: 0 };
+    }
+    const n = est.fallidos + 1;
+    if (n >= BLOQUEO_LOGIN.intentos) {
+      tx.update(ref, { fallidos: BLOQUEO_LOGIN.intentos, bloqueadoDesde: serverTimestamp(), actualizadoEn: serverTimestamp() });
+      return { restantes: 0, bloqueado: true, restanteMs: BLOQUEO_LOGIN.minutosBloqueo * 60000 };
+    }
+    tx.update(ref, { fallidos: n, actualizadoEn: serverTimestamp() });
+    return { restantes: BLOQUEO_LOGIN.intentos - n, bloqueado: false, restanteMs: 0 };
+  });
+}
+
+/**
+ * Inicio de sesión con el protocolo de bloqueo. Errores que puede lanzar además de los de Firebase:
+ *   code "bp/cuenta-bloqueada" (con restanteMs). Los de contraseña incorrecta llevan
+ *   err.intentosRestantes para avisar "te quedan N intentos".
+ */
+async function iniciarSesionProtegida(correo, contrasena) {
+  const correoN = String(correo || "").trim().toLowerCase();
+  let estado = null;
+  try { estado = await estadoBloqueoLogin(correoN); } catch { /* si no se puede revisar, Firebase igual limita intentos */ }
+  if (estado?.bloqueado) throw errorBloqueado(estado.restanteMs);
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, correoN, contrasena);
+    // Entró bien: se borra el contador (solo el dueño del correo puede borrarlo, ver reglas).
+    const id = await huellaCorreo(correoN).catch(() => null);
+    if (id && estado && estado.fallidos > 0) await deleteDoc(doc(db, "intentos_login", id)).catch(() => {});
+    return cred;
+  } catch (err) {
+    if (ERRORES_CREDENCIAL.includes(err.code)) {
+      let r = null;
+      try { r = await registrarIntentoFallido(correoN); } catch { /* sin conexión: queda el límite propio de Firebase */ }
+      if (r?.bloqueado) throw errorBloqueado(r.restanteMs);
+      if (r) err.intentosRestantes = r.restantes;
+    }
+    throw err;
+  }
+}
+
+
+// =====================================================================
+// ---------- Etapa 4 · Eliminar un cliente por completo (panel) ----------
+// =====================================================================
+// Una página web NO puede borrar la cuenta de acceso (Authentication) de otra persona: solo
+// un servidor con el Admin SDK. Por eso hay dos caminos y el panel usa el que esté disponible:
+//
+//  1) Cloud Function "eliminarClienteCompleto" (carpeta functions/, requiere plan Blaze):
+//     borra AL INSTANTE la cuenta de acceso, la ficha del CRM con sus direcciones, el carrito
+//     y la foto. El correo queda libre para registrarse otra vez.
+//  2) Si la función no está publicada: BAJA. Se borra la ficha del CRM y se guarda
+//     bajas/{uid} con estado "Pendiente". La cuenta ya no puede usar la tienda: en cuanto
+//     intente entrar (o abra la tienda con su sesión), la propia página borra sus datos y su
+//     cuenta de acceso (cada quien sí puede borrar SU cuenta) y le avisa.
+//
+// En los dos casos se CONSERVAN sus ventas, pagos, tickets y movimientos del monedero:
+// son registros del negocio (contabilidad e historial), no datos de la cuenta.
+
+/** Panel: elimina un cliente. Devuelve { modo: "completo" | "baja", cuentaBorrada }. */
+export async function eliminarClienteCompleto(cliente, usuario) {
+  try {
+    const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js");
+    const funcion = httpsCallable(getFunctions(firebaseApp, "us-central1"), "eliminarClienteCompleto", { timeout: 20000 });
+    const r = await funcion({ uid: cliente.id });
+    return { modo: "completo", cuentaBorrada: !!(r.data && r.data.cuentaBorrada) };
+  } catch (err) {
+    const codigo = String(err.code || "").replace("functions/", "");
+    // Errores "de verdad" de la función (sin permiso, cuenta del personal…): se informan tal cual.
+    if (["permission-denied", "unauthenticated", "invalid-argument", "failed-precondition"].includes(codigo)) {
+      throw new Error(err.message || "No se pudo eliminar el cliente.");
+    }
+    // Cualquier otro (función no publicada, plan sin Blaze, sin conexión con la función): se usa la baja.
+  }
+  const lote = writeBatch(db);
+  lote.set(doc(db, "bajas", cliente.id), {
+    clienteId: cliente.id,
+    nombre: String(cliente.nombre || "").slice(0, 120),
+    correo: String(cliente.correo || "").slice(0, 120),
+    estado: "Pendiente",
+    usuarioId: usuario?.uid || "",
+    usuarioNombre: usuario?.nombre || usuario?.correo || "",
+    fecha: serverTimestamp(),
+  });
+  lote.delete(doc(db, "clientes", cliente.id));
+  await lote.commit();
+  return { modo: "baja", cuentaBorrada: false };
+}
+
+/**
+ * Si el cliente con sesión fue dado de baja desde el panel: borra sus datos de cuenta y su
+ * cuenta de acceso (o, si Firebase pide volver a iniciar sesión para eso, cierra la sesión y
+ * se completa cuando vuelva a entrar). Devuelve true si la cuenta estaba dada de baja.
+ */
+export async function completarBajaSiCorresponde(user) {
+  if (!user) return false;
+  let snap;
+  try { snap = await getDoc(doc(db, "bajas", user.uid)); } catch { return false; }
+  if (!snap.exists() || snap.data().estado !== "Pendiente") return false;
+
+  const uid = user.uid;
+  const borrar = (ref) => deleteDoc(ref).catch(() => {});
+  try { for (const d of (await getDocs(collection(db, "clientes", uid, "direcciones"))).docs) await borrar(d.ref); } catch { /* sin datos */ }
+  try { for (const d of (await getDocs(collection(db, "clientes", uid, "favoritos"))).docs) await borrar(d.ref); } catch { /* sin datos */ }
+  try { for (const d of (await getDocs(collection(db, "carritos", uid, "detalle"))).docs) await borrar(d.ref); } catch { /* sin datos */ }
+  await borrar(doc(db, "carritos", uid));
+  await borrar(doc(db, "fotos_perfil", uid));
+  try { localStorage.removeItem("carrito"); localStorage.removeItem("carritoDueno"); } catch { /* sin almacenamiento */ }
+  try {
+    await deleteUser(user);            // cada quien SÍ puede borrar su propia cuenta de acceso
+  } catch {
+    await signOut(auth).catch(() => {});   // p. ej. "requires-recent-login": se completa en su próximo inicio de sesión
+  }
+  return true;
+}
+
+// ============================================
+//  Página de producto: reseñas, preguntas y favoritos
+//
+//    resenas/{productoId}_{uid}  { productoId, uid, nombre, huellitas (1-5), titulo, texto, fecha }
+//        una reseña por cliente y producto (el id lo garantiza)
+//    preguntas/{id}              { productoId, uid, nombre, texto, fecha,
+//                                  respuesta?, respondidoPor?, respondidaEn? }
+//    clientes/{uid}/favoritos/{productoId} { productoId, agregadoEn }
+// ============================================
+
+/** Agrega al catálogo los productos de la lista que todavía no existen (se comparan por nombre). */
+export async function agregarProductosNuevosScm(lista) {
+  const existentes = new Set((await getDocs(scmProductosRef)).docs
+    .map(d => String(d.data().nombre || '').trim().toLowerCase()));
+  let creados = 0;
+  for (const p of lista) {
+    if (existentes.has(p.nombre.trim().toLowerCase())) continue;
+    await addDoc(scmProductosRef, { ...p, creadoEn: serverTimestamp() });
+    creados++;
+  }
+  return creados;
+}
+
+export function escucharResenas(productoId, callback, onError) {
+  const q = query(collection(db, "resenas"), where("productoId", "==", productoId));
+  return onSnapshot(q, (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.fecha) - milisDe(a.fecha));
+    callback(lista);
+  }, onError);
+}
+
+export async function guardarResena(productoId, { nombre, huellitas, titulo, texto }) {
+  const user = auth.currentUser;
+  if (!user) { const e = new Error("Inicia sesión para escribir una reseña."); e.code = "bp/sin-sesion"; throw e; }
+  const ref = doc(db, "resenas", `${productoId}_${user.uid}`);
+  if ((await getDoc(ref)).exists()) {
+    const e = new Error("Ya escribiste una reseña de este producto."); e.code = "bp/resena-repetida"; throw e;
+  }
+  await setDoc(ref, {
+    productoId, uid: user.uid,
+    nombre: String(nombre || 'Cliente').trim().slice(0, 60) || 'Cliente',
+    huellitas: Math.max(1, Math.min(5, Math.round(Number(huellitas) || 0))),
+    titulo: String(titulo || '').trim().slice(0, 100),
+    texto: String(texto || '').trim().slice(0, 1000),
+    fecha: serverTimestamp(),
+  });
+}
+
+export function eliminarResena(id) {
+  return deleteDoc(doc(db, "resenas", id));
+}
+
+export function escucharPreguntas(productoId, callback, onError) {
+  const q = query(collection(db, "preguntas"), where("productoId", "==", productoId));
+  return onSnapshot(q, (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.fecha) - milisDe(a.fecha));
+    callback(lista);
+  }, onError);
+}
+
+export async function crearPregunta(productoId, { nombre, texto }) {
+  const user = auth.currentUser;
+  if (!user) { const e = new Error("Inicia sesión para hacer una pregunta."); e.code = "bp/sin-sesion"; throw e; }
+  return addDoc(collection(db, "preguntas"), {
+    productoId, uid: user.uid,
+    nombre: String(nombre || 'Cliente').trim().slice(0, 60) || 'Cliente',
+    texto: String(texto || '').trim().slice(0, 500),
+    fecha: serverTimestamp(),
+  });
+}
+
+export async function responderPregunta(id, respuesta, nombreQuienResponde) {
+  return updateDoc(doc(db, "preguntas", id), {
+    respuesta: String(respuesta || '').trim().slice(0, 1000),
+    respondidoPor: String(nombreQuienResponde || 'Bigotes y Patitas').trim().slice(0, 60),
+    respondidaEn: serverTimestamp(),
+  });
+}
+
+export function eliminarPregunta(id) {
+  return deleteDoc(doc(db, "preguntas", id));
+}
+
+/** Rol del panel de la cuenta actual ('' si es cliente o no tiene perfil en "usuarios"). */
+export async function rolDelPanelActual() {
+  const user = auth.currentUser;
+  if (!user) return '';
+  try {
+    const snap = await getDoc(doc(db, "usuarios", user.uid));
+    return snap.exists() ? String(snap.data().rol || '') : '';
+  } catch {
+    return '';   // un cliente no puede leer "usuarios": no es personal
+  }
+}
+
+export function escucharFavoritos(uid, callback, onError) {
+  return onSnapshot(collection(db, "clientes", uid, "favoritos"), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.agregadoEn) - milisDe(a.agregadoEn));
+    callback(lista);
+  }, onError);
+}
+
+export function agregarFavorito(uid, productoId) {
+  return setDoc(doc(db, "clientes", uid, "favoritos", productoId), { productoId, agregadoEn: serverTimestamp() });
+}
+
+export function quitarFavorito(uid, productoId) {
+  return deleteDoc(doc(db, "clientes", uid, "favoritos", productoId));
+}
+
+/** Todas las reseñas (para mostrar las huellitas en el catálogo). Lectura pública. */
+export function escucharTodasLasResenas(callback, onError) {
+  return onSnapshot(collection(db, "resenas"), (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  }, onError);
+}
+
+
+// ============================================
+//  Comunidad Peluda (comunidad.html)
+//    comunidad/{id} { uid, nombre, mascota?, texto, huellitas (1-5), foto? (JPEG en data URL),
+//                     likes: [uid...], fecha }
+//  Lectura pública; publica quien tiene sesión; cada quien da/quita SU "me gusta";
+//  borra el autor o el personal (ventas o soporte).
+// ============================================
+
+export function escucharComunidad(callback, onError) {
+  return onSnapshot(collection(db, "comunidad"), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    lista.sort((a, b) => milisDe(b.fecha) - milisDe(a.fecha));
+    callback(lista);
+  }, onError);
+}
+
+export async function publicarEnComunidad({ nombre, mascota, texto, huellitas, foto }) {
+  const user = auth.currentUser;
+  if (!user) { const e = new Error("Inicia sesión para publicar."); e.code = "bp/sin-sesion"; throw e; }
+  const datos = {
+    uid: user.uid,
+    nombre: String(nombre || "Cliente").trim().slice(0, 60) || "Cliente",
+    texto: String(texto || "").trim().slice(0, 600),
+    huellitas: Math.max(1, Math.min(5, Math.round(Number(huellitas) || 0))),
+    likes: [],
+    fecha: serverTimestamp(),
+  };
+  const m = String(mascota || "").trim().slice(0, 40);
+  if (m) datos.mascota = m;
+  if (foto) datos.foto = foto;
+  return addDoc(collection(db, "comunidad"), datos);
+}
+
+export function darMeGusta(id, uid, meGusta) {
+  return updateDoc(doc(db, "comunidad", id), { likes: meGusta ? arrayUnion(uid) : arrayRemove(uid) });
+}
+
+export function eliminarDeComunidad(id) {
+  return deleteDoc(doc(db, "comunidad", id));
 }

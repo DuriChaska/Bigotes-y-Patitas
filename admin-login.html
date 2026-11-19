@@ -79,7 +79,14 @@
         try { modoErp = localStorage.getItem('bpModoErp') === '1'; } catch (e) { /* sin almacenamiento */ }
         window.location.href = modoErp ? 'admin-erp.html' : 'admin.html';
       } catch (err) {
-        errorBox.textContent = mensajeError(err.code);
+        if (err.code === 'bp/cuenta-bloqueada') { mostrarBloqueo(err.restanteMs); return false; }
+        let texto = mensajeError(err.code);
+        if (typeof err.intentosRestantes === 'number') {
+          texto += err.intentosRestantes === 1
+            ? ' Te queda 1 intento antes de que la cuenta se bloquee 5 minutos.'
+            : ` Te quedan ${err.intentosRestantes} intentos.`;
+        }
+        errorBox.textContent = texto;
         errorBox.classList.add('show');
         boton.disabled = false;
         boton.textContent = 'Iniciar sesión';
@@ -87,6 +94,32 @@
       return false;
     }
     window.entrarAdmin = entrarAdmin;
+
+    // Bloqueo de 5 minutos tras 5 intentos fallidos: cuenta regresiva y botón desactivado.
+    let relojBloqueo = null;
+    function mostrarBloqueo(restanteMs) {
+      const errorBox = document.getElementById('admin-login-error');
+      const boton = document.querySelector('.admin-login-btn');
+      const fin = Date.now() + restanteMs;
+      clearInterval(relojBloqueo);
+      const pintar = () => {
+        const ms = fin - Date.now();
+        if (ms <= 0) {
+          clearInterval(relojBloqueo);
+          errorBox.classList.remove('show');
+          boton.disabled = false;
+          boton.textContent = 'Iniciar sesión';
+          return;
+        }
+        const m = Math.floor(ms / 60000), s = Math.floor((ms % 60000) / 1000);
+        errorBox.textContent = `🔒 Por seguridad bloqueamos el acceso a esta cuenta después de 5 intentos fallidos. Podrás intentar de nuevo en ${m}:${String(s).padStart(2, '0')}.`;
+        errorBox.classList.add('show');
+        boton.disabled = true;
+        boton.textContent = 'Bloqueado';
+      };
+      pintar();
+      relojBloqueo = setInterval(pintar, 1000);
+    }
 
     function mensajeError(codigo) {
       switch (codigo) {

@@ -2,82 +2,91 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Mis publicaciones</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mis publicaciones - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css">
   <script src="dialogos.js"></script>
 </head>
 <body>
 
 <div id="header"></div>
-
-<section class="container">
-  <h2>Mis publicaciones</h2>
-
-  <div id="listaProductos" class="products-grid"></div>
-
-  <p id="mensajeVacio" style="text-align:center; margin-top:20px; color:#888;">
-    Aún no has publicado productos 🥺
-  </p>
+<section class="cp-hero">
+  <div class="cp-hero-dentro">
+    <nav class="pd-ruta" aria-label="Ruta de navegación">
+      <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+      <span>/</span><a href="Interfaz Cliente - Perfil.html">Mi cuenta</a>
+      <span>/</span><strong>Mis publicaciones</strong>
+    </nav>
+    <p class="franja-ante">Vende lo que ya no usa</p>
+    <h1 class="franja-titulo">Mis publicaciones</h1>
+    <span class="franja-linea" aria-hidden="true"></span>
+    <p class="ns-texto" style="max-width:620px">Aquí ves todo lo que has publicado. Puedes editarlo o quitarlo cuando quieras.</p>
+  </div>
+  <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+    <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+    <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+  </svg>
 </section>
+
+<main class="pb-pagina">
+  <div class="pb-barra">
+    <p id="conteo"></p>
+    <a class="pb-btn pb-btn-vino" href="publicar.html">+ Publicar producto</a>
+  </div>
+
+  <div id="listaProductos" class="pb-lista"></div>
+
+  <div id="mensajeVacio" class="pb-vacio" style="display:none;">
+    <svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="44" rx="15" ry="13"/><ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/><ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/><ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/><ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/></svg>
+    <h3>Aún no has publicado productos</h3>
+    <p>¿Tienes ropita que tu peludito ya no usa? Publícala y dale una segunda vida.</p>
+    <a class="pb-btn pb-btn-vino" href="publicar.html">Publicar mi primer producto</a>
+  </div>
+</main>
 
 <div id="footer"></div>
 
 <script src="components.js"></script>
 
 <script>
-function cargarProductos(){
-  const contenedor = document.getElementById("listaProductos");
-  const mensaje = document.getElementById("mensajeVacio");
-
-  contenedor.innerHTML = "";
-
-  let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
-
-  if(productos.length === 0){
-    mensaje.style.display = "block";
-    return;
-  } else {
-    mensaje.style.display = "none";
-  }
-
-  productos.forEach(producto => {
-    contenedor.innerHTML += `
-      <div class="product-card">
-
-        <img src="${producto.foto}" alt="producto">
-
-        <div class="product-info">
-          <h3>${producto.nombre}</h3>
-          <p>${producto.descripcion}</p>
-        </div>
-
-        <div class="product-price">$${producto.precio}</div>
-
-        <div class="action-buttons">
-          <button class="btn-editar" onclick="editar(${producto.id})">
-            Editar
-          </button>
-
-          <button class="btn-eliminar" onclick="eliminar(${producto.id})">
-            Eliminar
-          </button>
-        </div>
-
-      </div>
-    `;
-  });
+function esc(t) {
+  return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-async function eliminar(id){
-  if (await bpConfirmar("¿Seguro que quieres eliminar este producto? 🗑️", { titulo: 'Eliminar publicación', aceptar: 'Eliminar', peligro: true })) {
-    let productos = JSON.parse(localStorage.getItem("misProductos")) || [];
-    productos = productos.filter(p => p.id !== id);
+function cargarProductos() {
+  const contenedor = document.getElementById("listaProductos");
+  const mensaje = document.getElementById("mensajeVacio");
+  const productos = JSON.parse(localStorage.getItem("misProductos") || "[]");
+
+  document.getElementById("conteo").textContent = productos.length
+    ? productos.length + (productos.length === 1 ? " producto publicado" : " productos publicados") : "";
+  mensaje.style.display = productos.length ? "none" : "block";
+  document.querySelector(".pb-barra").style.display = productos.length ? "flex" : "none";
+
+  contenedor.innerHTML = productos.map(producto => `
+    <article class="pb-card">
+      <img src="${esc(producto.foto)}" alt="${esc(producto.nombre)}">
+      <div class="pb-card-info">
+        <h3>${esc(producto.nombre)}</h3>
+        <span class="pb-card-precio">$${Number(producto.precio || 0).toLocaleString('es-MX')} MXN</span>
+        <p>${esc(producto.descripcion)}</p>
+        <div class="pb-card-botones">
+          <button class="pb-editar" onclick="editar(${Number(producto.id)})">Editar</button>
+          <button class="pb-eliminar" onclick="eliminar(${Number(producto.id)})">Eliminar</button>
+        </div>
+      </div>
+    </article>`).join("");
+}
+
+async function eliminar(id) {
+  if (await bpConfirmar("¿Seguro que quieres eliminar esta publicación?", { titulo: 'Eliminar publicación', aceptar: 'Eliminar', peligro: true })) {
+    const productos = JSON.parse(localStorage.getItem("misProductos") || "[]").filter(p => p.id !== id);
     localStorage.setItem("misProductos", JSON.stringify(productos));
     cargarProductos();
   }
 }
 
-function editar(id){
+function editar(id) {
   localStorage.setItem("productoEditar", id);
   window.location.href = "editar-producto-publicaciones.html";
 }

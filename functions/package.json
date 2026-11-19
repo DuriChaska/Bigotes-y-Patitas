@@ -1,0 +1,13 @@
+{
+  "name": "bigotes-y-patitas-functions",
+  "description": "Cloud Functions de Bigotes y Patitas (eliminar clientes por completo desde el panel)",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

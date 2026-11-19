@@ -6,7 +6,7 @@
 //  El header ahora es dinámico: si hay una cuenta de
 //  cliente real con sesión iniciada (Firebase Authentication),
 //  el botón "Iniciar sesión" cambia por el nombre del cliente
-//  y aparece un botón para cerrar sesión. Se pinta primero sin
+//  (cerrar sesión se hace desde Mi cuenta). Se pinta primero sin
 //  sesión (para no bloquear la carga de la página) y se vuelve
 //  a pintar en cuanto Firebase responde.
 // ============================================
@@ -43,7 +43,7 @@ function navLinks(cliente) {
       ? ` <span class="cart-badge" style="position:static; display:inline-flex; margin-left:4px; background:#2f9e5a;" title="Respuestas de soporte sin leer">${ticketsSinLeer}</span>`
       : '';
     links.push({ href: 'Interfaz Cliente - Perfil.html', label: `Hola, ${escHeader(primerNombre(cliente.nombre))}${aviso}` });
-    links.push({ href: '#', label: 'Cerrar sesión', accion: 'cerrarSesionClientePublico' });
+    // Cerrar sesión ya no va en el menú de arriba: está en Mi cuenta (menú lateral y botón del perfil).
   } else {
     links.push({ href: 'login.html', label: 'Iniciar sesión' });
   }
@@ -143,7 +143,7 @@ function pintarHeaderFooter(cliente) {
 // Pinta de inmediato como "sin sesión" para no bloquear la carga de la página.
 pintarHeaderFooter(null);
 
-// Botón "Cerrar sesión" del header (solo aparece con sesión iniciada).
+// Cerrar sesión (lo usa el menú lateral de Mi cuenta: cuenta-menu.js).
 window.cerrarSesionClientePublico = function (e) {
   if (e) e.preventDefault();
   import('./firebase-db.js').then(({ logoutCliente }) => {
@@ -154,7 +154,7 @@ window.cerrarSesionClientePublico = function (e) {
 // En cuanto Firebase responda, si hay un cliente con sesión real, se vuelve a
 // pintar el header con su nombre. import() dinámico porque este archivo NO es
 // un módulo (se usa con <script src="components.js">, no type="module").
-import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, escucharTicketsDeCliente, escucharFotoPerfil }) => {
+import('./firebase-db.js').then(({ observarSesionCliente, asegurarPerfilCliente, escucharTicketsDeCliente, escucharFotoPerfil }) => {
   let cancelarTickets = null;
   let cancelarFoto = null;
   observarSesionCliente(async (user) => {
@@ -164,9 +164,15 @@ import('./firebase-db.js').then(({ observarSesionCliente, obtenerPerfilCliente, 
     if (!user) { pintarHeaderFooter(null); return; }
     let clienteHeader;
     try {
-      const perfil = await obtenerPerfilCliente(user.uid);
+      const perfil = await asegurarPerfilCliente(user);   // crea el perfil si la cuenta no lo tenía
       clienteHeader = perfil || { nombre: user.displayName || user.email };
-    } catch {
+    } catch (err) {
+      if (err && err.code === 'bp/cuenta-dada-de-baja') {
+        // La tienda dio de baja esta cuenta desde el panel: ya se borró y se cerró la sesión.
+        pintarHeaderFooter(null);
+        window.bpNotificar('Tu cuenta fue dada de baja por la tienda y se borró. Puedes registrarte de nuevo cuando quieras.', 'error');
+        return;
+      }
       clienteHeader = { nombre: user.displayName || user.email };   // sin perfil: se usa el nombre de la cuenta
     }
     pintarHeaderFooter(clienteHeader);
@@ -272,3 +278,21 @@ style.innerHTML = `
   }
 `;
 document.head.appendChild(style);
+
+// Ícono de la pestaña del navegador (logo de la tienda) en todas las páginas.
+(function ponerFavicon() {
+  if (document.querySelector('link[rel~="icon"]')) return;
+  [
+    ['icon', 'favicon.ico', null, 'any'],
+    ['icon', 'Imagenes/Iconos/favicon-32.png', 'image/png', '32x32'],
+    ['icon', 'Imagenes/Iconos/favicon-192.png', 'image/png', '192x192'],
+    ['apple-touch-icon', 'Imagenes/Iconos/apple-touch-icon.png', null, null],
+  ].forEach(([rel, href, type, sizes]) => {
+    const l = document.createElement('link');
+    l.rel = rel; l.href = href;
+    if (type) l.type = type;
+    if (sizes) l.sizes = sizes;
+    document.head.appendChild(l);
+  });
+})();
+

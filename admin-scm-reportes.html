@@ -85,7 +85,7 @@
   <script src="admin-components.js"></script>
   <script src="admin-charts.js"></script>
   <script type="module">
-    import { calcularMetricasScm } from './firebase-db.js';
+    import { calcularMetricasScm, alCambiarColecciones } from './firebase-db.js';
 
     const $ = (id) => document.getElementById(id);
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
@@ -155,7 +155,7 @@
     function iniciar(sesion) {
       if (iniciado || !sesion || !['administrador', 'logistica'].includes(sesion.rol)) return;
       iniciado = true;
-      cargar();
+      alCambiarColecciones(['scm_productos', 'scm_proveedores', 'scm_pedidos', 'scm_movimientos'], cargar);
     }
 
     if (window.BP_SESION) iniciar(window.BP_SESION);

@@ -3,132 +3,81 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Catálogo - Bigotes y Patitas</title>
+  <title>Colección exclusiva - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
-  <style>
-    .hero-carpeta {
-      background: linear-gradient(135deg, #ec4899 0%, #14b8a6 100%);
-      color: #fff;
-      padding: 5rem 3rem;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      margin-top: 64px;
-    }
-    .hero-carpeta::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/svg%3E");
-      pointer-events: none;
-    }
-    .hero-carpeta h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 900; line-height: 1.1; margin-bottom: 1rem;
-    }
-    .hero-carpeta p {
-      font-size: 1.1rem; opacity: .9;
-      max-width: 520px; margin: 0 auto 2rem;
-    }
-    .hero-btn {
-      display: inline-block; background: #fff; color: #c0476e;
-      font-weight: 700; padding: .85rem 2.2rem; border-radius: 50px;
-      font-size: .95rem; box-shadow: 0 4px 20px rgba(0,0,0,.15);
-      border: none; cursor: pointer; font-family: 'DM Sans', sans-serif;
-      transition: transform .15s, box-shadow .15s;
-    }
-    .hero-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,.2); }
-
-    /* Sección featured */
-    .featured-section { max-width: 860px; margin: 1rem auto 3.5rem; padding: 0 2rem; }
-  </style>
+  <script src="dialogos.js"></script>
 </head>
-<body>
+<body class="cp-body">
 
   <div id="header"></div>
-
-  <!-- HERO — gradiente rosa-teal, intacto como lo tenías -->
-  <section class="hero-carpeta">
-    <h1>Colección Exclusiva<br>Cotton Candy 🍬</h1>
-    <p>Prendas únicas con estilo fresco y femenino.<br>Edición limitada.</p>
-  </section>
-
   <div id="toast-container"></div>
 
-  <!-- PRODUCTO DESTACADO -->
-  <div class="featured-section">
-    <div class="breadcrumb" style="margin-bottom:1rem">
-      <a href="shop.html">← Catálogo</a> / Top vino acampanado
-    </div>
-    <p class="featured-label">Producto destacado</p>
-    <div class="featured-card">
-      <div class="featured-img">
-        <img src="Imagenes/SUDADERA ESTAMPADA.png" alt="Top vino manga larga acampanada" />
-      </div>
-      <div class="featured-body">
-        <h2>Top vino manga larga acampanada</h2>
-        <p>Top ajustado en tono vino con mangas acampanadas que aportan un toque elegante y moderno. Ideal para salidas casuales o nocturnas.</p>
-        <span class="featured-price">$389 MXN</span>
-        <button class="btn-comprar" id="btn-comprar">Comprar Ahora</button>
-      </div>
-    </div>
-  </div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="cp-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+    <symbol id="cp-corazon" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8 3.6 4.5 7.1 4.5c2 0 3.4 1.1 4.9 3 1.5-1.9 2.9-3 4.9-3 3.5 0 5.6 3.5 4.4 6.8-1.8 4.6-9.3 9.2-9.3 9.2z" stroke-width="2" stroke-linejoin="round"/></symbol>
+  </svg>
 
-  <!-- RESEÑAS -->
-  <section class="reviews-section">
-    <h2 class="section-title">Lo que dicen nuestras clientas</h2>
-    <p class="section-subtitle">Opiniones reales de nuestra comunidad</p>
-    <div class="reviews-grid">
-      <div class="review-card">
-        <div class="stars">★★★★★</div>
-        <p class="review-text">"La prenda fue increíble, la calidad supera lo que esperaba. ¡Totalmente recomendado!"</p>
-        <span class="comment-author">— María García</span>
-      </div>
-      <div class="review-card">
-        <div class="stars">★★★★★</div>
-        <p class="review-text">"Compré un top y quedé fascinada. El ajuste y la textura son únicos."</p>
-        <span class="comment-author">— Carla López</span>
-      </div>
-      <div class="review-card">
-        <div class="stars">★★★★☆</div>
-        <p class="review-text">"La blusa que compré es una obra de arte. Llegó perfectamente empacada."</p>
-        <span class="comment-author">— Ana Martínez</span>
+  <!-- Portada -->
+  <section class="cp-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong>Carpeta</strong>
+      </nav>
+      <div class="cp-hero-grid">
+        <div>
+          <p class="franja-ante">Edición limitada</p>
+          <h1 class="franja-titulo cp-hero-titulo">Colección exclusiva</h1>
+          <span class="franja-linea" aria-hidden="true"></span>
+          <p class="cp-hero-texto" id="hero-texto">Piezas especiales, hechas en pocas unidades, para que tu peludito luzca único en cada paseo.</p>
+          <a href="#cp-pieza" class="cp-hero-btn">Conócela <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        </div>
+        <div class="cp-hero-foto">
+          <img id="hero-img" src="Imagenes/Productos/vestido-picnic-rojo-1.jpg" alt="" />
+          <svg class="cp-deco d1" aria-hidden="true"><use href="#cp-huella"/></svg>
+          <svg class="cp-deco d2" aria-hidden="true"><use href="#cp-huella"/></svg>
+        </div>
       </div>
     </div>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
   </section>
+
+  <main class="cp-pagina">
+    <!-- Pieza destacada -->
+    <section id="cp-pieza" class="cp-pieza" aria-live="polite">
+      <p class="cp-cargando" id="cp-cargando">Cargando la colección…</p>
+    </section>
+
+    <!-- Reseñas reales de la pieza -->
+    <section class="cp-resenas" id="cp-resenas" hidden>
+      <p class="dest-antetitulo">Opiniones reales</p>
+      <h2 class="cp-titulo">Lo que dicen nuestras clientas</h2>
+      <div class="cp-resenas-grid" id="lista-resenas"></div>
+    </section>
+
+    <!-- Más de la colección -->
+    <section class="destacados cp-mas" id="cp-mas" hidden>
+      <p class="dest-antetitulo">Ediciones limitadas</p>
+      <svg class="dest-huella" aria-hidden="true"><use href="#cp-huella"/></svg>
+      <h2 class="dest-titulo">Más de la colección</h2>
+      <div class="dest-carrusel">
+        <div class="dest-pista" id="pista-mas"></div>
+      </div>
+    </section>
+  </main>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-  <script>
-    function obtenerCarrito() { return JSON.parse(localStorage.getItem("carrito") || "[]"); }
-    function guardarCarrito(c) { localStorage.setItem("carrito", JSON.stringify(c)); window.dispatchEvent(new Event('actualizarCarrito')); }
-
-    function mostrarToast(msg, tipo = 'success') {
-      const c = document.getElementById('toast-container');
-      const t = document.createElement('div');
-      t.className = `toast ${tipo}`; t.textContent = msg;
-      c.appendChild(t);
-      setTimeout(() => t.classList.add('show'), 80);
-      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 2800);
-    }
-
-    document.getElementById('btn-comprar').addEventListener('click', () => {
-      let carrito = obtenerCarrito();
-      const existe = carrito.find(i => i.id === "top-vino-acampanado");
-      if (existe) { existe.cantidad += 1; }
-      else {
-        carrito.push({
-          id: "top-vino-acampanado",
-          nombre: "Top vino manga larga acampanada",
-          precio: 389, precioFormatted: "$389 MXN",
-          imagen: "Imagenes/SUDADERA ESTAMPADA.png",
-          cantidad: 1
-        });
-      }
-      guardarCarrito(carrito);
-      mostrarToast("¡Agregado! 1 × Top vino manga larga acampanada", "success");
-    });
-  </script>
+  <script type="module" src="carpeta.js"></script>
 </body>
 </html>

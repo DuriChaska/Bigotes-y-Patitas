@@ -20,6 +20,9 @@
           <p class="admin-breadcrumb">Panel de administración · SCM · Visualiza, busca y administra productos</p>
         </div>
         <div class="admin-topbar-right">
+          <button type="button" class="admin-quick-btn solo-escritura-scm" id="btnColeccion" hidden>
+            <span data-bp-icon="plus"></span><span>Agregar prendas de las colecciones</span>
+          </button>
           <button type="button" class="admin-quick-btn primary solo-escritura-scm" id="btnNuevo">
             <span data-bp-icon="plus"></span><span>Nuevo producto</span>
           </button>
@@ -87,7 +90,7 @@
 
         <div class="admin-form-group">
           <label for="f-descripcion">Descripción</label>
-          <textarea id="f-descripcion" rows="3" maxlength="500" placeholder="Descripción..."></textarea>
+          <textarea id="f-descripcion" rows="3" maxlength="1500" placeholder="Descripción..."></textarea>
         </div>
 
         <div class="admin-form-grid">
@@ -105,6 +108,28 @@
             <small id="avisoProveedor" class="hidden" style="display:block; margin-top:6px; color:var(--gray); font-size:.74rem;">
               Aún no hay proveedores. <a href="admin-scm-proveedores.html" style="color:var(--admin-green); font-weight:700;">Registra uno aquí</a>.
             </small>
+          </div>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-paraQuien">¿Para quién es?</label>
+            <select id="f-paraQuien">
+              <option value="Ambos">Para ambos</option>
+              <option value="Ellas">Para ellas</option>
+              <option value="Ellos">Para ellos</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="f-destacado">Inicio de la tienda</label>
+            <label for="f-destacado" style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-weight:500; font-size:.85rem; padding:10px 0; cursor:pointer;">
+              <input type="checkbox" id="f-destacado" style="width:auto; accent-color:var(--admin-green);" />
+              Mostrar en "Productos destacados"
+            </label>
+            <label for="f-carpeta" style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0; font-weight:500; font-size:.85rem; padding:4px 0 10px; cursor:pointer;">
+              <input type="checkbox" id="f-carpeta" style="width:auto; accent-color:var(--admin-green);" />
+              Mostrar en "Carpeta" (colección exclusiva)
+            </label>
           </div>
         </div>
 
@@ -142,8 +167,33 @@
         </div>
 
         <div class="admin-form-group">
-          <label for="f-img">Imagen del producto (URL o ruta del proyecto)</label>
-          <input type="text" id="f-img" placeholder="Imagenes/Mascotas/prod-....svg o https://..." />
+          <label for="f-img">Imagen principal (URL o ruta del proyecto)</label>
+          <input type="text" id="f-img" placeholder="Imagenes/Productos/....jpg o https://..." />
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-imagenes">Más imágenes (una por renglón)</label>
+          <textarea id="f-imagenes" rows="3" placeholder="Imagenes/Productos/mi-prenda-2.jpg&#10;Imagenes/Productos/mi-prenda-3.jpg"></textarea>
+          <small style="display:block; margin-top:6px; color:var(--gray); font-size:.74rem;">
+            Salen como miniaturas en la página del producto (vista de atrás, detalles, puesta en una mascota…).
+          </small>
+        </div>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-group">
+            <label for="f-marca">Marca</label>
+            <input type="text" id="f-marca" maxlength="60" placeholder="Bigotes y Patitas" />
+          </div>
+          <div class="admin-form-group">
+            <label for="f-talla">Talla</label>
+            <input type="text" id="f-talla" maxlength="30" list="lista-tallas" placeholder="Chico, Mediano, Grande…" />
+            <datalist id="lista-tallas"><option value="Chico"><option value="Mediano"><option value="Grande"><option value="Única"></datalist>
+          </div>
+        </div>
+
+        <div class="admin-form-group">
+          <label for="f-beneficios">Beneficios (uno por renglón)</label>
+          <textarea id="f-beneficios" rows="4" placeholder="Fácil de poner y quitar.&#10;Se ajusta a perros con un largo de espalda de 41 a 46 cm."></textarea>
         </div>
 
         <div class="admin-modal-actions">
@@ -163,10 +213,10 @@
   <script type="module">
     import {
       escucharProductosScm, crearProductoScm, actualizarProductoScm,
-      eliminarProductoScm, cargarProductosScmEjemplo,
+      eliminarProductoScm, cargarProductosScmEjemplo, agregarProductosNuevosScm,
       escucharProveedoresScm, cargarProveedoresScmEjemplo,
     } from './firebase-db.js';
-    import { CATEGORIAS, EJEMPLOS_PROVEEDORES, EJEMPLOS_PRODUCTOS } from './scm-config.js';
+    import { CATEGORIAS, EJEMPLOS_PROVEEDORES, EJEMPLOS_PRODUCTOS, PRODUCTOS_DE_COLECCIONES } from './scm-config.js';
     import { pintarBannerStockBajo } from './admin-stock-alertas.js';
 
     const IMG_VACIA = 'data:image/svg+xml;utf8,' + encodeURIComponent(
@@ -340,6 +390,8 @@
       }
     }
 
+    // ?q=nombre llega desde el ERP (Productos): se abre ya filtrado.
+    { const q = new URLSearchParams(location.search).get('q'); if (q) $('buscar').value = q; }
     $('buscar').addEventListener('input', pintar);
     $('filtroCategoria').addEventListener('change', pintar);
 
@@ -355,6 +407,13 @@
       $('f-costo').value = '0.000';
       $('f-precio').value = '0.00';
       $('f-img').value = '';
+      $('f-imagenes').value = '';
+      $('f-marca').value = '';
+      $('f-talla').value = '';
+      $('f-beneficios').value = '';
+      $('f-paraQuien').value = 'Ambos';
+      $('f-destacado').checked = false;
+      $('f-carpeta').checked = false;
 
       // Qué proveedor tiene seleccionado el producto (por id; o por nombre en productos antiguos)
       let seleccion = '';
@@ -381,6 +440,14 @@
         $('f-costo').value = producto.costo ?? 0;
         $('f-precio').value = producto.precio ?? 0;
         $('f-img').value = producto.img ?? '';
+        const extras = Array.isArray(producto.imagenes) ? producto.imagenes.filter(u => u && u !== producto.img) : [];
+        $('f-imagenes').value = extras.join('\n');
+        $('f-marca').value = producto.marca ?? '';
+        $('f-talla').value = producto.talla ?? '';
+        $('f-beneficios').value = Array.isArray(producto.beneficios) ? producto.beneficios.join('\n') : '';
+        $('f-paraQuien').value = ['Ellas', 'Ellos'].includes(producto.paraQuien) ? producto.paraQuien : 'Ambos';
+        $('f-destacado').checked = producto.destacado === true;
+        $('f-carpeta').checked = producto.carpeta === true;
       }
       $('modal').classList.remove('hidden');
       $('f-nombre').focus();
@@ -393,6 +460,29 @@
     }
 
     $('btnNuevo').addEventListener('click', () => abrirModal(null));
+
+    // Renglones no vacíos de un textarea
+    function renglones(texto) {
+      return String(texto || '').split(/\r?\n/).map(t => t.trim()).filter(Boolean);
+    }
+
+    // Colección Otoño-Invierno: el botón solo aparece si falta alguna de sus prendas.
+    function revisarBotonColeccion(lista) {
+      const nombres = new Set(lista.map(p => String(p.nombre || '').trim().toLowerCase()));
+      const faltan = PRODUCTOS_DE_COLECCIONES.filter(p => !nombres.has(p.nombre.trim().toLowerCase())).length;
+      $('btnColeccion').hidden = faltan === 0;
+      $('btnColeccion').title = faltan ? `Faltan ${faltan} prendas por agregar` : '';
+    }
+    $('btnColeccion').addEventListener('click', async () => {
+      const boton = $('btnColeccion');
+      boton.disabled = true;
+      try {
+        const creados = await agregarProductosNuevosScm(PRODUCTOS_DE_COLECCIONES);
+        mostrarToast(creados ? `Se agregaron ${creados} prendas nuevas al catálogo` : 'Las colecciones ya estaban completas');
+      } catch (err) {
+        mostrarToast('No se pudo agregar la colección. Revisa tu conexión y los permisos en Firebase.');
+      } finally { boton.disabled = false; }
+    });
     $('btnCerrar').addEventListener('click', cerrarModal);
     $('btnCancelar').addEventListener('click', cerrarModal);
     document.addEventListener('keydown', (e) => {
@@ -428,6 +518,13 @@
         costo: Math.max(0, parseFloat($('f-costo').value) || 0),
         precio: Math.max(0, parseFloat($('f-precio').value) || 0),
         img: $('f-img').value.trim(),
+        imagenes: [...new Set([$('f-img').value.trim(), ...renglones($('f-imagenes').value)].filter(Boolean))].slice(0, 12),
+        marca: $('f-marca').value.trim().slice(0, 60),
+        talla: $('f-talla').value.trim().slice(0, 30),
+        beneficios: renglones($('f-beneficios').value).slice(0, 15).map(b => b.slice(0, 300)),
+        paraQuien: ['Ellas', 'Ellos'].includes($('f-paraQuien').value) ? $('f-paraQuien').value : 'Ambos',
+        destacado: $('f-destacado').checked,
+        carpeta: $('f-carpeta').checked,
       };
 
       const boton = $('btnGuardar');
@@ -508,7 +605,7 @@
         () => bpNotificar('No se pudieron cargar los proveedores. Revisa tu conexión y los permisos en Firebase.', 'error')
       );
       escucharProductosScm(
-        (lista) => { productos = lista; cargado = true; errorCarga = null; pintar(); },
+        (lista) => { productos = lista; cargado = true; errorCarga = null; pintar(); revisarBotonColeccion(lista); },
         (err) => {
           cargado = true;
           errorCarga = err && err.code === 'permission-denied'

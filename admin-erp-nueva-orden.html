@@ -471,7 +471,11 @@
     $('dropdown-clientes').addEventListener('click', e => {
       const item = e.target.closest('[data-id]');
       if (!item) return;
-      wizCliente = clientes.find(c => c.id === item.dataset.id);
+      seleccionarCliente(clientes.find(c => c.id === item.dataset.id));
+    });
+
+    function seleccionarCliente(c) {
+      wizCliente = c;
       if (!wizCliente) return;
 
       $('dropdown-clientes').classList.add('hidden');
@@ -490,7 +494,7 @@
 
       $('cliente-seleccionado-wrap').classList.remove('hidden');
       $('btnPaso2').disabled = false;
-    });
+    }
 
     // Cerrar dropdown al hacer clic fuera
     document.addEventListener('click', e => {
@@ -690,7 +694,12 @@
     function iniciar(sesion) {
       if (iniciado || !sesion) return;
       iniciado = true;
-      escucharClientes(lista => { clientes = lista; });
+      // ?cliente=<id> (viene de la ficha del cliente): ya llega elegido.
+      const clientePedido = new URLSearchParams(location.search).get('cliente');
+      escucharClientes(lista => {
+        clientes = lista;
+        if (clientePedido && !wizCliente) seleccionarCliente(clientes.find(c => c.id === clientePedido));
+      });
       escucharProductosScm(lista => { productos = lista; }, () => bpNotificar('No se pudieron cargar los productos. Revisa tu conexión y los permisos en Firebase.', 'error'));
     }
 

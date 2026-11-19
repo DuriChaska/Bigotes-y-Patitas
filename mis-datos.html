@@ -172,7 +172,7 @@
       if (!(await bpConfirmar(`Te enviaremos un enlace a ${correo} para crear una contraseña nueva. ¿Continuar?`, { titulo: 'Restablecer contraseña', aceptar: 'Enviar enlace' }))) return;
       try {
         await enviarCorreoRecuperacion(correo);
-        toast(`Enlace enviado a ${correo}. Revisa también tu carpeta de spam.`);
+        toast(`Enlace enviado a ${correo}. Abre el correo más reciente (sirve 1 vez y por 1 hora). Revisa también spam.`);
       } catch (err) {
         avisoError('pass-error', mensajeError(err));
       }

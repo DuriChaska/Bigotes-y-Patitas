@@ -24,6 +24,7 @@ const adminPaginaActual = window.location.pathname.split('/').pop();
 //   vendedor      -> "Ventas": CRM + órdenes ERP + consulta de productos e inventario
 //   logistica     -> SCM completo + órdenes ERP
 const R_TODOS   = ['administrador', 'vendedor', 'logistica'];
+const R_PANEL   = ['administrador', 'vendedor', 'logistica', 'soporte'];  // cualquiera del panel (Configuración)
 const R_ADMIN   = ['administrador'];
 const R_CRM     = ['administrador', 'vendedor'];
 const R_SCM     = ['administrador', 'logistica'];
@@ -37,7 +38,16 @@ const R_SOPORTE = ['administrador', 'soporte'];               // Atención a cli
 //     (clientes, productos, inventario) sin salirse a esos módulos.
 // El modo se recuerda en el navegador y las páginas admin-erp-* lo encienden solas.
 const adminEsPaginaErp = /^admin-erp/.test(adminPaginaActual);
-const adminEsPaginaCompartida = ['admin-usuarios.html', 'admin-configuracion.html', 'admin-impuestos.html'].includes(adminPaginaActual);
+// Solo las páginas propias del CRM y del SCM apagan el modo ERP. Todas las demás
+// (Promociones, Monedero, Carritos, Atención a clientes, ficha del cliente, Usuarios,
+// Configuración, Impuestos…) se abren desde los dos menús y CONSERVAN el modo que traías,
+// para que entrar a ellas desde el ERP no te saque del ERP.
+const adminPaginasSoloNormal = [
+  'admin.html', 'admin-clientes.html', 'admin-interacciones-todas.html', 'admin-reportes.html', 'admin-actividad.html',
+];
+const adminEsPaginaCompartida = !adminEsPaginaErp
+  && !adminPaginasSoloNormal.includes(adminPaginaActual)
+  && !/^admin-scm/.test(adminPaginaActual);
 
 function leerModoErp() {
   try { return localStorage.getItem('bpModoErp') === '1'; } catch { return false; }
@@ -76,7 +86,7 @@ const adminErpItems = [
   { href: 'admin-impuestos.html',      label: 'Impuestos (IVA)',         icon: 'tag',         roles: R_ADMIN },
   { href: 'admin-erp-madurez.html',    label: 'Nivel de implementación', icon: 'trending_up', roles: R_ADMIN },
   { href: 'admin-usuarios.html',       label: 'Usuarios',                icon: 'shield',      roles: R_ADMIN },
-  { href: 'admin-configuracion.html',  label: 'Configuración',           icon: 'settings',    roles: R_TODOS },
+  { href: 'admin-configuracion.html',  label: 'Configuración',           icon: 'settings',    roles: R_PANEL },
 ];
 
 const adminNavGroups = [
@@ -114,14 +124,15 @@ const adminStandaloneLinks = [
   { href: 'admin-soporte.html',       label: 'Atención a clientes', icon: 'headset', roles: R_SOPORTE },
   { href: 'admin-impuestos.html',     label: 'Impuestos (IVA)', icon: 'tag',    roles: R_ADMIN },
   { href: 'admin-usuarios.html',      label: 'Usuarios',      icon: 'shield',   roles: R_ADMIN },
-  { href: 'admin-configuracion.html', label: 'Configuración', icon: 'settings', roles: R_TODOS },
+  { href: 'admin-configuracion.html', label: 'Configuración', icon: 'settings', roles: R_PANEL },
 ];
 
 // Páginas de detalle que "activan" el mismo ítem del menú que su listado padre
+// (en modo ERP, la ficha del cliente marca "Clientes" del ERP).
 const adminAliasActivo = {
-  'admin-cliente-detalle.html': 'admin-clientes.html',
-  'admin-cliente-etapa.html':   'admin-clientes.html',
-  'admin-interacciones.html':   'admin-interacciones-todas.html',
+  'admin-cliente-detalle.html': adminModoErp ? 'admin-erp-clientes.html' : 'admin-clientes.html',
+  'admin-cliente-etapa.html':   adminModoErp ? 'admin-erp-clientes.html' : 'admin-clientes.html',
+  'admin-interacciones.html':   adminModoErp ? 'admin-erp-clientes.html' : 'admin-interacciones-todas.html',
   'admin-erp-nueva-orden.html':  'admin-erp-ordenes.html',
 };
 const adminPaginaActiva = adminAliasActivo[adminPaginaActual] || adminPaginaActual;
@@ -197,7 +208,7 @@ function renderAdminSidebar() {
         <span>Bigotes y Patitas<small>Panel de administración</small></span>
       </div>
 
-      <div class="admin-modo-erp">
+      <div class="admin-modo-erp" data-roles="administrador,vendedor,logistica">
         <span class="admin-modo-erp-txt">
           <strong>Modo ERP</strong>
           <small>${adminModoErp ? 'Vista integrada: consulta CRM y SCM' : 'Actívalo para ver todo integrado'}</small>
@@ -218,6 +229,10 @@ function renderAdminSidebar() {
 
   activarAcordeonSidebar();
 
+  // El menú se desplaza solo: si la página activa queda abajo, se muestra sin tener que bajar.
+  const activo = document.querySelector('.admin-sidebar .admin-nav a.active');
+  if (activo) activo.scrollIntoView({ block: 'nearest' });
+
   // Interruptor ERP: al encender va al dashboard ERP; al apagar vuelve al inicio de su rol.
   const interruptor = document.getElementById('switchErp');
   if (interruptor) {
@@ -237,6 +252,10 @@ function renderAdminSidebar() {
 
 /** Menú dinámico: deja solo lo que el rol puede usar y oculta los grupos que quedan vacíos. */
 function aplicarMenuPorRol(rol) {
+  // Soporte no usa el ERP (finanzas): no ve el interruptor.
+  document.querySelectorAll('.admin-modo-erp[data-roles]').forEach((el) => {
+    el.hidden = !el.dataset.roles.split(',').includes(rol);
+  });
   document.querySelectorAll('.admin-nav li[data-roles]').forEach((li) => {
     li.hidden = !li.dataset.roles.split(',').includes(rol);
   });
@@ -272,3 +291,21 @@ function cerrarSesionAdmin(e) {
 }
 
 document.addEventListener('DOMContentLoaded', renderAdminSidebar);
+
+// Ícono de la pestaña del navegador (logo de la tienda) en todas las páginas.
+(function ponerFavicon() {
+  if (document.querySelector('link[rel~="icon"]')) return;
+  [
+    ['icon', 'favicon.ico', null, 'any'],
+    ['icon', 'Imagenes/Iconos/favicon-32.png', 'image/png', '32x32'],
+    ['icon', 'Imagenes/Iconos/favicon-192.png', 'image/png', '192x192'],
+    ['apple-touch-icon', 'Imagenes/Iconos/apple-touch-icon.png', null, null],
+  ].forEach(([rel, href, type, sizes]) => {
+    const l = document.createElement('link');
+    l.rel = rel; l.href = href;
+    if (type) l.type = type;
+    if (sizes) l.sizes = sizes;
+    document.head.appendChild(l);
+  });
+})();
+

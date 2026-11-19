@@ -929,3 +929,137 @@ fotos_perfil/{uid}        ← una foto por cliente (id = uid)
   - `firebase-db.js`: `escucharFotoPerfil`, `guardarFotoPerfil`, `quitarFotoPerfil`.
   - `Interfaz Cliente - Perfil.html`, `mis-datos.html`, `components.js` (ícono del menú), `styles.css`
     y `firestore.rules`.
+
+---
+
+## 14. Seguridad de las cuentas (Etapa 4)
+
+### 14.1 Contraseñas guardadas con hash
+
+**Ninguna contraseña se guarda en nuestra base de datos ni en el navegador.** Las maneja Firebase
+Authentication, que las guarda con **hash**: aplica el algoritmo *scrypt* modificado con una **sal**
+(un valor al azar distinto por usuario).
+
+Analogía: el hash es como una licuadora. Si metes "fresa123" sale siempre el mismo licuado, pero con el
+licuado nadie puede volver a armar la fresa. Para iniciar sesión, Firebase licúa lo que escribes y compara
+licuados. La sal hace que dos personas con la misma contraseña tengan licuados distintos.
+
+Por eso, si alguien olvida su contraseña, **nadie puede decírsela** (ni el equipo, ni Firebase). Solo se
+puede crear una nueva con el enlace del correo.
+
+Lo revisamos en el código:
+- `registro.js` y `cuenta-accion.html` solo mandan la contraseña a Firebase.
+- `firestore.rules` no tiene ningún campo de contraseña.
+- `crearUsuarioConRol()` (panel) también deja la contraseña solo en Authentication.
+
+### 14.2 Bloqueo de 5 minutos después de 5 intentos fallidos
+
+Protege contra quien intenta **adivinar** una contraseña probando muchas (fuerza bruta). Funciona
+igual en `login.html` (tienda) y en `admin-login.html` (panel):
+
+| Intento fallido | Qué ve la persona |
+|---|---|
+| 1.º a 3.º | "Correo o contraseña incorrectos. Te quedan N intentos." |
+| 4.º | "Te queda 1 intento antes de que la cuenta se bloquee 5 minutos." |
+| 5.º | "🔒 Por seguridad bloqueamos el acceso… Podrás intentar de nuevo en 4:59" (cuenta regresiva y botón desactivado) |
+
+- **Durante el bloqueo no entra nadie, ni con la contraseña correcta.**
+- Al entrar bien, el contador se borra. Si pasan 15 minutos sin fallos, el contador vuelve a empezar.
+- El mensaje es el mismo si el correo no existe o si la contraseña está mal. Así nadie puede averiguar qué
+  correos tienen cuenta.
+
+Cómo está hecho:
+
+```
+intentos_login/{SHA-256 del correo}   ← en la base NO queda escrito el correo, solo su huella
+  fallidos: 1..5
+  bloqueadoDesde: hora del SERVIDOR al 5.º fallo (null si no está bloqueado)
+  actualizadoEn: hora del servidor
+```
+
+- `firebase-db.js`: `iniciarSesionProtegida()` (la usan `loginCliente` y `loginAdmin`),
+  `estadoBloqueoLogin()`, `huellaCorreo()` y `BLOQUEO_LOGIN`.
+- `firestore.rules` (`match /intentos_login`):
+  - Quien intenta entrar todavía no tiene sesión, así que las reglas **solo** dejan sumar de 1 en 1.
+  - Al 5.º fallo, la hora del bloqueo tiene que ser la del servidor (no se puede inventar).
+  - No dejan bajar el contador ni quitar el bloqueo antes de tiempo.
+  - Nadie puede listar la colección.
+  - Solo puede borrar el contador la persona dueña del correo, con su sesión ya iniciada (las reglas
+    calculan `hashing.sha256` de su correo).
+
+**Limitación honesta:** el bloqueo lo hace la página antes de llamar a Firebase. Alguien que salte la página
+y llame directo a la API de Firebase no pasa por él. Para ese caso, Firebase Authentication tiene su propio
+límite de intentos (`auth/too-many-requests`). Un bloqueo imposible de saltar necesitaría un servidor (Cloud
+Functions), que este proyecto no usa.
+
+### 14.3 Correos de la cuenta
+
+| Correo | Cuándo | Cómo |
+|---|---|---|
+| Bienvenida / confirmar correo | Al registrarse | `sendEmailVerification` de Firebase (siempre). Además EmailJS con la plantilla `templateBienvenida`, si está configurada. |
+| Crear contraseña nueva | "¿Olvidaste tu contraseña?" (login y Mis datos) | `sendPasswordResetEmail`. Máximo uno cada 60 segundos. |
+| Confirmar cambio de correo | Mis datos → Cambiar correo | `verifyBeforeUpdateEmail` |
+
+- Los enlaces llevan a **`cuenta-accion.html`** (página propia; ver `SETUP-FIREBASE.md`).
+- Esa página primero **revisa** el enlace con `verifyPasswordResetCode`, que no lo gasta. El enlace solo se
+  gasta al guardar la contraseña nueva.
+- Si el enlace ya no sirve, explica por qué y qué hacer.
+
+**Registro:** al crear la cuenta, Firebase deja la sesión abierta. Ahora `registro.js` manda el correo de
+bienvenida y **cierra la sesión**. La persona llega a `login.html?registrado=1` con su correo ya escrito y un
+aviso verde, y entra con su contraseña. El carrito de invitado no se pierde en ese momento (`carrito-sync.js`
+reconoce el registro con `sessionStorage.bpRegistrando`).
+
+### 14.4 Cuentas sin perfil
+
+Algunas cuentas existían en Authentication pero no tenían su documento en `clientes`, por ejemplo las
+creadas cuando el registro estaba roto. En "Mis datos" salía el error "No document to update".
+
+Ahora `asegurarPerfilCliente()` crea el perfil la primera vez que la persona entra a la tienda, con etapa
+"Prospecto", estado "Activo" y fecha de hoy. Así también sus compras ya llegan al CRM.
+
+### 14.5 Eliminar un cliente desde el panel
+
+Antes, **Eliminar** en Clientes solo borraba la ficha del CRM: la persona podía seguir entrando a la tienda
+y su correo quedaba "ocupado" para siempre. Ahora `eliminarClienteCompleto()` (`firebase-db.js`) hace esto:
+
+1. **Si la Cloud Function `eliminarClienteCompleto` está publicada** (`functions/index.js`, plan Blaze):
+   - Con el Admin SDK borra al instante la cuenta de Authentication, `clientes/{uid}` con sus direcciones,
+     `carritos/{uid}` con su detalle y `fotos_perfil/{uid}`.
+   - Deja `bajas/{uid}` con `estado: "Completada"`.
+   - Solo la pueden usar administrador y vendedor. No borra cuentas del personal (eso es en Usuarios) ni la
+     propia.
+2. **Si no está publicada:** guarda `bajas/{uid}` con `estado: "Pendiente"` y borra la ficha del CRM.
+   - Cuando esa persona intenta iniciar sesión, o abre la tienda con su sesión todavía abierta, la página
+     ejecuta `completarBajaSiCorresponde()`: borra sus direcciones, su carrito y su foto, y luego **su propia
+     cuenta de acceso** (cada usuario sí puede borrar la suya).
+   - Después le avisa que fue dada de baja y que puede registrarse de nuevo.
+   - `asegurarPerfilCliente()` revisa la baja **antes** de crear un perfil, para no "revivir" a un cliente
+     eliminado.
+
+En los dos casos **se conservan** `ventas`, `pagos`, `tickets` y `monedero_movimientos`: son registros del
+negocio, no datos de la cuenta.
+
+```
+bajas/{uid}   ← registro de cada eliminación (nadie lo puede borrar)
+  clienteId, nombre, correo
+  estado: "Pendiente" (baja) | "Completada" (Cloud Function)
+  metodo, usuarioId, usuarioNombre (quién lo eliminó), fecha
+```
+
+## 15. Página de producto, reseñas, preguntas y favoritos
+
+- **Producto.html / producto.js**: galería con varias imágenes (campo `imagenes` del producto; si no existe se usa `img`), visor ampliado, guía de tallas y calculadora por largo de espalda, talla (otros productos con el mismo nombre en distinta talla aparecen como opciones), cantidad, *Agregar al carrito*, *Comprar ahora* (agrega y va a `Checkout.html`), favoritos, compartir (WhatsApp, Facebook, X, copiar enlace; en celular usa el menú nativo), disponibilidad para envío a domicilio y recoger en tienda, descripción y beneficios, y barra fija inferior al bajar.
+- **Campos nuevos en `scm_productos`** (todos opcionales): `imagenes: string[]`, `marca`, `talla`, `beneficios: string[]`, `paraQuien` ('Ellas' | 'Ellos' | 'Ambos'), `destacado: bool`. Se editan en SCM → Productos.
+- **`resenas/{productoId}_{uid}`** `{ productoId, uid, nombre, huellitas 1-5, titulo, texto, fecha }`: una por cliente y producto (el id lo garantiza). Lectura pública; la crea el cliente con sesión; la borra su autor o el personal.
+- **`preguntas/{id}`** `{ productoId, uid, nombre, texto, fecha, respuesta?, respondidoPor?, respondidaEn? }`: la crea un cliente con sesión; solo administrador, vendedor o soporte agregan la respuesta (desde la misma página del producto).
+- **`clientes/{uid}/favoritos/{productoId}`** `{ productoId, agregadoEn }`: solo el dueño. Se ven en **Mi cuenta → Mis favoritos** (`mis-favoritos.html`). Se borran con la baja del cliente.
+- **Colección Otoño-Invierno**: `COLECCION_OTONO` en `scm-config.js` (fotos en `Imagenes/Productos/`). Botón *Agregar colección Otoño-Invierno* en SCM → Productos; solo crea las prendas que falten (compara por nombre).
+
+## 16. Iniciar sesión y registro por pasos (login.html)
+
+- `login.html` tiene las dos pestañas: **Iniciar sesión** (`login.js`) y **Registrarme** (`registro.js`). `?modo=registro` abre la segunda. `Interfaz Usuario - Registro .html` solo redirige ahí (para enlaces viejos).
+- Registro en 4 pasos: 1) nombre, apellido paterno, apellido materno (opcional) y código postal; 2) correo y teléfono; 3) contraseña con reglas en vivo (6+ caracteres, mayúsculas y minúsculas, solo los símbolos `# @ ! ? ¿ ¡ $`), confirmación, aviso de privacidad (obligatorio) y promociones (opcional); 4) mascota de interés (perro → raza, gato → color, otras), se puede omitir.
+- `clientes/{uid}` guarda además `apellidoPaterno`, `apellidoMaterno`, `codigoPostal`, `aceptaPromociones`; `mascota` queda como "Perro · Chihuahua", "Gato · Negro", etc.
+- Si Firebase dice que el correo ya existe, regresa al paso 2 con el aviso.
+- `?next=` solo acepta páginas de la propia tienda (no redirige a otros sitios).

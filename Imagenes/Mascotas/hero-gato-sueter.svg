@@ -1,0 +1,62 @@
+<svg viewBox="0 0 500 560" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="tejido" width="28" height="22" patternUnits="userSpaceOnUse">
+      <rect width="28" height="22" fill="#8c2a3a"/>
+      <path d="M2 4 L14 16 L26 4" fill="none" stroke="#a63a4b" stroke-width="5" stroke-linecap="round"/>
+    </pattern>
+    <clipPath id="cuerpo"><path d="M150 300 Q250 268 350 300 Q385 390 368 468 Q250 496 132 468 Q115 390 150 300 Z"/></clipPath>
+  </defs>
+  <ellipse cx="250" cy="540" rx="170" ry="15" fill="#000" opacity=".1"/>
+  <!-- cola -->
+  <path d="M360 480 Q470 470 455 360 Q448 320 420 330" fill="none" stroke="#e39a52" stroke-width="34" stroke-linecap="round"/>
+  <path d="M440 400 l26 -6 M448 368 l24 -12" stroke="#c4773a" stroke-width="8" stroke-linecap="round"/>
+  <!-- patas traseras -->
+  <ellipse cx="160" cy="515" rx="55" ry="25" fill="#e39a52"/>
+  <ellipse cx="340" cy="515" rx="55" ry="25" fill="#e39a52"/>
+  <!-- cuerpo -->
+  <ellipse cx="250" cy="390" rx="120" ry="125" fill="#e39a52"/>
+  <!-- suéter -->
+  <g clip-path="url(#cuerpo)">
+    <rect x="100" y="250" width="300" height="260" fill="url(#tejido)"/>
+    <rect x="100" y="380" width="300" height="26" fill="#f2c14e"/>
+    <g fill="#fdf8f0">
+      <circle cx="160" cy="393" r="6"/><circle cx="205" cy="393" r="6"/><circle cx="250" cy="393" r="6"/>
+      <circle cx="295" cy="393" r="6"/><circle cx="340" cy="393" r="6"/>
+    </g>
+    <rect x="100" y="452" width="300" height="30" fill="#6b1d2a"/>
+    <path d="M100 458 h300 M100 466 h300 M100 474 h300" stroke="#8c2a3a" stroke-width="3"/>
+  </g>
+  <!-- mangas -->
+  <rect x="180" y="410" width="58" height="95" rx="26" fill="url(#tejido)"/>
+  <rect x="262" y="410" width="58" height="95" rx="26" fill="url(#tejido)"/>
+  <rect x="180" y="476" width="58" height="22" rx="10" fill="#6b1d2a"/>
+  <rect x="262" y="476" width="58" height="22" rx="10" fill="#6b1d2a"/>
+  <ellipse cx="209" cy="514" rx="28" ry="18" fill="#f6d7b0"/>
+  <ellipse cx="291" cy="514" rx="28" ry="18" fill="#f6d7b0"/>
+  <!-- cuello del suéter -->
+  <path d="M165 300 Q250 330 335 300 Q340 318 330 326 Q250 352 170 326 Q160 318 165 300 Z" fill="#6b1d2a"/>
+  <!-- orejas -->
+  <path d="M150 170 L162 62 L240 130 Z" fill="#e39a52"/>
+  <path d="M350 170 L338 62 L260 130 Z" fill="#e39a52"/>
+  <path d="M168 145 L172 92 L214 130 Z" fill="#f4b7b0"/>
+  <path d="M332 145 L328 92 L286 130 Z" fill="#f4b7b0"/>
+  <!-- cabeza -->
+  <ellipse cx="250" cy="210" rx="118" ry="100" fill="#e39a52"/>
+  <!-- rayas -->
+  <path d="M230 115 l5 35 M250 112 l0 40 M270 115 l-5 35" stroke="#c4773a" stroke-width="9" stroke-linecap="round"/>
+  <path d="M135 200 l40 6 M138 228 l36 -4 M365 200 l-40 6 M362 228 l-36 -4" stroke="#c4773a" stroke-width="8" stroke-linecap="round"/>
+  <!-- cara -->
+  <ellipse cx="250" cy="250" rx="62" ry="42" fill="#f6d7b0"/>
+  <ellipse cx="200" cy="205" rx="18" ry="22" fill="#2f4a3a"/>
+  <ellipse cx="300" cy="205" rx="18" ry="22" fill="#2f4a3a"/>
+  <ellipse cx="200" cy="207" rx="7" ry="18" fill="#0e0b0c"/>
+  <ellipse cx="300" cy="207" rx="7" ry="18" fill="#0e0b0c"/>
+  <circle cx="206" cy="198" r="5" fill="#fff"/><circle cx="306" cy="198" r="5" fill="#fff"/>
+  <path d="M238 240 L262 240 L250 254 Z" fill="#e57a86"/>
+  <path d="M250 254 Q250 268 236 268 M250 254 Q250 268 264 268" fill="none" stroke="#7a4a2a" stroke-width="4" stroke-linecap="round"/>
+  <!-- bigotes -->
+  <path d="M205 250 L140 240 M205 260 L138 265 M295 250 L360 240 M295 260 L362 265" stroke="#fdf8f0" stroke-width="3" stroke-linecap="round"/>
+  <!-- chapitas rosas -->
+  <ellipse cx="185" cy="245" rx="14" ry="8" fill="#f4a3a3" opacity=".6"/>
+  <ellipse cx="315" cy="245" rx="14" ry="8" fill="#f4a3a3" opacity=".6"/>
+</svg>

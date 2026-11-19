@@ -4,83 +4,116 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Carrito - Bigotes y Patitas</title>
-  <style>
-    .badge {
-  position: absolute;
-  top: -8px;
-  right: -10px;
-  background-color: #ff4d4d; /* Rojo */
-  color: white;
-  border-radius: 50%;
-  padding: 2px 6px;
-  font-size: 12px;
-  font-weight: bold;
-  min-width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-  .btn-vaciar { background: #fff !important; color: #b34a8e !important; border: 2px solid #b34a8e !important; }
-  .btn-vaciar:hover { background: #fbe9f4 !important; }
-  .qty-btn:disabled { opacity: .35; cursor: not-allowed; }
-  .aviso-stock { display: block; font-size: 11px; color: #b34a8e; margin-top: 4px; }
-  .nota-iva { font-size: 12px; color: #777; margin-top: 4px; }
-  </style>
   <link rel="stylesheet" href="styles.css" />
   <script src="dialogos.js"></script>
 </head>
-<body>
+<body class="cr-body">
 
   <div id="header"></div>
 
-  <section class="cart-page">
-    <nav class="breadcrumb">
-      <a href="index.html">Inicio</a> / <span>Carrito</span>
-    </nav>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="cr-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+    <symbol id="cr-bote" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13M10 11v6M14 11v6"/></g></symbol>
+    <symbol id="cr-camion" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4.5l3.5 3.5V16h-8z"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></g></symbol>
+    <symbol id="cr-candado" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></g></symbol>
+  </svg>
 
-    <h2 id="cart-title">Carrito (0 productos)</h2>
+  <!-- Portada corta -->
+  <section class="cp-hero cr-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong>Carrito</strong>
+      </nav>
+      <p class="franja-ante">Lo que elegiste para tu peludito</p>
+      <h1 class="franja-titulo cr-titulo">Tu carrito <small id="cart-title">(0 productos)</small></h1>
+    </div>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
+  </section>
 
-    <div id="cart-empty" style="display:none; text-align:center; padding: 3rem 1rem;">
-      <h3>Tu carrito está vacío 😔</h3>
-      <p>¡Explora nuestro catálogo y encuentra algo que te encante!</p>
-      <button class="add-to-cart" onclick="window.location.href='shop.html'">Ver catálogo</button>
+  <main class="cr-pagina">
+    <!-- Carrito vacío -->
+    <div id="cart-empty" class="cr-vacio" hidden>
+      <svg aria-hidden="true"><use href="#cr-huella"/></svg>
+      <h2>Tu carrito está vacío</h2>
+      <p>¡Explora el catálogo y encuentra algo que le encante a tu peludito!</p>
+      <a class="cp-btn cp-btn-comprar" href="shop.html">Ver el catálogo</a>
     </div>
 
-    <table class="cart-table" id="cart-table" style="display:none;">
-      <thead>
-        <tr>
-          <th>Fotografía</th>
-          <th>Producto</th>
-          <th>Precio</th>
-          <th>Cantidad</th>
-          <th>Subtotal</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="cart-items"></tbody>
-    </table>
+    <div class="cr-grid" id="cart-lleno" hidden>
+      <!-- Productos -->
+      <section aria-label="Productos en tu carrito">
+        <div class="cr-lista" id="cart-items"></div>
+        <div class="cr-lista-pie">
+          <a href="shop.html" class="cr-link">← Seguir comprando</a>
+          <button type="button" class="cr-vaciar" id="btn-vaciar"><svg><use href="#cr-bote"/></svg> Vaciar carrito</button>
+        </div>
+        <p class="cr-nota">🕒 Los productos se quitan solos del carrito 72 horas después de agregarlos. Con sesión iniciada, tu carrito se guarda en tu cuenta.</p>
+      </section>
 
-    <div class="cart-actions" id="cart-actions" style="display:none;">
-      <input type="text" placeholder="Código de descuento" id="coupon-code" />
-      <button class="apply-coupon" id="btn-coupon">Aplicar Cupón</button>
-      <button class="update-cart" id="btn-actualizar">Actualizar Carrito</button>
-      <button class="update-cart btn-vaciar" id="btn-vaciar" type="button">Vaciar Carrito</button>
-    </div>
+      <!-- Resumen -->
+      <aside class="cr-resumen" id="cart-totals" aria-label="Resumen de compra">
+        <h2>Resumen</h2>
 
-    <div class="cart-totals" id="cart-totals" style="display:none;">
-      <p>Subtotal: <span id="subtotal">$0.00</span></p>
-      <p id="discount-line" style="display:none;">Descuento: <span id="discount">-$0.00</span></p>
-      <p id="coupon-line" style="display:none;"><span id="coupon-message"></span></p>
-      <p><strong>Total: <span id="total">$0.00</span></strong></p>
-      <p class="nota-iva">El envío y el IVA se calculan en el siguiente paso.</p>
-      <p class="nota-iva">🕒 Los productos se quitan solos del carrito 72 horas después de agregarlos. Con sesión iniciada, tu carrito se guarda en tu cuenta.</p>
-      <button class="checkout-btn" id="btn-checkout">Proceder a pagar</button>
+        <div class="cr-cupon">
+          <div class="cr-cupon-aplicado" id="cupon-aplicado" hidden>
+            <span><b id="cupon-codigo"></b><small id="coupon-message"></small></span>
+            <button type="button" id="btn-quitar-cupon" aria-label="Quitar cupón">×</button>
+          </div>
+          <form class="cr-cupon-form" id="form-cupon" novalidate>
+            <label class="sr-solo" for="coupon-code">Código de descuento</label>
+            <input type="text" id="coupon-code" placeholder="¿Tienes un cupón?" maxlength="30" autocomplete="off" />
+            <button type="submit" id="btn-coupon">Aplicar</button>
+          </form>
+          <a class="cr-ver-cupones" href="promos.html">Ver cupones disponibles</a>
+        </div>
+
+        <div class="cr-envio-meta" id="envio-meta" hidden>
+          <p id="envio-meta-txt"></p>
+          <div class="cr-barra"><span id="envio-meta-barra"></span></div>
+        </div>
+
+        <dl class="cr-cuentas">
+          <div><dt>Subtotal (<span id="num-piezas">0</span> piezas)</dt><dd id="subtotal">$0.00</dd></div>
+          <div id="discount-line" hidden><dt>Descuento</dt><dd class="cr-desc" id="discount">-$0.00</dd></div>
+          <div><dt>Envío</dt><dd class="cr-gris" id="envio-txt">Se calcula al pagar</dd></div>
+          <div class="cr-total"><dt>Total</dt><dd id="total">$0.00</dd></div>
+        </dl>
+        <p class="cr-gris cr-iva">El envío y el IVA se calculan en el siguiente paso.</p>
+
+        <button type="button" class="cr-pagar" id="btn-checkout"><svg><use href="#cr-candado"/></svg> Proceder a pagar</button>
+        <p class="cr-pagos">Paga con <b>PayPal</b> · <b>tarjeta</b> · <b>OXXO / SPEI</b> · <b>monedero</b></p>
+        <p class="cr-envio-info"><svg><use href="#cr-camion"/></svg> Envío a todo México o recoge en tienda</p>
+      </aside>
     </div>
+  </main>
+
+  <!-- Barra fija de pago (celular) -->
+  <div class="cr-barra-movil" id="barra-movil" hidden>
+    <div><small>Total</small><strong id="total-movil">$0.00</strong></div>
+    <button type="button" id="btn-checkout-movil">Pagar</button>
+  </div>
+
+  <!-- También te puede gustar -->
+  <section class="destacados cr-sugeridos" id="sugeridos" hidden>
+    <p class="dest-antetitulo">Completa su look</p>
+    <svg class="dest-huella" aria-hidden="true"><use href="#cr-huella"/></svg>
+    <h2 class="dest-titulo">También te puede gustar</h2>
+    <div class="dest-carrusel"><div class="dest-pista" id="pista-sugeridos"></div></div>
   </section>
 
   <div id="footer"></div>
 
+  <div id="toast-container"></div>
   <script src="components.js"></script>
   <script type="module">
   import { obtenerProductosScm, obtenerUsuarioActual, validarCupon } from './firebase-db.js';
@@ -107,8 +140,15 @@
   }
 
   function formatearMoneda(valor) {
-    return `$${Number(valor).toFixed(2)}`;
+    return '$' + (Number(valor) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const IMG_VACIA = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#f1ece1"/></svg>');
+
+  // Catálogo (para stock bajo, talla y "También te puede gustar").
+  let catalogo = [];
 
   // Stock real de cada producto (id -> piezas), según la última lectura de Firestore.
   // Lo usa el botón "+" para no dejar subir más de lo que hay.
@@ -132,6 +172,7 @@
       return carrito; // sin conexión: se muestra el carrito tal cual, sin bloquear a la persona
     }
 
+    catalogo = productos;
     stockPorId.clear();
     productos.forEach(p => stockPorId.set(p.id, Number(p.stock) || 0));
     const avisos = [];
@@ -153,11 +194,13 @@
         cantidad = stock;
       }
       // El precio también se refresca por si cambió desde que se agregó.
-      ajustado.push({ id: item.id, nombre: real.nombre, precio: Number(real.precio) || 0, imagen: real.img || item.imagen, cantidad });
+      const foto = (Array.isArray(real.imagenes) && real.imagenes[0]) || real.img || item.imagen;
+      ajustado.push({ ...item, nombre: real.nombre, precio: Number(real.precio) || 0, imagen: foto, cantidad });
     });
 
+    // Se guarda con nombre, precio y foto al día (y sin lo agotado).
+    if (JSON.stringify(ajustado) !== JSON.stringify(carrito)) guardarCarrito(ajustado);
     if (avisos.length) {
-      guardarCarrito(ajustado);
       bpAlerta(avisos.join('\n'), { tipo: 'aviso', titulo: 'Ajustamos tu carrito' });
     }
     return ajustado;
@@ -203,14 +246,15 @@
   async function aplicarCuponDesdeCarrito() {
     const input = document.getElementById("coupon-code");
     const codigo = input.value.trim().toUpperCase();
-    if (!codigo) { await bpAlerta("Ingresa un código.", { tipo: 'aviso' }); return; }
+    if (!codigo) { input.focus(); return; }
 
     try {
       const r = await validarCupon(codigo);
       if (!r.ok) { await bpAlerta(r.motivo, { tipo: 'error', titulo: 'Cupón no válido' }); return; }
       guardarCupon(r.cupon);
+      input.value = '';
       renderCart();
-      bpAlerta("Cupón aplicado correctamente.", { tipo: 'exito' });
+      (window.bpNotificar || (() => {}))(`Cupón ${r.cupon.codigo} aplicado`, 'exito');
     } catch {
       bpAlerta("No se pudo validar el cupón. Revisa tu conexión e inténtalo de nuevo.", { tipo: 'error' });
     }
@@ -234,80 +278,113 @@
   function renderCart() {
     const carrito = obtenerCarrito();
     const cupon = obtenerCupon();
-    const tbody = document.getElementById("cart-items");
-    const title = document.getElementById("cart-title");
-    const emptyMsg = document.getElementById("cart-empty");
-    const table = document.getElementById("cart-table");
-    const actions = document.getElementById("cart-actions");
-    const totals = document.getElementById("cart-totals");
+    const lista = document.getElementById("cart-items");
+    const vacio = carrito.length === 0;
 
-    tbody.innerHTML = "";
+    document.getElementById("cart-empty").hidden = !vacio;
+    document.getElementById("cart-lleno").hidden = vacio;
+    document.getElementById("barra-movil").hidden = vacio;
+    document.body.classList.toggle("cr-con-barra", !vacio);
+    const piezas = carrito.reduce((t, i) => t + Number(i.cantidad), 0);
+    document.getElementById("cart-title").textContent = `(${carrito.length} producto${carrito.length !== 1 ? "s" : ""})`;
+    if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
+    pintarSugeridos();
+    if (vacio) { lista.innerHTML = ""; return; }
+
     let subtotal = 0;
-
-    if (carrito.length === 0) {
-      title.textContent = "Carrito (0 productos)";
-      emptyMsg.style.display = "block";
-      table.style.display = "none";
-      actions.style.display = "none";
-      totals.style.display = "none";
-      if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
-      return;
-    }
-
-    emptyMsg.style.display = "none";
-    table.style.display = "table";
-    actions.style.display = "flex";
-    totals.style.display = "block";
-
-    carrito.forEach((item, index) => {
+    lista.innerHTML = carrito.map((item, index) => {
       const itemSubtotal = Number(item.precio) * Number(item.cantidad);
       subtotal += itemSubtotal;
       const stock = stockPorId.has(item.id) ? stockPorId.get(item.id) : null;
       const enElMaximo = stock !== null && Number(item.cantidad) >= stock;
-
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td><img src="${item.imagen}" alt="${item.nombre}" style="width:80px; border-radius:6px;"></td>
-        <td>${item.nombre}</td>
-        <td>${formatearMoneda(item.precio)}</td>
-        <td>
-          <button class="qty-btn" data-accion="menos" data-index="${index}">−</button>
-          <input type="number" value="${item.cantidad}" readonly style="width:40px; text-align:center; border:none;">
-          <button class="qty-btn" data-accion="mas" data-index="${index}" ${enElMaximo ? 'disabled title="Ya no hay más piezas disponibles"' : ''}>+</button>
-          ${enElMaximo ? `<small class="aviso-stock">Solo ${stock === 1 ? 'queda 1' : `quedan ${stock}`}</small>` : ''}
-        </td>
-        <td>${formatearMoneda(itemSubtotal)}</td>
-        <td><button class="remove-item" data-accion="eliminar" data-index="${index}" title="Quitar del carrito">×</button></td>
-      `;
-      tbody.appendChild(row);
-    });
+      const real = catalogo.find(p => p.id === item.id);
+      const pocas = real && stock !== null && stock > 0 && stock <= (Number(real.stockMin) || 0);
+      const url = `Producto.html?id=${encodeURIComponent(item.id)}`;
+      return `
+        <article class="cr-item">
+          <a class="cr-item-foto" href="${url}"><img src="${esc(item.imagen || IMG_VACIA)}" alt="" /></a>
+          <div class="cr-item-info">
+            <h3><a href="${url}">${esc(item.nombre)}</a></h3>
+            <p class="cr-item-precio">${formatearMoneda(item.precio)} c/u${real?.talla ? ` · Talla ${esc(real.talla)}` : ''}</p>
+            ${pocas || enElMaximo ? `<p class="cr-item-aviso">${stock === 1 ? '¡Última pieza!' : `¡Solo quedan ${stock}!`}</p>` : ''}
+            <div class="cr-item-acciones">
+              <div class="pd-cantidad cr-cant">
+                <button type="button" class="qty-btn" data-accion="menos" data-index="${index}" aria-label="Quitar uno" ${Number(item.cantidad) <= 1 ? 'disabled' : ''}>−</button>
+                <input type="number" value="${Number(item.cantidad)}" readonly aria-label="Cantidad" />
+                <button type="button" class="qty-btn" data-accion="mas" data-index="${index}" aria-label="Agregar uno" ${enElMaximo ? 'disabled title="Ya no hay más piezas disponibles"' : ''}>+</button>
+              </div>
+              <button type="button" class="remove-item cr-quitar" data-accion="eliminar" data-index="${index}"><svg><use href="#cr-bote"/></svg> Quitar</button>
+            </div>
+          </div>
+          <p class="cr-item-subtotal">${formatearMoneda(itemSubtotal)}</p>
+        </article>`;
+    }).join("");
+    lista.querySelectorAll('img').forEach(img => img.addEventListener('error', () => { img.src = IMG_VACIA; }, { once: true }));
 
     const resultado = calcularDescuento(carrito, subtotal, cupon);
     const total = Math.max(0, subtotal - resultado.descuento);
-
-    title.textContent = `Carrito (${carrito.length} producto${carrito.length !== 1 ? "s" : ""})`;
+    document.getElementById("num-piezas").textContent = piezas;
     document.getElementById("subtotal").textContent = formatearMoneda(subtotal);
     document.getElementById("total").textContent = formatearMoneda(total);
+    document.getElementById("total-movil").textContent = formatearMoneda(total);
+    document.getElementById("discount-line").hidden = !(resultado.descuento > 0);
+    document.getElementById("discount").textContent = `-${formatearMoneda(resultado.descuento)}`;
 
-    const discLine = document.getElementById("discount-line");
-    const coupLine = document.getElementById("coupon-line");
-
-    if (resultado.descuento > 0) {
-      discLine.style.display = "block";
-      document.getElementById("discount").textContent = `-${formatearMoneda(resultado.descuento)}`;
-    } else {
-      discLine.style.display = "none";
-    }
-
+    // Cupón aplicado
+    document.getElementById("cupon-aplicado").hidden = !cupon;
+    document.getElementById("form-cupon").hidden = !!cupon;
     if (cupon) {
-      coupLine.style.display = "block";
-      document.getElementById("coupon-message").textContent = resultado.descripcion;
-    } else {
-      coupLine.style.display = "none";
+      document.getElementById("cupon-codigo").textContent = cupon.codigo;
+      document.getElementById("coupon-message").textContent = resultado.descripcion.replace(cupon.codigo, '').trim();
     }
 
-    if (typeof actualizarBadgeCarrito === 'function') actualizarBadgeCarrito();
+    // Envío gratis con compra mínima: barrita de "te faltan $X"
+    const meta = document.getElementById("envio-meta");
+    const esEnvio = cupon && cupon.tipo === "envio_gratis";
+    const minimo = esEnvio ? Number(cupon.minimo) || 0 : 0;
+    meta.hidden = !(esEnvio && minimo > 0);
+    document.getElementById("envio-txt").textContent = esEnvio && subtotal >= minimo ? "¡Gratis!" : "Se calcula al pagar";
+    document.getElementById("envio-txt").classList.toggle("cr-gratis", !!(esEnvio && subtotal >= minimo));
+    if (esEnvio && minimo > 0) {
+      const falta = Math.max(0, minimo - subtotal);
+      document.getElementById("envio-meta-txt").innerHTML = falta > 0
+        ? `Te faltan <b>${formatearMoneda(falta)}</b> para tu <b>envío gratis</b> 🚚`
+        : `¡Ya tienes <b>envío gratis</b>! 🎉`;
+      document.getElementById("envio-meta-barra").style.width = `${Math.min(100, (subtotal / minimo) * 100)}%`;
+    }
   }
+
+  function pintarSugeridos() {
+    const enCarrito = new Set(obtenerCarrito().map(i => i.id));
+    const lista = catalogo
+      .filter(p => !enCarrito.has(p.id) && (Number(p.stock) || 0) > 0)
+      .sort((a, b) => (b.destacado === true) - (a.destacado === true))
+      .slice(0, 8);
+    document.getElementById("sugeridos").hidden = !lista.length;
+    document.getElementById("pista-sugeridos").innerHTML = lista.map(p => {
+      const url = `Producto.html?id=${encodeURIComponent(p.id)}`;
+      const img = (Array.isArray(p.imagenes) && p.imagenes[0]) || p.img || IMG_VACIA;
+      return `<article class="dest-item">
+        <a class="dest-foto" href="${url}" tabindex="-1" aria-hidden="true"><img src="${esc(img)}" alt="" loading="lazy" /></a>
+        <h3 class="dest-nombre"><a href="${url}">${esc(p.nombre)}</a></h3>
+        <p class="dest-precio">${formatearMoneda(p.precio)}</p>
+        <button type="button" class="dest-agregar" data-sugerido="${esc(p.id)}">Agregar al carrito</button>
+      </article>`;
+    }).join("");
+  }
+
+  document.getElementById("pista-sugeridos").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-sugerido]");
+    if (!b) return;
+    const p = catalogo.find(x => x.id === b.dataset.sugerido);
+    if (!p) return;
+    const carrito = obtenerCarrito();
+    carrito.push({ id: p.id, nombre: p.nombre, precio: Number(p.precio) || 0,
+      imagen: (Array.isArray(p.imagenes) && p.imagenes[0]) || p.img || '', cantidad: 1 });
+    guardarCarrito(carrito);
+    renderCart();
+    (window.bpNotificar || (() => {}))(`¡Agregado! ${p.nombre}`, 'exito');
+  });
 
   // 6. Acciones del Usuario
   function cambiarCantidad(index, delta) {
@@ -364,17 +441,19 @@
     else if (boton.dataset.accion === "eliminar") eliminarItem(index);
   });
 
-  document.getElementById("btn-coupon").addEventListener("click", aplicarCuponDesdeCarrito);
+  document.getElementById("form-cupon").addEventListener("submit", (e) => { e.preventDefault(); aplicarCuponDesdeCarrito(); });
+  document.getElementById("coupon-code").addEventListener("input", (e) => { e.target.value = e.target.value.toUpperCase().replace(/\s/g, ''); });
+  document.getElementById("btn-quitar-cupon").addEventListener("click", () => {
+    localStorage.removeItem("cuponAplicado");
+    renderCart();
+  });
+  document.getElementById("btn-checkout-movil").addEventListener("click", () => document.getElementById("btn-checkout").click());
   document.getElementById("btn-vaciar").addEventListener("click", vaciarCarrito);
 
   // Etapa 4 (carrito-sync.js): stock agotado por otra compra, caducidad de 72 h o cambios desde
   // otro dispositivo cambian el carrito por fuera; aquí solo se vuelve a pintar.
   window.addEventListener("carritoCambioExterno", () => renderCart());
 
-  document.getElementById("btn-actualizar").addEventListener("click", async () => {
-    await sincronizarConStockReal();
-    renderCart();
-  });
 
   document.getElementById("btn-checkout").addEventListener("click", async () => {
     const carrito = obtenerCarrito();
@@ -397,7 +476,9 @@
   });
 
   (async function iniciar() {
+    renderCart();
     await sincronizarConStockReal();
+    if (!catalogo.length) { try { catalogo = await obtenerProductosScm(); } catch { /* sin sugerencias */ } }
     await revisarCuponGuardado();
     renderCart();
   })();

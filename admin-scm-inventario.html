@@ -198,6 +198,9 @@
       window.location.href = 'admin-scm-movimientos.html?producto=' + encodeURIComponent(nombre);
     };
 
+    // ?q=nombre llega desde el ERP (Inventario): se abre ya filtrado.
+    { const q = new URLSearchParams(location.search).get('q'); if (q) document.getElementById('buscarProducto').value = q; }
+
     window.filtrarInventario = function () {
       const texto = $('buscarProducto').value.trim().toLowerCase();
       const categoria = $('filtroCategoria').value;

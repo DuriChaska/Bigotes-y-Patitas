@@ -6,119 +6,119 @@
   <title>Subastas - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .subastas-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
-      margin-top: 30px;
-    }
-
-    .subasta-card {
-      background: #fff;
-      border-radius: 18px;
-      padding: 15px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      text-align: center;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .subasta-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
-    }
-
-    .subasta-img {
-      width: 100%;
-      height: 240px;
-      object-fit: cover;
-      border-radius: 14px;
-      margin-bottom: 12px;
-    }
-
-    .subasta-title {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 8px;
-      color: #333;
-    }
-
-    .subasta-price {
-      font-size: 16px;
-      margin-bottom: 6px;
-      color: #555;
-    }
-
-    .subasta-time {
-      font-size: 15px;
-      font-weight: bold;
-      color: #e74c3c;
-      margin-bottom: 12px;
-    }
-
-    .subasta-button {
-      background-color: #f7c948;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background-color 0.2s ease;
-    }
-
-    .subasta-button:hover {
-      background-color: #f4b400;
-    }
-
-    .subastas-note {
-      text-align: center;
-      margin-top: 10px;
-      color: #666;
-    }
+    .sb-pagina { max-width: 1240px; margin: 0 auto; padding: 10px 28px 70px; }
+    .sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 24px; margin-top: 26px; }
+    .sb-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(74,56,38,.1); display: flex; flex-direction: column; transition: transform .2s, box-shadow .2s; }
+    .sb-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(74,56,38,.15); }
+    .sb-foto { position: relative; aspect-ratio: 1; background: #f8ece0; }
+    .sb-foto img { width: 100%; height: 100%; object-fit: cover; }
+    .sb-reloj { position: absolute; left: 12px; top: 12px; background: #8c1c2e; color: #fff; font-weight: 700; font-size: .85rem; padding: 6px 12px; border-radius: 999px; box-shadow: 0 4px 12px rgba(140,28,46,.3); }
+    .sb-reloj.fin { background: #8a7d6b; }
+    .sb-info { padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .sb-etiqueta { align-self: flex-start; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #b8603a; background: #f8ece0; padding: 4px 10px; border-radius: 999px; }
+    .sb-info h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: 1.45rem; line-height: 1.15; color: #2f4858; }
+    .sb-precio { color: #6b5d50; font-size: .95rem; margin-bottom: 8px; }
+    .sb-precio strong { display: block; color: #8c1c2e; font-size: 1.3rem; }
+    .sb-btn { margin-top: auto; height: 48px; border: none; border-radius: 12px; background: #b8603a; color: #fff; font: inherit; font-weight: 700; cursor: pointer; transition: background .2s; }
+    .sb-btn:hover { background: #9a4c2c; }
+    .sb-btn:disabled { background: #cfc6bc; cursor: not-allowed; }
+    .sb-pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 50px; list-style: none; padding: 0; }
+    .sb-pasos li { background: #fff; border-radius: 18px; padding: 20px; box-shadow: 0 6px 18px rgba(74,56,38,.08); color: #4b4038; line-height: 1.5; }
+    .sb-pasos span { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #2f4858; color: #fff; font-weight: 700; margin-bottom: 8px; }
+    .sb-pasos strong { display: block; color: #2f4858; margin-bottom: 2px; }
+    @media (max-width: 760px) { .sb-pasos { grid-template-columns: 1fr; } .sb-pagina { padding: 0 16px 50px; } }
+    .sb-hero-foto { width: min(330px, 100%); overflow: hidden; }
+    .sb-hero-foto img { width: 100%; height: 100%; object-fit: cover; }
+    @media (max-width: 900px) { .sb-hero-foto { width: min(230px, 70%); margin: 0 auto 10px; order: -1; } }
   </style>
 </head>
 <body>
 
   <div id="header"></div>
 
-  <div class="container">
-    <h1 class="section-title">Subastas</h1>
-    <p class="section-subtitle">Explora las subastas disponibles y elige tu favorita</p>
-    <p class="subastas-note">Selecciona una opción para participar en la subasta del producto que más te guste.</p>
-
-    <div class="subastas-grid">
-      <div class="subasta-card">
-        <img src="Imagenes/sudaderajk.png" alt="Sudadera edición limitada" class="subasta-img" />
-        <div class="subasta-title">Sudadera edición limitada</div>
-        <div class="subasta-price">Precio actual: <strong>$250 MXN</strong></div>
-        <div class="subasta-time">Cierra en: 10 min</div>
-        <button class="subasta-button" onclick="irASubasta('Sudadera edición limitada', 250, 'Imagenes/sudaderajk.png', 600)">Entrar a subasta</button>
-      </div>
-
-      <div class="subasta-card">
-        <img src="Imagenes/playerasthetic.jpg" alt="Playera aesthetic" class="subasta-img" />
-        <div class="subasta-title">Playera aesthetic</div>
-        <div class="subasta-price">Precio actual: <strong>$180 MXN</strong></div>
-        <div class="subasta-time">Cierra en: 15 min</div>
-        <button class="subasta-button" onclick="irASubasta('Playera aesthetic', 180, 'Imagenes/playerasthetic.jpg', 900)">Entrar a subasta</button>
-      </div>
-
-      <div class="subasta-card">
-        <img src="Imagenes/faldarosa.jpg" alt="Falda rosa pastel" class="subasta-img" />
-        <div class="subasta-title">Falda rosa pastel</div>
-        <div class="subasta-price">Precio actual: <strong>$210 MXN</strong></div>
-        <div class="subasta-time">Cierra en: 8 min</div>
-        <button class="subasta-button" onclick="irASubasta('Falda rosa pastel', 210, 'Imagenes/faldarosa.jpg', 480)">Entrar a subasta</button>
-      </div>
-
-      <div class="subasta-card">
-        <img src="Imagenes/bolsa1.jpg" alt="Bolsa cute edition" class="subasta-img" />
-        <div class="subasta-title">Bolsa cute edition</div>
-        <div class="subasta-price">Precio actual: <strong>$300 MXN</strong></div>
-        <div class="subasta-time">Cierra en: 20 min</div>
-        <button class="subasta-button" onclick="irASubasta('Bolsa cute edition', 300, 'Imagenes/bolsa1.jpg', 1200)">Entrar a subasta</button>
+  <section class="cp-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong>Subastas</strong>
+      </nav>
+      <div class="ns-hero-grid">
+        <div>
+          <p class="franja-ante">Piezas únicas</p>
+          <h1 class="franja-titulo">Subastas</h1>
+          <span class="franja-linea" aria-hidden="true"></span>
+          <p class="ns-texto">Prendas de edición única para tu peludito. Elige una, haz tu oferta antes de que se acabe el tiempo y
+            ¡que gane la mejor patita!</p>
+        </div>
+        <div class="cp-hero-foto sb-hero-foto" aria-hidden="true"><img src="Imagenes/Productos/chamarra-borrego-rosa-2.jpg" alt="" /></div>
       </div>
     </div>
-  </div>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
+  </section>
+
+  <main class="sb-pagina">
+    <p class="dest-antetitulo" style="text-align:center">Abiertas ahora</p>
+    <h2 class="ns-titulo ns-centro">Elige tu subasta favorita</h2>
+    <div class="sb-grid">
+      <article class="sb-card">
+        <div class="sb-foto">
+          <img src="Imagenes/Productos/chaleco-polar-beige-1.jpg" alt="Chaleco polar beige" />
+          <span class="sb-reloj" data-segundos="600">⏱ 10 min</span>
+        </div>
+        <div class="sb-info">
+          <span class="sb-etiqueta">Edición única</span>
+          <h3>Chaleco polar beige</h3>
+          <p class="sb-precio">Oferta actual <strong>$250 MXN</strong></p>
+          <button class="sb-btn" onclick="irASubasta('Chaleco polar beige · edición única', 250, 'Imagenes/Productos/chaleco-polar-beige-1.jpg', 600)">Entrar a la subasta</button>
+        </div>
+      </article>
+      <article class="sb-card">
+        <div class="sb-foto">
+          <img src="Imagenes/Productos/chamarra-borrego-rosa-1.jpg" alt="Chamarra de borrego rosa" />
+          <span class="sb-reloj" data-segundos="900">⏱ 15 min</span>
+        </div>
+        <div class="sb-info">
+          <span class="sb-etiqueta">Edición única</span>
+          <h3>Chamarra de borrego rosa</h3>
+          <p class="sb-precio">Oferta actual <strong>$320 MXN</strong></p>
+          <button class="sb-btn" onclick="irASubasta('Chamarra de borrego rosa · edición única', 320, 'Imagenes/Productos/chamarra-borrego-rosa-1.jpg', 900)">Entrar a la subasta</button>
+        </div>
+      </article>
+      <article class="sb-card">
+        <div class="sb-foto">
+          <img src="Imagenes/Productos/sueter-blanco-lentejuela-1.jpg" alt="Suéter blanco con lentejuela" />
+          <span class="sb-reloj" data-segundos="480">⏱ 8 min</span>
+        </div>
+        <div class="sb-info">
+          <span class="sb-etiqueta">Edición única</span>
+          <h3>Suéter blanco con lentejuela</h3>
+          <p class="sb-precio">Oferta actual <strong>$210 MXN</strong></p>
+          <button class="sb-btn" onclick="irASubasta('Suéter blanco con lentejuela · edición única', 210, 'Imagenes/Productos/sueter-blanco-lentejuela-1.jpg', 480)">Entrar a la subasta</button>
+        </div>
+      </article>
+      <article class="sb-card">
+        <div class="sb-foto">
+          <img src="Imagenes/Productos/sueter-rojo-monos-1.jpg" alt="Suéter rojo con moños" />
+          <span class="sb-reloj" data-segundos="1200">⏱ 20 min</span>
+        </div>
+        <div class="sb-info">
+          <span class="sb-etiqueta">Edición única</span>
+          <h3>Suéter rojo con moños</h3>
+          <p class="sb-precio">Oferta actual <strong>$280 MXN</strong></p>
+          <button class="sb-btn" onclick="irASubasta('Suéter rojo con moños · edición única', 280, 'Imagenes/Productos/sueter-rojo-monos-1.jpg', 1200)">Entrar a la subasta</button>
+        </div>
+      </article>
+    </div>
+
+    <ol class="sb-pasos">
+      <li><span>1</span><strong>Elige una prenda</strong>Entra a la subasta que más te guste.</li>
+      <li><span>2</span><strong>Haz tu oferta</strong>Tiene que ser mayor a la oferta actual.</li>
+      <li><span>3</span><strong>¡Gana!</strong>Si nadie ofrece más antes del cierre, es tuya.</li>
+    </ol>
+  </main>
 
   <div id="footer"></div>
 
@@ -134,6 +134,22 @@
       // Redirigimos a la página de la subasta
       window.location.href = "subasta.html";
     }
+
+    // Cuenta regresiva en cada tarjeta.
+    const relojes = document.querySelectorAll('.sb-reloj');
+    function tic() {
+      relojes.forEach((r) => {
+        let seg = Number(r.dataset.segundos);
+        if (seg <= 0) {
+          r.textContent = 'Cerrada'; r.classList.add('fin');
+          r.closest('.sb-card').querySelector('.sb-btn').disabled = true;
+          return;
+        }
+        seg--; r.dataset.segundos = seg;
+        r.textContent = '⏱ ' + String(Math.floor(seg / 60)).padStart(2, '0') + ':' + String(seg % 60).padStart(2, '0');
+      });
+    }
+    tic(); setInterval(tic, 1000);
   </script>
 </body>
 </html>

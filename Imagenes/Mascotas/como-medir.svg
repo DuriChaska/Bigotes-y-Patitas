@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 300" role="img" aria-label="Dónde medir a tu perrito">
+  <!-- perro de perfil -->
+  <g fill="#e3c9a8" stroke="#2f4858" stroke-width="3" stroke-linejoin="round">
+    <path d="M120 230 L118 272 L136 272 L140 236"/>
+    <path d="M180 236 L186 272 L204 272 L200 232"/>
+    <path d="M268 232 L270 272 L288 272 L292 226"/>
+    <path d="M318 222 L326 272 L344 272 L340 214"/>
+    <path d="M96 150 C80 140 66 128 58 112 C56 106 62 104 66 110 C74 124 88 132 104 136"/>
+    <path d="M100 140 C100 118 124 106 160 106 L300 106 C324 106 338 98 350 84 L372 62 C380 54 396 50 410 56 L436 70 C448 76 452 88 446 98 L430 112 C420 118 404 120 392 118 L370 150 C362 170 352 196 340 220 C320 240 280 244 240 242 L160 242 C122 242 100 212 100 180 Z"/>
+    <path d="M392 58 C386 48 388 36 396 30 C404 38 408 48 406 58" />
+  </g>
+  <path d="M378 64 C372 78 372 96 384 104 C392 96 394 80 388 66 Z" fill="#c9a37e" stroke="#2f4858" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="412" cy="72" r="4" fill="#2f4858"/>
+  <ellipse cx="447" cy="88" rx="6" ry="5" fill="#2f4858"/>
+  <!-- A: largo de espalda -->
+  <path d="M150 92 C210 84 280 84 340 92" fill="none" stroke="#d64545" stroke-width="4" stroke-linecap="round"/>
+  <path d="M150 84 v16 M340 84 v16" stroke="#d64545" stroke-width="4" stroke-linecap="round"/>
+  <!-- B: pecho -->
+  <path d="M318 104 C300 140 300 200 322 236" fill="none" stroke="#d64545" stroke-width="4" stroke-linecap="round"/>
+  <!-- C: cuello -->
+  <path d="M352 82 C356 100 370 118 392 124" fill="none" stroke="#d64545" stroke-width="4" stroke-linecap="round"/>
+  <!-- pata ampliada -->
+  <line x1="335" y1="268" x2="430" y2="236" stroke="#d64545" stroke-width="2"/>
+  <circle cx="465" cy="225" r="45" fill="#fff" stroke="#2f4858" stroke-width="3"/>
+  <g fill="#e3c9a8" stroke="#2f4858" stroke-width="2.5">
+    <ellipse cx="465" cy="236" rx="17" ry="15"/>
+    <ellipse cx="446" cy="214" rx="6" ry="8"/><ellipse cx="459" cy="205" rx="6" ry="8"/>
+    <ellipse cx="472" cy="205" rx="6" ry="8"/><ellipse cx="485" cy="214" rx="6" ry="8"/>
+  </g>
+  <path d="M465 196 v58 M440 236 h50" stroke="#d64545" stroke-width="3" stroke-linecap="round"/>
+  <!-- letras -->
+  <g font-family="Fredoka, DM Sans, sans-serif" font-weight="700" font-size="15" fill="#fff" text-anchor="middle">
+    <circle cx="245" cy="70" r="13" fill="#d64545"/><text x="245" y="75">A</text>
+    <circle cx="290" cy="170" r="13" fill="#d64545"/><text x="290" y="175">B</text>
+    <circle cx="352" cy="128" r="13" fill="#d64545"/><text x="352" y="133">C</text>
+    <circle cx="465" cy="172" r="12" fill="#d64545"/><text x="465" y="177">D</text>
+    <circle cx="500" cy="262" r="12" fill="#d64545"/><text x="500" y="267">E</text>
+  </g>
+</svg>

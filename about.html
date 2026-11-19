@@ -3,116 +3,193 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cotton Candy Clothing Store - Acerca de Nosotros</title>
+  <title>Nosotros - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body class="ns-body">
 
   <div id="header"></div>
 
-  <section class="about-us">
-    <h2>ACERCA DE NOSOTROS</h2>
-    <p class="about-description">
-      Bigotes y Patitas nace del amor por los animales y del deseo de brindarles productos de calidad que 
-      contribuyan a su bienestar y felicidad. Somos un emprendimiento mexicano creado con la idea de ofrecer 
-      un espacio donde los dueños de perros y gatos puedan encontrar todo lo necesario para consentir y cuidar a 
-      sus compañeros de vida.
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ns-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+  </svg>
 
-      Sabemos que nuestras mascotas forman parte importante de la familia, por eso ofrecemos una variedad de 
-      productos pensados especialmente para sus necesidades, desde alimento y premios hasta juguetes, accesorios, 
-      ropa y artículos para su cuidado. También contamos con opciones personalizadas, para que cada mascota pueda 
-      tener productos que reflejen su personalidad y el cariño de sus dueños.
+  <!-- ACERCA DE NOSOTROS -->
+  <section class="cp-hero ns-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong>Nosotros</strong>
+      </nav>
+      <div class="ns-hero-grid">
+        <div>
+          <p class="franja-ante">Acerca de nosotros</p>
+          <h1 class="franja-titulo">Bigotes y Patitas</h1>
+          <span class="franja-linea" aria-hidden="true"></span>
+          <p class="ns-texto"><strong>Bigotes y Patitas</strong> nace del amor por los animales y del deseo de brindarles productos de calidad que
+            contribuyan a su bienestar y felicidad. Somos un <strong>emprendimiento mexicano</strong> creado con la idea de ofrecer
+            un espacio donde los dueños de perros y gatos puedan encontrar todo lo necesario para consentir y cuidar a
+            sus compañeros de vida.</p>
+          <p class="ns-texto">Sabemos que nuestras mascotas forman parte importante de la familia, por eso ofrecemos una variedad de
+            productos pensados especialmente para sus necesidades, desde alimento y premios hasta juguetes, accesorios,
+            <strong>ropa y artículos para su cuidado</strong>. También contamos con <strong>opciones personalizadas</strong>, para que cada mascota pueda
+            tener productos que reflejen su personalidad y el cariño de sus dueños.</p>
+          <p class="ns-texto">En Bigotes y Patitas, creemos que cada mascota merece recibir amor, atención y los mejores cuidados.</p>
+          <p class="ns-lema">Su estilo, tu cariño, su comodidad.</p>
+        </div>
+        <div class="cp-hero-foto">
+          <img src="Imagenes/Productos/chaleco-polar-beige-3.jpg" alt="Perrito con chaleco de Bigotes y Patitas" />
+          <svg class="cp-deco d1" aria-hidden="true"><use href="#ns-huella"/></svg>
+          <svg class="cp-deco d2" aria-hidden="true"><use href="#ns-huella"/></svg>
+        </div>
+      </div>
+    </div>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
+  </section>
 
-      En Bigotes y Patitas, creemos que cada mascota merece recibir amor, atención y los mejores cuidados.
-
-      Su estilo, tu cariño, su comodidad.
-    </p>
-
-    <div class="about-grid">
-      <div class="about-item">
-        <h3>NUESTRO OBJETIVO</h3>
-        <p>Ofrecer productos de calidad que contribuyan al bienestar, cuidado y felicidad de tus mascotas.
-           Queremos que encuentres todo lo que necesitan tus perros y gatos para consentirlos y demostrarles cuánto los 
-           quieres, incluyendo ropa y accesorios personalizados pensados especialmente para ellos. 
+  <main class="ns-pagina">
+    <!-- OBJETIVO, META Y CALIDAD -->
+    <section class="ns-fila">
+      <div class="ns-foto"><img src="Imagenes/cuidado.jpeg" alt="Cuidado y cariño para las mascotas" loading="lazy" /></div>
+      <div class="ns-bloque">
+        <p class="franja-ante">Lo que nos mueve</p>
+        <h2 class="ns-titulo">Nuestro objetivo</h2>
+        <span class="franja-linea" aria-hidden="true"></span>
+        <p>Ofrecer productos de calidad que contribuyan al <strong>bienestar, cuidado y felicidad</strong> de tus mascotas.
+          Queremos que encuentres todo lo que necesitan tus perros y gatos para consentirlos y demostrarles cuánto los
+          quieres, incluyendo <strong>ropa y accesorios personalizados</strong> pensados especialmente para ellos.
           Porque ellos también son parte de tu familia.</p>
       </div>
-      <div class="about-image">
-        <img src="Imagenes/cuidado.jpeg" alt="cuidado" />
-      </div>
+    </section>
 
-      <div class="about-image">
-        <img src="Imagenes/Metas.jpeg" alt="Meta" />
+    <section class="ns-fila invertida">
+      <div class="ns-foto"><img src="Imagenes/Metas.jpeg" alt="Tienda con productos para mascotas" loading="lazy" /></div>
+      <div class="ns-bloque">
+        <p class="franja-ante">Hacia dónde vamos</p>
+        <h2 class="ns-titulo">Nuestra meta</h2>
+        <span class="franja-linea" aria-hidden="true"></span>
+        <p>Ofrecer productos de calidad, útiles y especiales para perros y gatos, seleccionados pensando en su
+          <strong>bienestar, comodidad y felicidad</strong>. Buscamos que cada producto combine funcionalidad, seguridad y un toque especial,
+          incluyendo ropa y accesorios personalizados que permitan expresar el <strong>estilo único</strong> de cada mascota y el cariño de sus dueños.</p>
       </div>
-      <div class="about-item">
-        <h3>NUESTRA META</h3>
-        <p>Ofrecer productos de calidad, útiles y especiales para perros y gatos
-          , seleccionados pensando en su bienestar, comodidad y felicidad. Buscamos que cada producto
-           combine funcionalidad, seguridad y un toque especial, incluyendo ropa y accesorios 
-          personalizados que permitan expresar el estilo único de cada mascota y el cariño de sus dueños.
-        </p>
-      </div>
+    </section>
 
-      <div class="about-item">
-        <h3>CALIDAD</h3>
-        <p>Creemos que nuestras mascotas merecen productos que sean seguros, cómodos y de buena calidad.
-           Por eso seleccionamos cuidadosamente cada artículo, buscando que sea resistente, funcional y 
-           adecuado para las necesidades de perros y gatos. Desde alimentos, premios y juguetes hasta ropa y 
-           accesorios personalizados, queremos ofrecer 
-           productos que hagan sentir cómoda y feliz a cada mascota, mientras sus dueños compran con confianza.
-          </p>
+    <section class="ns-fila">
+      <div class="ns-foto"><img src="Imagenes/Calidad.png" alt="Productos de calidad para mascotas" loading="lazy" /></div>
+      <div class="ns-bloque">
+        <p class="franja-ante">Nuestro compromiso</p>
+        <h2 class="ns-titulo">Calidad</h2>
+        <span class="franja-linea" aria-hidden="true"></span>
+        <p>Creemos que nuestras mascotas merecen productos que sean <strong>seguros, cómodos y de buena calidad</strong>.
+          Por eso seleccionamos cuidadosamente cada artículo, buscando que sea resistente, funcional y
+          adecuado para las necesidades de perros y gatos. Desde alimentos, premios y juguetes hasta ropa y
+          accesorios personalizados, queremos ofrecer productos que hagan sentir cómoda y feliz a cada mascota,
+          mientras sus dueños <strong>compran con confianza</strong>.</p>
       </div>
-      <div class="about-image">
-        <img src="Imagenes/Calidad.png" alt="Calidad" />
+    </section>
+  </main>
+
+  <!-- LO QUE OFRECEMOS -->
+  <section class="franja-info ns-ofrecemos" aria-labelledby="t-ofrecemos">
+    <svg class="ola ola-arriba" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 40 C240 10 480 0 760 22 C1040 44 1240 30 1440 18 V90 H0 Z"/>
+      <path class="ola-fondo" d="M0 62 C260 34 520 24 780 44 C1040 62 1250 50 1440 40 V90 H0 Z"/>
+    </svg>
+    <div class="franja-contenido">
+      <div class="ns-ofrecemos-dentro">
+        <div class="ns-ofrecemos-cab">
+          <div>
+            <p class="franja-ante">Para ti y tu peludito</p>
+            <h2 class="franja-titulo" id="t-ofrecemos">Lo que ofrecemos</h2>
+            <span class="franja-linea" aria-hidden="true"></span>
+          </div>
+          <img class="ns-ofrecemos-foto" src="Imagenes/OFRECEMOS.jpeg" alt="Interior de la tienda Bigotes y Patitas" loading="lazy" />
+        </div>
+        <div class="ns-tarjetas">
+          <article class="ns-tarjeta">
+            <svg aria-hidden="true"><use href="#ns-huella"/></svg>
+            <h3>Productos pensados para ellos</h3>
+            <p>Seleccionamos cada producto pensando en las necesidades, comodidad y bienestar de perros y gatos, desde alimentos y premios
+              hasta juguetes, accesorios, ropa y artículos para su cuidado.</p>
+          </article>
+          <article class="ns-tarjeta">
+            <svg aria-hidden="true"><use href="#ns-huella"/></svg>
+            <h3>Ropa y accesorios personalizados</h3>
+            <p>Creamos opciones personalizadas para que cada perro y gato pueda tener un estilo único. Diseñamos productos pensando en su
+              comodidad y en los gustos de sus dueños, haciendo que cada artículo sea especial.</p>
+          </article>
+          <article class="ns-tarjeta">
+            <svg aria-hidden="true"><use href="#ns-huella"/></svg>
+            <h3>Calidad y comodidad</h3>
+            <p>Ofrecemos productos prácticos, seguros y resistentes que buscan hacer más cómoda y feliz la vida de tu mascota,
+              sin dejar de lado su estilo.</p>
+          </article>
+          <article class="ns-tarjeta">
+            <svg aria-hidden="true"><use href="#ns-huella"/></svg>
+            <h3>Amor por las mascotas</h3>
+            <p>En Bigotes y Patitas no solo vendemos productos: queremos formar parte de esos momentos especiales que compartes con tu
+              mascota y ayudarte a demostrarle cuánto la quieres.</p>
+          </article>
+        </div>
       </div>
     </div>
+    <svg class="ola ola-abajo" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
+  </section>
 
-    <div class="offer-section">
-      <div class="offer-image">
-        <img src="Imagenes/OFRECEMOS.jpeg" alt="Ofrecemos" />
-      </div>
-      <div class="offer-text">
-        <h3>LO QUE OFRECEMOS</h3>
-        <p><strong>Productos pensados para ellos</strong><br />Seleccionamos cada producto pensando en las necesidades, 
-          comodidad y bienestar de perros y gatos, desde alimentos y premios hasta juguetes, accesorios, 
-          ropa y artículos para su cuidado.</p>
-        <p><strong>Ropa y accesorios personalizados</strong><br />Creamos opciones personalizadas para que cada perro y 
-          gato pueda tener un estilo único. Diseñamos 
-          productos pensando en su comodidad y en los gustos de sus dueños, haciendo que cada artículo sea especial.</p>
-        <p><strong>Calidad y comodidad</strong><br />Ofrecemos productos prácticos, seguros y resistentes
-           que buscan hacer más cómoda y feliz la vida de tu mascota, sin dejar de lado su estilo.</p>
-        <p><strong>Amor por las mascotas</strong><br />En Bigotes y Patitas no solo vendemos productos, queremos formar parte de esos
-           momentos especiales que compartes con tu mascota y ayudarte a demostrarle cuánto la quieres.
-          Su estilo, tu cariño, su comodidad.</p>
-      </div>
-    </div>
-
-    <h2 class="team-title">MEET OUR TEAM</h2>
-    <div class="team-grid">
-      <div class="team-member">
-        <img src="Imagenes/Brenda.jpeg" alt="Brenda" />
-        <h4>Brenda Buenrostro Valencia</h4>
+  <!-- EQUIPO -->
+  <section class="ns-equipo" aria-labelledby="t-equipo">
+    <p class="dest-antetitulo">La manada detrás de la tienda</p>
+    <svg class="dest-huella ns-huella-titulo" aria-hidden="true"><use href="#ns-huella"/></svg>
+    <h2 class="ns-titulo ns-centro" id="t-equipo">Conoce a nuestro equipo</h2>
+    <div class="ns-equipo-grid">
+      <article class="ns-persona">
+        <img src="Imagenes/Brenda.jpeg" alt="Brenda Buenrostro Valencia" loading="lazy" />
+        <h3>Brenda Buenrostro Valencia</h3>
         <p>Dueña</p>
-      </div>
-      <div class="team-member">
-        <img src="Imagenes/Kim.jpg" alt="Kim" />
-        <h4>Kim Du Ri Carrillo Chávez</h4>
+      </article>
+      <article class="ns-persona">
+        <img src="Imagenes/Kim.jpg" alt="Kim Du Ri Carrillo Chávez" loading="lazy" />
+        <h3>Kim Du Ri Carrillo Chávez</h3>
         <p>Dueña</p>
-      </div>
-      <div class="team-member">
-        <img src="Imagenes/Axel.jpeg" alt="Axel" />
-        <h4>Axel Aaron Palacios Hernandez</h4>
+      </article>
+      <article class="ns-persona">
+        <img src="Imagenes/Axel.jpeg" alt="Axel Aaron Palacios Hernandez" loading="lazy" />
+        <h3>Axel Aaron Palacios Hernandez</h3>
         <p>Dueño</p>
-      </div>
+      </article>
     </div>
   </section>
 
-  <section>
-    <div class="contact-details">
-      <h2>PONTE EN CONTACTO CON NOSOTROS</h2>
-      <p><strong>Email:</strong><br /><a href="mailto:Bigotes_y_Patitas@gmail.com">Bigotes_y_Patitas@gmail.com</a></p>
-      <p><strong>Ubicación:</strong><br />Aguascalientes, Ags, México</p>
-      <!--<img src="Imagenes/mapita.jpeg" alt="mapa" class="mapa" /> -->
-      <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3702.4693967189646!2d-102.26365955413922!3d21.87799323179954!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8429ee069d6cf307%3A0xd93b5294c07171a7!2sInstituto%20Tecnol%C3%B3gico%20de%20Aguascalientes!5e0!3m2!1ses-419!2smx!4v1788233822125!5m2!1ses-419!2smx" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <!-- CONTACTO -->
+  <section class="ns-contacto" aria-labelledby="t-contacto">
+    <div class="ns-contacto-caja">
+      <div class="ns-contacto-texto">
+        <p class="franja-ante">Estamos para ayudarte</p>
+        <h2 class="ns-titulo" id="t-contacto">Ponte en contacto</h2>
+        <span class="franja-linea" aria-hidden="true"></span>
+        <p class="ns-dato"><strong>Correo</strong><a href="mailto:Bigotes_y_Patitas@gmail.com">Bigotes_y_Patitas@gmail.com</a></p>
+        <p class="ns-dato"><strong>Ubicación</strong>Aguascalientes, Ags., México</p>
+        <p class="ns-dato"><strong>¿Tienes alguna duda?</strong>Escríbenos desde el <a href="contact.html">formulario de contacto</a>
+          o en <a href="atencion-clientes.html">Atención a clientes</a>.</p>
+        <a class="cp-hero-btn ns-btn" href="shop.html">Ver el catálogo</a>
+      </div>
+      <div class="ns-mapa">
+        <iframe title="Mapa de la ubicación de Bigotes y Patitas"
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3702.4693967189646!2d-102.26365955413922!3d21.87799323179954!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8429ee069d6cf307%3A0xd93b5294c07171a7!2sInstituto%20Tecnol%C3%B3gico%20de%20Aguascalientes!5e0!3m2!1ses-419!2smx!4v1788233822125!5m2!1ses-419!2smx"
+          allowfullscreen="" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
     </div>
   </section>
 

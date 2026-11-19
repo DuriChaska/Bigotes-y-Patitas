@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tu cuenta - Bigotes y Patitas</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .ca-hero .cp-hero-dentro { padding-bottom: 60px; }
+    .ca-ante { text-align: center; margin: 0; }
+    .ca-pagina { max-width: 560px; margin: -70px auto 70px; padding: 0 18px; position: relative; z-index: 2; }
+    .ca-tarjeta { background: #fff; border-radius: 22px; box-shadow: 0 16px 40px rgba(74,56,38,.14); padding: 36px 34px 34px; text-align: center; color: #2f4858; }
+    .ca-icono { width: 74px; height: 74px; margin: -74px auto 14px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 6px 18px rgba(74,56,38,.14); }
+    .ca-icono svg { width: 40px; height: 40px; fill: #b8603a; }
+    .ca-titulo { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; font-size: clamp(2rem, 5vw, 2.6rem); color: #d93359; line-height: 1.1; margin-bottom: 10px; }
+    .ca-mensaje { line-height: 1.6; color: #4b4038; margin: 0 0 6px; }
+    .ca-form { flex-direction: column; text-align: left; margin-top: 8px; }
+    .ca-error { color: #8c1c2e; background: #f8e1e4; border-radius: 10px; padding: 9px 12px; font-size: .9rem; margin: 14px 0 0; }
+    .ca-boton { display: inline-flex; align-items: center; justify-content: center; align-self: center; margin-top: 24px; min-width: 240px; height: 54px; padding: 0 28px; border: none; border-radius: 999px; background: #8c1c2e; color: #fff; font: inherit; font-weight: 700; font-size: 1.02rem; cursor: pointer; box-shadow: 0 8px 20px rgba(140,28,46,.22); transition: background .2s, transform .15s; }
+    .ca-boton:hover:not(:disabled) { background: #6d1422; transform: translateY(-1px); }
+    .ca-boton:disabled { opacity: .6; cursor: wait; }
+    .ca-acciones { margin: 0; }
+    @media (max-width: 480px) { .ca-tarjeta { padding: 32px 20px 26px; } .ca-boton { width: 100%; min-width: 0; } }
+  </style>
+  <!--
+    Página a la que llevan los ENLACES DE LOS CORREOS de Firebase (Etapa 4):
+      - mode=resetPassword        → crear contraseña nueva
+      - mode=verifyEmail          → confirmar el correo (correo de bienvenida)
+      - mode=verifyAndChangeEmail → confirmar el cambio de correo (Mis datos)
+      - mode=recoverEmail         → deshacer un cambio de correo
+    Para que los correos traigan ESTA página en vez de la de Firebase: consola de Firebase →
+    Authentication → Plantillas → (lápiz) → "Personalizar URL de acción" →
+    http://localhost:5500/cuenta-accion.html   (o el dominio donde esté publicada la tienda).
+    Ver SETUP-FIREBASE.md, sección "Etapa 4 — Correos de la cuenta".
+  -->
+</head>
+<body>
+
+  <div id="header"></div>
+
+  <section class="cp-hero ca-hero">
+    <div class="cp-hero-dentro">
+      <nav class="pd-ruta" aria-label="Ruta de navegación">
+        <a href="index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/></svg>Inicio</a>
+        <span>/</span><strong>Mi cuenta</strong>
+      </nav>
+    </div>
+    <svg class="ola ola-abajo cp-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path class="ola-clara" d="M0 50 C220 80 520 90 800 66 C1080 44 1260 60 1440 72 V0 H0 Z"/>
+      <path class="ola-fondo" d="M0 28 C240 56 520 62 800 42 C1080 22 1260 38 1440 50 V0 H0 Z"/>
+    </svg>
+  </section>
+
+  <main class="ca-pagina">
+    <section class="ca-tarjeta">
+      <div class="ca-icono" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><ellipse cx="32" cy="44" rx="15" ry="13"/><ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/><ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/><ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/><ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/></svg>
+      </div>
+      <h1 id="titulo" class="ca-titulo">Revisando tu enlace…</h1>
+      <p id="mensaje" class="ca-mensaje"></p>
+
+      <form class="ca-form" id="formNueva" style="display:none;" novalidate>
+        <label class="ac-label" for="nueva">Contraseña nueva</label>
+        <input class="ac-input" type="password" id="nueva" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+        <label class="ac-label" for="nueva2">Confirma tu contraseña</label>
+        <input class="ac-input" type="password" id="nueva2" placeholder="Escríbela otra vez" autocomplete="new-password" />
+        <p id="error" class="ca-error" role="alert" style="display:none;"></p>
+        <button type="submit" id="btnGuardar" class="ca-boton">Guardar contraseña</button>
+      </form>
+
+      <p id="acciones" class="ca-acciones" style="display:none;">
+        <a href="login.html" id="linkLogin" class="ca-boton">Ir a iniciar sesión</a>
+      </p>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="components.js"></script>
+  <script type="module">
+    import { revisarEnlaceContrasena, guardarContrasenaNueva, aplicarEnlaceCorreo } from './firebase-db.js';
+
+    const p = new URLSearchParams(window.location.search);
+    const modo = p.get('mode');
+    const codigo = p.get('oobCode');
+    const $ = (id) => document.getElementById(id);
+
+    // Por qué un enlace ya no sirve, en palabras claras.
+    const MOTIVOS = {
+      'auth/expired-action-code': 'Este enlace ya caducó (duran 1 hora).',
+      'auth/invalid-action-code': 'Este enlace ya se usó o ya no es válido. Pasa cuando se abre un correo viejo: cada vez que pides un enlace nuevo, los anteriores dejan de servir.',
+      'auth/user-disabled': 'Esta cuenta está desactivada.',
+      'auth/user-not-found': 'Esta cuenta ya no existe.',
+      'auth/weak-password': 'La contraseña es muy débil (mínimo 6 caracteres).',
+      'auth/network-request-failed': 'Sin conexión a internet. Revisa tu conexión y vuelve a abrir el enlace.',
+    };
+    const motivo = (err) => MOTIVOS[err?.code] || err?.message || 'No se pudo completar la acción.';
+
+    function terminar(titulo, texto, { exito = false, destino = 'login.html' } = {}) {
+      $('titulo').textContent = titulo;
+      $('mensaje').textContent = texto;
+      $('mensaje').style.color = exito ? '#3f6b46' : '#8c1c2e';
+      $('formNueva').style.display = 'none';
+      $('linkLogin').href = destino;
+      $('acciones').style.display = 'block';
+    }
+
+    function fallido(err) {
+      terminar('Este enlace ya no sirve', motivo(err)
+        + ' Pide uno nuevo en "¿Olvidaste tu contraseña?" y abre el correo MÁS RECIENTE.', { destino: 'login.html' });
+    }
+
+    async function restablecer() {
+      let correo;
+      try {
+        // Solo REVISA el enlace; todavía no lo gasta (se gasta al guardar la contraseña).
+        correo = await revisarEnlaceContrasena(codigo);
+      } catch (err) { fallido(err); return; }
+
+      $('titulo').textContent = 'Crea tu contraseña nueva';
+      $('mensaje').textContent = `Cuenta: ${correo}`;
+      $('formNueva').style.display = 'flex';
+      $('nueva').focus();
+
+      $('formNueva').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const error = $('error');
+        error.style.display = 'none';
+        const nueva = $('nueva').value;
+        if (nueva.length < 6) { error.textContent = 'La contraseña debe tener al menos 6 caracteres.'; error.style.display = 'block'; return; }
+        if (nueva !== $('nueva2').value) { error.textContent = 'Las contraseñas no coinciden.'; error.style.display = 'block'; return; }
+        const boton = $('btnGuardar');
+        boton.disabled = true;
+        boton.textContent = 'Guardando…';
+        try {
+          await guardarContrasenaNueva(codigo, nueva);
+          terminar('¡Listo!', 'Tu contraseña se cambió. Ya puedes iniciar sesión con la nueva.',
+            { exito: true, destino: `login.html?restablecida=1&correo=${encodeURIComponent(correo)}` });
+          setTimeout(() => { window.location.href = `login.html?restablecida=1&correo=${encodeURIComponent(correo)}`; }, 2500);
+        } catch (err) {
+          if (['auth/expired-action-code', 'auth/invalid-action-code'].includes(err.code)) { fallido(err); return; }
+          error.textContent = motivo(err);
+          error.style.display = 'block';
+          boton.disabled = false;
+          boton.textContent = 'Guardar contraseña';
+        }
+      });
+    }
+
+    async function confirmarCorreo(titulo, texto) {
+      try {
+        await aplicarEnlaceCorreo(codigo);
+        terminar(titulo, texto, { exito: true, destino: 'login.html?verificado=1' });
+      } catch (err) {
+        terminar('Este enlace ya no sirve', motivo(err), { destino: 'login.html' });
+      }
+    }
+
+    if (!codigo || !modo) {
+      terminar('Enlace incompleto', 'El enlace no trae toda la información. Ábrelo directamente desde el correo.');
+    } else if (modo === 'resetPassword') {
+      restablecer();
+    } else if (modo === 'verifyEmail') {
+      confirmarCorreo('¡Correo confirmado! 🐾', 'Gracias. Tu correo quedó confirmado; ya puedes iniciar sesión.');
+    } else if (modo === 'verifyAndChangeEmail') {
+      confirmarCorreo('¡Correo actualizado!', 'Tu cuenta ya usa el correo nuevo. Inicia sesión con él.');
+    } else if (modo === 'recoverEmail') {
+      confirmarCorreo('Cambio deshecho', 'Tu cuenta volvió a su correo anterior. Te recomendamos cambiar tu contraseña.');
+    } else {
+      terminar('Enlace no reconocido', 'No sabemos qué hacer con este enlace. Ábrelo directamente desde el correo.');
+    }
+  </script>
+</body>
+</html>
