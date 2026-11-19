@@ -6,7 +6,7 @@
 //  El header ahora es dinámico: si hay una cuenta de
 //  cliente real con sesión iniciada (Firebase Authentication),
 //  el botón "Iniciar sesión" cambia por el nombre del cliente
-//  y aparece un botón para cerrar sesión. Se pinta primero sin
+//  (cerrar sesión se hace desde Mi cuenta). Se pinta primero sin
 //  sesión (para no bloquear la carga de la página) y se vuelve
 //  a pintar en cuanto Firebase responde.
 // ============================================
@@ -43,7 +43,7 @@ function navLinks(cliente) {
       ? ` <span class="cart-badge" style="position:static; display:inline-flex; margin-left:4px; background:#2f9e5a;" title="Respuestas de soporte sin leer">${ticketsSinLeer}</span>`
       : '';
     links.push({ href: 'Interfaz Cliente - Perfil.html', label: `Hola, ${escHeader(primerNombre(cliente.nombre))}${aviso}` });
-    links.push({ href: '#', label: 'Cerrar sesión', accion: 'cerrarSesionClientePublico' });
+    // Cerrar sesión ya no va en el menú de arriba: está en Mi cuenta (menú lateral y botón del perfil).
   } else {
     links.push({ href: 'login.html', label: 'Iniciar sesión' });
   }
@@ -143,7 +143,7 @@ function pintarHeaderFooter(cliente) {
 // Pinta de inmediato como "sin sesión" para no bloquear la carga de la página.
 pintarHeaderFooter(null);
 
-// Botón "Cerrar sesión" del header (solo aparece con sesión iniciada).
+// Cerrar sesión (lo usa el menú lateral de Mi cuenta: cuenta-menu.js).
 window.cerrarSesionClientePublico = function (e) {
   if (e) e.preventDefault();
   import('./firebase-db.js').then(({ logoutCliente }) => {

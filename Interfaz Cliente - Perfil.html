@@ -1,436 +1,181 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Perfil Cliente</title>
+  <title>Mi cuenta - Bigotes y Patitas</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="dialogos.js"></script>
-  <style>
-    /* ── MODAL COMPRAS ──────────────────────── */
-    .modal-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(58, 37, 53, .45);
-      backdrop-filter: blur(4px);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .modal-overlay.open { display: flex; }
-
-    .modal {
-      background: #fff;
-      border-radius: 24px;
-      padding: 28px 24px;
-      width: 100%;
-      max-width: 420px;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(58, 37, 53, .25);
-      animation: slideUp .3s ease;
-    }
-
-    @keyframes slideUp {
-      from { transform: translateY(30px); opacity: 0; }
-      to   { transform: translateY(0);    opacity: 1; }
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    .modal-header h2 {
-      font-size: 1.2rem;
-      color: #e07fa0;
-    }
-    .modal-close {
-      background: #fce8f0;
-      border: none;
-      width: 32px; height: 32px;
-      border-radius: 50%;
-      font-size: 1rem;
-      cursor: pointer;
-      color: #9a7d8a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background .2s;
-    }
-    .modal-close:hover { background: #f7a8c4; color: #fff; }
-
-    /* ── COMPRA ITEM ────────────────────── */
-    .compra-item {
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      padding: 14px 0;
-      border-bottom: 1px solid #f0e0e8;
-    }
-    .compra-item:last-child { border-bottom: none; }
-
-    .compra-img {
-      width: 52px; height: 52px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #f7a8c4, #e07fa0);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      flex-shrink: 0;
-    }
-
-    .compra-info { flex: 1; }
-    .compra-nombre { font-weight: 500; font-size: .92rem; margin-bottom: 3px; }
-    .compra-meta   { font-size: .78rem; color: #9a7d8a; }
-    .compra-precio { font-weight: 600; color: #e07fa0; font-size: .95rem; white-space: nowrap; }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-size: .72rem;
-      font-weight: 500;
-      margin-top: 4px;
-    }
-    .badge-entregado { background: #d4f4e2; color: #1a7a45; }
-    .badge-enviado   { background: #fff0d4; color: #9a6400; }
-    .badge-proceso   { background: #ddeeff; color: #1a4f8a; }
-  </style>
 </head>
-
-<body>
+<body class="pf-body">
 
   <div id="header"></div>
 
-  <section class="client-interface profile">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="pf-huella" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="44" rx="15" ry="13"/>
+      <ellipse cx="13" cy="27" rx="7" ry="9" transform="rotate(-20 13 27)"/>
+      <ellipse cx="25" cy="15" rx="7" ry="9" transform="rotate(-6 25 15)"/>
+      <ellipse cx="40" cy="15" rx="7" ry="9" transform="rotate(6 40 15)"/>
+      <ellipse cx="52" cy="27" rx="7" ry="9" transform="rotate(20 52 27)"/>
+    </symbol>
+  </svg>
 
-    <!-- HEADER PERFIL -->
-    <div class="profile-header">
-      <!-- Etapa 4: cada cliente pone su propia foto; sin foto se ve el ícono genérico de perfil -->
-      <div class="foto-perfil-wrap">
-        <img id="fotoPerfil" alt="Foto de perfil" class="profile-pic foto-perfil sin-foto" title="Cambiar foto de perfil" />
-        <div class="foto-perfil-acciones">
-          <button type="button" id="btnCambiarFoto" class="foto-perfil-btn">📷 Agregar foto</button>
-          <button type="button" id="btnQuitarFoto" class="foto-perfil-btn quitar" style="display:none;">Quitar foto</button>
+  <section class="cta-wrap pf-wrap">
+    <aside class="cta-menu" id="cuenta-menu"></aside>
+
+    <div class="pf-main">
+      <!-- Tarjeta principal -->
+      <div class="pf-hero">
+        <svg class="pf-hero-huella h1" aria-hidden="true"><use href="#pf-huella"/></svg>
+        <svg class="pf-hero-huella h2" aria-hidden="true"><use href="#pf-huella"/></svg>
+        <div class="pf-foto">
+          <img id="fotoPerfil" alt="Foto de perfil" class="foto-perfil sin-foto" title="Cambiar foto de perfil" />
+          <div class="pf-foto-btns">
+            <button type="button" id="btnCambiarFoto" class="foto-perfil-btn">📷 Agregar foto</button>
+            <button type="button" id="btnQuitarFoto" class="foto-perfil-btn quitar" style="display:none;">Quitar foto</button>
+          </div>
+        </div>
+        <div class="pf-hola">
+          <p class="franja-ante">Mi cuenta</p>
+          <h1 class="pf-nombre">¡Hola, <span id="nombreCliente">…</span>!</h1>
+          <p class="pf-sub" id="arrobaCliente"></p>
+          <div class="pf-chips" id="chips"></div>
         </div>
       </div>
-      <div class="profile-info">
-        <h2 id="nombreCliente">Cargando…</h2>
-        <p id="arrobaCliente"></p>
-      </div>
-    </div>
 
-    <!-- INFO -->
-    <div class="profile-sections">
-
-      <div class="profile-item">
-        <h3>Mis datos</h3>
-        <p>
-          Correo: <span id="correoCliente">—</span><br />
-          Teléfono: <span id="telefonoCliente">—</span><br />
-          Mascota: <span id="mascotaCliente">—</span>
-        </p>
+      <!-- Números -->
+      <div class="pf-stats">
+        <a class="pf-stat" href="mis-pedidos.html"><span class="pf-stat-ico">📦</span><strong id="st-pedidos">0</strong><small>Pedidos</small></a>
+        <a class="pf-stat" href="mi-monedero.html"><span class="pf-stat-ico">👛</span><strong id="st-saldo">$0.00</strong><small>En tu monedero</small></a>
+        <a class="pf-stat" href="mis-favoritos.html"><span class="pf-stat-ico">♥</span><strong id="st-favoritos">0</strong><small>Favoritos</small></a>
+        <a class="pf-stat" href="atencion-clientes.html"><span class="pf-stat-ico">🎧</span><strong id="st-mensajes">0</strong><small id="st-mensajes-txt">Mensajes nuevos</small></a>
       </div>
 
-      <div class="profile-item">
-        <h3>Mis compras</h3>
-        <p>Tienes <strong id="numCompras">0</strong> compras registradas.</p>
+      <div class="pf-grid">
+        <!-- Último pedido -->
+        <div class="cta-card pf-card">
+          <div class="pf-card-cab"><h3>Mi último pedido</h3><a href="mis-pedidos.html">Ver todos →</a></div>
+          <div id="ultimo-pedido"><p class="pf-vacio">Cargando…</p></div>
+        </div>
+
+        <!-- Datos -->
+        <div class="cta-card pf-card">
+          <div class="pf-card-cab"><h3>Mis datos</h3><a href="mis-datos.html">Editar →</a></div>
+          <dl class="pf-datos">
+            <div><dt>Correo</dt><dd id="correoCliente">—</dd></div>
+            <div><dt>Teléfono</dt><dd id="telefonoCliente">—</dd></div>
+            <div><dt>Mascota de interés</dt><dd id="mascotaCliente">—</dd></div>
+            <div><dt>Código postal</dt><dd id="cpCliente">—</dd></div>
+          </dl>
+        </div>
       </div>
 
-      <div class="profile-item">
-        <h3>Mi monedero</h3>
-        <p>Saldo disponible: <strong id="saldoMonedero">$0.00</strong>
-           <a href="mi-monedero.html" style="color:var(--pink-medio); font-weight:600; margin-left:6px;">Recargar</a></p>
+      <!-- Accesos -->
+      <div class="pf-accesos">
+        <a href="mis-direcciones.html"><span>📍</span><b>Mis direcciones</b><small>Para enviar tus pedidos</small></a>
+        <a href="mis-favoritos.html"><span>♥</span><b>Mis favoritos</b><small>Lo que guardaste</small></a>
+        <a href="publicar.html"><span>➕</span><b>Publicar producto</b><small>Vende lo que ya no usa</small></a>
+        <a href="mis-publicaciones.html"><span>🏷️</span><b>Mis publicaciones</b><small id="num-publicaciones">0 productos</small></a>
+        <a href="shop.html"><span>🛍️</span><b>Seguir comprando</b><small>Ver el catálogo</small></a>
+        <a href="atencion-clientes.html"><span>🎧</span><b>Atención a clientes</b><small>¿Te ayudamos?</small></a>
       </div>
 
-      <!-- ACCIONES -->
-      <div class="profile-actions">
-
-        <button class="btn-pro"
-          onclick="window.location.href='publicar.html'">
-          ➕ Publicar producto
-        </button>
-
-        <button class="btn-outline"
-          onclick="window.location.href='mis-publicaciones.html'">
-          📦 Ver mis publicaciones
-        </button>
-
-        <button class="btn-outline"
-          onclick="window.location.href='mis-pedidos.html'">
-          🛍️ Mis pedidos
-        </button>
-
-        <button class="btn-outline"
-          onclick="window.location.href='mi-monedero.html'">
-          👛 Mi monedero
-        </button>
-
-        <button class="btn-outline"
-          onclick="window.location.href='mis-datos.html'">
-          🪪 Mis datos
-        </button>
-
-        <button class="btn-outline"
-          onclick="window.location.href='mis-direcciones.html'">
-          📍 Mis direcciones
-        </button>
-
-        <button class="btn-outline"
-          onclick="window.location.href='atencion-clientes.html'">
-          🎧 Atención a clientes
-        </button>
-
-      </div>
-
-      <!-- RESUMEN C2C -->
-      <div class="profile-item">
-        <h3>Resumen de ventas</h3>
-        <p id="totalProductos">Productos publicados: 0</p>
-      </div>
-
-      <button class="logout-btn" onclick="cerrarSesion()">
-        Cerrar sesión
-      </button>
-
+      <button type="button" class="pf-salir" id="btn-salir">🚪 Cerrar sesión</button>
     </div>
   </section>
-
-  <!-- MODAL COMPRAS -->
-  <div class="modal-overlay" id="modalCompras">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>🛍️ Mis compras</h2>
-        <button class="modal-close" onclick="cerrarCompras()">✕</button>
-      </div>
-      <div id="listaCompras"></div>
-    </div>
-  </div>
 
   <div id="footer"></div>
 
   <script src="components.js"></script>
-
+  <script src="cuenta-menu.js"></script>
   <script type="module">
-    import { obtenerUsuarioActual, asegurarPerfilCliente, escucharVentasDeCliente, logoutCliente, escucharMonedero } from './firebase-db.js';
+    import { escucharVentasDeCliente, escucharMonedero, escucharFavoritos, escucharTicketsDeCliente, logoutCliente } from './firebase-db.js';
     import { montarFotoPerfil, ICONO_PERFIL } from './foto-perfil.js';
+    import { iniciarCuenta, esc, dinero, fechaCorta } from './cuenta-comun.js';
 
-    // Mientras carga la sesión se ve el ícono genérico (nunca una foto fija de otra persona).
-    document.getElementById("fotoPerfil").src = ICONO_PERFIL;
+    const $ = (id) => document.getElementById(id);
+    $('fotoPerfil').src = ICONO_PERFIL;
 
-    /* ── Historial de compras REAL (Firestore: colección "ventas") ── */
-    let ventasCliente = [];
+    // Enlaces viejos "Perfil#pedidos" → la pantalla de pedidos.
+    if (location.hash === '#pedidos') location.replace('mis-pedidos.html');
 
-    const badgeMap = {
-      Confirmada: ["badge-proceso",   "Confirmada ✓"],
-      Enviada:    ["badge-enviado",   "Enviada 🚚"],
-      Entregada:  ["badge-entregado", "Entregada ✓"],
-      Cancelada:  ["badge-proceso",   "Cancelada"]
+    const ESTADOS = {
+      Confirmada: ['conf', 'Confirmado'], Enviada: ['env', 'En camino 🚚'],
+      Entregada: ['ok', 'Entregado ✓'], Cancelada: ['can', 'Cancelado'],
     };
 
-    function formatearMoneda(valor) {
-      return `$${Number(valor || 0).toFixed(2)}`;
-    }
-
-    // "creadoEn" llega como Timestamp de Firestore (tiene .toDate()); por si
-    // el snapshot todavía no lo resolvió, se cubre también el caso null.
-    function formatFecha(valor) {
-      if (!valor) return "";
-      const fecha = typeof valor.toDate === "function" ? valor.toDate() : new Date(valor);
-      if (isNaN(fecha.getTime())) return "";
-      const meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-      return `${fecha.getDate()} ${meses[fecha.getMonth()]} ${fecha.getFullYear()}`;
-    }
-
-    function formatFechaISO(valor) {
-      if (!valor) return "";
-      const fecha = typeof valor.toDate === "function" ? valor.toDate() : new Date(valor);
-      return isNaN(fecha.getTime()) ? "" : fecha.toISOString().split("T")[0];
-    }
-
-    function pintarPerfil(perfil, usuario) {
-      document.getElementById("nombreCliente").textContent = perfil?.nombre || usuario.email;
-      document.getElementById("arrobaCliente").textContent = "@" + (usuario.email || "").split("@")[0];
-      document.getElementById("correoCliente").textContent = usuario.email || perfil?.correo || "—";
-      document.getElementById("telefonoCliente").textContent = perfil?.telefono || "Sin registrar";
-      document.getElementById("mascotaCliente").textContent = perfil?.mascota || "Sin especificar";
-    }
-
-    function pintarNumCompras() {
-      document.getElementById("numCompras").textContent = ventasCliente.length;
-    }
-
-    function abrirCompras() {
-      const lista = document.getElementById("listaCompras");
-
-      if (ventasCliente.length === 0) {
-        lista.innerHTML = `<p style="text-align:center;color:#9a7d8a;padding:20px 0">Aún no tienes compras 🛒</p>`;
-      } else {
-        lista.innerHTML = ventasCliente.map((v, index) => {
-          const [cls, label] = badgeMap[v.estado] || ["badge-proceso", v.estado || "Confirmada"];
-          const items = v.items || [];
-          const nombreResumen = items.length > 1
-            ? `${items[0]?.nombre || "Producto"} y ${items.length - 1} más`
-            : (items[0]?.nombre || "Pedido");
-          return `
-            <div class="compra-item" style="cursor:pointer;" onclick="verTicketDetalle(${index})">
-              <div class="compra-img">🛍️</div>
-              <div class="compra-info">
-                <div class="compra-nombre">${nombreResumen}</div>
-                <div class="compra-meta">Pedido: ${v.folio || v.id} · ${formatFecha(v.creadoEn)}</div>
-                <span class="badge ${cls}">${label}</span>
-              </div>
-              <div style="text-align:right">
-                <div class="compra-precio">${formatearMoneda(v.total)}</div>
-                <small style="color:#b34a8e; font-size:10px;">Ver ticket</small>
-              </div>
-            </div>
-          `;
-        }).join("");
-      }
-
-      document.getElementById("modalCompras").classList.add("open");
-    }
-
-    // Abre el recibo de la venta real guardada en Firestore (factura.html?id=...).
-    // El objeto en localStorage queda solo como respaldo.
-    function verTicketDetalle(index) {
-      const venta = ventasCliente[index];
-      if (!venta) return;
-      if (venta.id) {
-        window.location.href = "factura.html?id=" + encodeURIComponent(venta.id);
+    function pintarUltimo(ventas) {
+      $('st-pedidos').textContent = ventas.length;
+      const v = ventas[0];
+      if (!v) {
+        $('ultimo-pedido').innerHTML = `<div class="pf-vacio"><p>Aún no tienes pedidos.</p>
+          <a class="cta-btn pf-btn" href="shop.html">Ver el catálogo</a></div>`;
         return;
       }
-      localStorage.setItem("ultimaCompra", JSON.stringify({
-        factura: venta.folio,
-        pedido: venta.folio,
-        fecha: formatFechaISO(venta.creadoEn),
-        cliente: venta.clienteNombre,
-        subtotal: venta.subtotal,
-        envio: venta.envio,
-        total: venta.total,
-        cupon: venta.cupon,
-        descripcionCupon: venta.descripcionCupon,
-        descuento: venta.descuento,
-        productos: venta.items,
-      }));
-      window.location.href = "factura.html";
+      const [clase, texto] = ESTADOS[v.estado] || ['conf', v.estado || 'Confirmado'];
+      const items = Array.isArray(v.items) ? v.items : [];
+      const piezas = items.reduce((s, i) => s + (Number(i.cantidad) || 1), 0);
+      $('ultimo-pedido').innerHTML = `
+        <div class="pf-pedido">
+          <div class="pf-pedido-fila"><b>${esc(v.folio || v.id)}</b><span class="pf-estado ${clase}">${esc(texto)}</span></div>
+          <p class="pf-pedido-meta">${esc(fechaCorta(v.creadoEn))} · ${piezas} pieza${piezas === 1 ? '' : 's'}</p>
+          <ul class="pf-pedido-items">${items.slice(0, 3).map((i) => `<li>${esc(i.cantidad || 1)} × ${esc(i.nombre)}</li>`).join('')}
+            ${items.length > 3 ? `<li>y ${items.length - 3} más…</li>` : ''}</ul>
+          <div class="pf-pedido-fila"><span>Total</span><strong>${dinero(v.total)}</strong></div>
+          <div class="pf-pedido-btns">
+            <a class="cta-btn pf-btn" href="mis-pedidos.html">Seguir mi pedido</a>
+            <a class="cta-btn sec pf-btn" href="factura.html?id=${encodeURIComponent(v.id)}">Ver recibo</a>
+          </div>
+        </div>`;
     }
 
-    function cerrarCompras() {
-      document.getElementById("modalCompras").classList.remove("open");
+    function pintarPerfil(perfil, usuario, nombre) {
+      const primer = String(nombre || '').trim().split(/\s+/)[0] || 'Cliente';
+      $('nombreCliente').textContent = primer;
+      $('arrobaCliente').textContent = nombre + (usuario.email ? ` · ${usuario.email}` : '');
+      $('correoCliente').textContent = usuario.email || perfil?.correo || '—';
+      $('telefonoCliente').textContent = perfil?.telefono || 'Sin registrar';
+      $('mascotaCliente').textContent = perfil?.mascota || 'Sin especificar';
+      $('cpCliente').textContent = perfil?.codigoPostal || 'Sin registrar';
+      const chips = [];
+      if (perfil?.mascota && perfil.mascota !== 'Sin especificar') chips.push(`🐾 ${esc(perfil.mascota)}`);
+      const desde = perfil?.creadoEn ? fechaCorta(perfil.creadoEn) : (perfil?.fechaRegistro || '');
+      if (desde) chips.push(`Parte de la manada desde ${esc(desde)}`);
+      $('chips').innerHTML = chips.map((c) => `<span>${c}</span>`).join('');
     }
 
-    document.getElementById("modalCompras").addEventListener("click", function (e) {
-      if (e.target === this) cerrarCompras();
+    $('btn-salir').addEventListener('click', async () => {
+      const si = await window.bpConfirmar('¿Quieres cerrar tu sesión?', { aceptar: 'Cerrar sesión', cancelar: 'Cancelar' });
+      if (!si) return;
+      try { await logoutCliente(); } catch { /* igual se sale */ }
+      location.href = 'index.html';
     });
 
-    async function cerrarSesion() {
-      try { await logoutCliente(); } catch { /* de todos modos se manda al login */ }
-      window.location.href = "login.html";
-    }
+    (async () => {
+      const sesion = await iniciarCuenta('Interfaz Cliente - Perfil.html', 'cuenta');
+      if (!sesion) return;
+      const { usuario, perfil, nombre } = sesion;
+      pintarPerfil(perfil, usuario, nombre);
 
-    window.abrirCompras = abrirCompras;
-    window.cerrarCompras = cerrarCompras;
-    window.verTicketDetalle = verTicketDetalle;
-    window.cerrarSesion = cerrarSesion;
+      montarFotoPerfil({ img: $('fotoPerfil'), btnCambiar: $('btnCambiarFoto'), btnQuitar: $('btnQuitarFoto'), uid: usuario.uid });
 
-    /* ── Publicaciones C2C (sección aparte, no forma parte del historial de compras) ── */
-    const publicacionesBase = [
-      {
-        id: "P001",
-        nombre: "Crop Top Encaje",
-        precio: 210,
-        talla: "S",
-        categoria: "Tops",
-        estado: "disponible",
-        fecha: "2025-03-20"
-      },
-      {
-        id: "P002",
-        nombre: "Falda Plisada Rosa",
-        precio: 390,
-        talla: "M",
-        categoria: "Faldas",
-        estado: "disponible",
-        fecha: "2025-03-28"
-      },
-      {
-        id: "P003",
-        nombre: "Sudadera Oversize Minimal",
-        precio: 490,
-        talla: "L",
-        categoria: "Sudaderas",
-        estado: "vendido",
-        fecha: "2025-04-02"
-      }
-    ];
+      escucharVentasDeCliente(usuario.uid, pintarUltimo,
+        () => { $('ultimo-pedido').innerHTML = '<p class="pf-vacio">No se pudieron cargar tus pedidos.</p>'; });
+      escucharMonedero(usuario.uid, (m) => { $('st-saldo').textContent = dinero(m ? m.saldo : 0); },
+        () => { $('st-saldo').textContent = '—'; });
+      escucharFavoritos(usuario.uid, (l) => { $('st-favoritos').textContent = l.length; }, () => {});
+      escucharTicketsDeCliente(usuario.uid, (l) => {
+        const n = l.filter((t) => t.leidoCliente === false).length;
+        $('st-mensajes').textContent = n;
+        $('st-mensajes-txt').textContent = n === 1 ? 'Mensaje nuevo' : 'Mensajes nuevos';
+        document.querySelector('.pf-stat[href="atencion-clientes.html"]').classList.toggle('alerta', n > 0);
+      }, () => {});
 
-    function inicializarDatosPublicaciones() {
-      if (!localStorage.getItem("misProductos")) {
-        localStorage.setItem("misProductos", JSON.stringify(publicacionesBase));
-      }
-    }
-
-    function actualizarResumenPublicaciones() {
-      const productos = JSON.parse(localStorage.getItem("misProductos")) || [];
-      document.getElementById("totalProductos").textContent = "Productos publicados: " + productos.length;
-    }
-
-    /* ── INIT ───────────────────────────────────── */
-    (async function iniciar() {
-      // El perfil requiere una cuenta real: sin sesión, se manda a login y
-      // de ahí de regreso aquí mismo.
-      const usuario = await obtenerUsuarioActual();
-      if (!usuario) {
-        window.location.href = "login.html?next=" + encodeURIComponent("Interfaz Cliente - Perfil.html");
-        return;
-      }
-
-      montarFotoPerfil({
-        img: document.getElementById("fotoPerfil"),
-        btnCambiar: document.getElementById("btnCambiarFoto"),
-        btnQuitar: document.getElementById("btnQuitarFoto"),
-        uid: usuario.uid,
-      });
-
-      let perfil = null;
-      try {
-        perfil = await asegurarPerfilCliente(usuario);
-      } catch (err) {
-        if (err.code === 'bp/cuenta-dada-de-baja') { window.location.href = 'login.html?baja=1'; return; }
-        (window.bpNotificar || (() => {}))('No se pudieron cargar los datos de tu perfil. Revisa tu conexión.', 'error');
-      }
-      pintarPerfil(perfil, usuario);
-
-      let abiertoPorEnlace = false;
-      escucharVentasDeCliente(usuario.uid, (ventas) => {
-        ventasCliente = ventas;
-        pintarNumCompras();
-        // Enlace "Mis pedidos" del menú de Mi cuenta (Interfaz Cliente - Perfil.html#pedidos).
-        if (window.location.hash === "#pedidos" && !abiertoPorEnlace) {
-          abiertoPorEnlace = true;
-          abrirCompras();
-        }
-      }, () => (window.bpNotificar || (() => {}))('No se pudieron cargar tus compras. Revisa tu conexión.', 'error'));
-
-      // Saldo del monedero (Etapa 4): se actualiza solo si recarga o paga en otra pestaña.
-      escucharMonedero(usuario.uid, (m) => {
-        document.getElementById("saldoMonedero").textContent = formatearMoneda(m ? m.saldo : 0);
-      }, () => {
-        document.getElementById("saldoMonedero").textContent = "No disponible";
-        if (window.bpNotificar) bpNotificar("No se pudo cargar el saldo de tu monedero.", "error");
-      });
-
-      inicializarDatosPublicaciones();
-      actualizarResumenPublicaciones();
+      let publicaciones = [];
+      try { publicaciones = JSON.parse(localStorage.getItem('misProductos') || '[]'); } catch { /* vacío */ }
+      $('num-publicaciones').textContent = `${publicaciones.length} producto${publicaciones.length === 1 ? '' : 's'}`;
     })();
   </script>
-
 </body>
 </html>
