@@ -1522,6 +1522,18 @@ export async function validarCupon(codigo) {
   };
 }
 
+/**
+ * Promociones que la tienda decidió mostrar en la página "Promos" (publica: true), vigentes.
+ * Las demás siguen siendo secretas: solo funcionan si alguien conoce el código.
+ */
+export function escucharPromocionesPublicas(callback, onError) {
+  return onSnapshot(query(promocionesRef, where("publica", "==", true)), (snap) => {
+    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => promocionVigente(p));
+    lista.sort((a, b) => String(a.vigenciaHasta).localeCompare(String(b.vigenciaHasta)));
+    callback(lista);
+  }, onError);
+}
+
 /** Escucha en tiempo real todas las promociones (solo personal de ventas). */
 export function escucharPromociones(callback, onError) {
   return onSnapshot(query(promocionesRef, orderBy("vigenciaHasta", "desc")), (snap) => {
@@ -1543,6 +1555,7 @@ export function guardarPromocion(datos, usuario, esNuevo = true) {
     minimoCompra: Number(datos.minimoCompra) || 0,
     vigenciaHasta: datos.vigenciaHasta,
     activa: datos.activa !== false,
+    publica: datos.publica === true,
     actualizadoEn: serverTimestamp(),
   };
   if (esNuevo) {
@@ -1571,7 +1584,7 @@ export async function cargarPromocionesEjemplo(usuario) {
     { codigo: "CUTECANDY10", descripcion: "10% en tu tercera prenda", tipo: "tercera_prenda", valor: 10, minimoCompra: 0 },
     { codigo: "CUTENVIO1", descripcion: "Envío gratis en compras mayores a $2000", tipo: "envio_gratis", valor: 0, minimoCompra: 2000 },
   ];
-  await Promise.all(ejemplos.map(p => guardarPromocion({ ...p, vigenciaHasta, activa: true }, usuario)));
+  await Promise.all(ejemplos.map(p => guardarPromocion({ ...p, vigenciaHasta, activa: true, publica: true }, usuario)));
   return ejemplos.length;
 }
 

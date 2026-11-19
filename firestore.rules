@@ -413,12 +413,14 @@ service cloud.firestore {
         && d.tipo in ['porcentaje', 'tercera_prenda', 'envio_gratis']
         && d.valor is number && d.valor >= 0 && d.valor <= 90
         && d.vigenciaHasta is string && d.vigenciaHasta.size() == 10
-        && d.activa is bool;
+        && d.activa is bool
+        && (!('publica' in d) || d.publica is bool);
     }
 
     match /promociones/{promoId} {
       allow get: if true;
-      allow list: if esStaff();
+      // Cualquiera puede LISTAR solo las que la tienda marcó para la página de Promos (publica == true).
+      allow list: if esStaff() || resource.data.publica == true;
       allow create, update: if esStaff() && promocionValida(request.resource.data, promoId);
       allow delete: if esStaff();
     }

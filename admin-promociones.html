@@ -60,6 +60,10 @@
               <label for="p-vigencia">Vigente hasta</label>
               <input type="date" id="p-vigencia" />
             </div>
+            <label for="p-publica" style="grid-column: span 6; display:flex; align-items:center; gap:8px; font-size:.85rem; cursor:pointer;">
+              <input type="checkbox" id="p-publica" checked style="width:auto; accent-color:var(--admin-green);" />
+              Mostrar en la página "Promos" de la tienda (si no, el cupón es secreto: solo sirve si conocen el código)
+            </label>
             <div style="grid-column: span 6; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
               <button type="submit" class="admin-btn-primary" id="btn-guardar-promo">+ Crear cupón</button>
               <button type="button" class="admin-btn-secondary" id="btn-cancelar-edicion" style="display:none;">Cancelar edición</button>
@@ -155,6 +159,7 @@
       const en30 = new Date(); en30.setDate(en30.getDate() + 30);
       $('p-vigencia').value = hoyISO(en30);
       $('p-codigo').readOnly = false;
+      $('p-publica').checked = true;
       $('btn-guardar-promo').textContent = '+ Crear cupón';
       $('btn-cancelar-edicion').style.display = 'none';
       mostrarError('');
@@ -172,6 +177,7 @@
       $('p-valor').value = p.tipo === 'envio_gratis' ? '' : p.valor;
       $('p-minimo').value = p.minimoCompra || 0;
       $('p-vigencia').value = p.vigenciaHasta;
+      $('p-publica').checked = p.publica === true;
       $('btn-guardar-promo').textContent = 'Guardar cambios';
       $('btn-cancelar-edicion').style.display = '';
       mostrarError('');
@@ -201,6 +207,7 @@
         await guardarPromocion({
           codigo, descripcion: $('p-desc').value, tipo, valor, minimoCompra: minimo, vigenciaHasta,
           activa: actual ? actual.activa !== false : true,
+          publica: $('p-publica').checked,
         }, window.BP_SESION, !editando);
         mostrarToast(editando ? `Cupón ${codigo} actualizado` : `Cupón ${codigo} guardado en promociones`);
         limpiarFormulario();
@@ -218,7 +225,7 @@
         const est = estadoPromo(p);
         return `
           <tr>
-            <td><strong style="font-family:monospace;">${esc(p.codigo)}</strong>
+            <td><strong style="font-family:monospace;">${esc(p.codigo)}</strong>${p.publica === true ? ' <span title="Se muestra en la página Promos">🏷️</span>' : ''}
                 ${p.descripcion ? `<br><small style="color:var(--gray);">${esc(p.descripcion)}</small>` : ''}</td>
             <td>${esc(TIPOS_PROMOCION[p.tipo] || p.tipo)}</td>
             <td>${esc(textoDescuento(p))}</td>
